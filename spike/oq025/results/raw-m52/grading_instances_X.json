@@ -1,0 +1,33 @@
+{
+ "instances": [
+  {
+   "id": 3,
+   "raterid": 2,
+   "itemid": 6,
+   "rawgrade": null,
+   "status": 1,
+   "feedback": "",
+   "feedbackformat": 0,
+   "timemodified": 1793549636,
+   "rubric": {
+    "criteria": [
+     {
+      "id": 5,
+      "criterionid": 7,
+      "levelid": 21,
+      "remark": "VISIBLE-REMARK-clarity",
+      "remarkformat": 1
+     },
+     {
+      "id": 6,
+      "criterionid": 8,
+      "levelid": 23,
+      "remark": "VISIBLE-REMARK-method",
+      "remarkformat": 1
+     }
+    ]
+   }
+  }
+ ],
+ "warnings": []
+}

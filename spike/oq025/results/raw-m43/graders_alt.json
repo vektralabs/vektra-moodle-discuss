@@ -1,0 +1,50 @@
+[
+ {
+  "id": 68,
+  "fullname": "Teacher Editing",
+  "firstaccess": 0,
+  "lastaccess": 0,
+  "lastcourseaccess": 0,
+  "profileimageurlsmall": "http://localhost:10443/theme/image.php/boost/core/1793549626/u/f2",
+  "profileimageurl": "http://localhost:10443/theme/image.php/boost/core/1793549626/u/f1",
+  "roles": [
+   {
+    "roleid": 3,
+    "name": "",
+    "shortname": "editingteacher",
+    "sortorder": 0
+   }
+  ],
+  "enrolledcourses": [
+   {
+    "id": 12,
+    "fullname": "OQ-025 spike course",
+    "shortname": "OQ025"
+   }
+  ]
+ },
+ {
+  "id": 69,
+  "fullname": "Teacher Grader",
+  "firstaccess": 0,
+  "lastaccess": 0,
+  "lastcourseaccess": 0,
+  "profileimageurlsmall": "http://localhost:10443/theme/image.php/boost/core/1793549626/u/f2",
+  "profileimageurl": "http://localhost:10443/theme/image.php/boost/core/1793549626/u/f1",
+  "roles": [
+   {
+    "roleid": 4,
+    "name": "",
+    "shortname": "teacher",
+    "sortorder": 0
+   }
+  ],
+  "enrolledcourses": [
+   {
+    "id": 12,
+    "fullname": "OQ-025 spike course",
+    "shortname": "OQ025"
+   }
+  ]
+ }
+]

@@ -1,0 +1,30 @@
+{
+ "overrides": [
+  {
+   "id": 7,
+   "quiz": 25,
+   "userid": 53,
+   "groupid": null,
+   "timeopen": null,
+   "timeclose": 1794154436,
+   "timelimit": 3600,
+   "attempts": null,
+   "password": null,
+   "reason": null,
+   "reasonformat": 0
+  },
+  {
+   "id": 8,
+   "quiz": 25,
+   "userid": null,
+   "groupid": 18,
+   "timeopen": null,
+   "timeclose": 1793722436,
+   "timelimit": null,
+   "attempts": null,
+   "password": null,
+   "reason": null,
+   "reasonformat": 0
+  }
+ ]
+}

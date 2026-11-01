@@ -1,0 +1,19 @@
+{
+ "assignments": [
+  {
+   "assignmentid": 8,
+   "grades": [
+    {
+     "id": 7,
+     "userid": 52,
+     "attemptnumber": 0,
+     "timecreated": 1793549636,
+     "timemodified": 1793549636,
+     "grader": 2,
+     "grade": "73.00000"
+    }
+   ]
+  }
+ ],
+ "warnings": []
+}

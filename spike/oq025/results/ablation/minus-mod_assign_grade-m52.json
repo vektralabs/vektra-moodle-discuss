@@ -1,0 +1,303 @@
+{
+ "label": "m52",
+ "release": "5.2.4+ (Build: 20261030)",
+ "calls": {
+  "site_info": {
+   "function": "core_webservice_get_site_info",
+   "http": 200,
+   "error": null,
+   "bytes": 2963,
+   "canaries": [],
+   "result": "OK"
+  },
+  "course_by_id": {
+   "function": "core_course_get_courses_by_field",
+   "http": 200,
+   "error": null,
+   "bytes": 4817,
+   "canaries": [],
+   "result": "OK"
+  },
+  "course_contents": {
+   "function": "core_course_get_contents",
+   "http": 200,
+   "error": null,
+   "bytes": 4784,
+   "canaries": [],
+   "result": "OK"
+  },
+  "enrolled_users": {
+   "function": "core_enrol_get_enrolled_users",
+   "http": 200,
+   "error": null,
+   "bytes": 14024,
+   "canaries": [],
+   "result": "OK"
+  },
+  "graders": {
+   "function": "core_enrol_get_enrolled_users_with_capability",
+   "http": 200,
+   "error": null,
+   "bytes": 2115,
+   "canaries": [],
+   "result": "OK"
+  },
+  "graders_alt": {
+   "function": "core_enrol_get_enrolled_users",
+   "http": 200,
+   "error": null,
+   "bytes": 1000,
+   "canaries": [],
+   "result": "OK"
+  },
+  "users_courses_s1": {
+   "function": "core_enrol_get_users_courses",
+   "http": 200,
+   "error": null,
+   "bytes": 4233,
+   "canaries": [],
+   "result": "OK"
+  },
+  "groups_s3": {
+   "function": "core_group_get_course_user_groups",
+   "http": 200,
+   "error": null,
+   "bytes": 145,
+   "canaries": [],
+   "result": "OK"
+  },
+  "self_user": {
+   "function": "core_user_get_users_by_field",
+   "http": 200,
+   "error": null,
+   "bytes": 671,
+   "canaries": [],
+   "result": "OK"
+  },
+  "quizzes": {
+   "function": "mod_quiz_get_quizzes_by_courses",
+   "http": 200,
+   "error": null,
+   "bytes": 1373,
+   "canaries": [],
+   "result": "OK"
+  },
+  "attempts_A_s1": {
+   "function": "mod_quiz_get_user_attempts",
+   "http": 200,
+   "error": null,
+   "bytes": 668,
+   "canaries": [],
+   "result": "OK"
+  },
+  "attempts_A_s2": {
+   "function": "mod_quiz_get_user_attempts",
+   "http": 200,
+   "error": null,
+   "bytes": 349,
+   "canaries": [],
+   "result": "OK"
+  },
+  "review_A_s1": {
+   "function": "mod_quiz_get_attempt_review",
+   "http": 200,
+   "error": null,
+   "bytes": 45429,
+   "canaries": [
+    "CANARY-GENFB-MC",
+    "CANARY-GENFB-NUM",
+    "CANARY-GENFB-SA",
+    "CANARY-GENFB-TF"
+   ],
+   "result": "OK"
+  },
+  "review_B_s1_hidden": {
+   "function": "mod_quiz_get_attempt_review",
+   "http": 200,
+   "error": null,
+   "bytes": 45429,
+   "canaries": [
+    "CANARY-GENFB-MC",
+    "CANARY-GENFB-NUM",
+    "CANARY-GENFB-SA",
+    "CANARY-GENFB-TF"
+   ],
+   "result": "OK"
+  },
+  "review_C_s2_ungraded": {
+   "function": "mod_quiz_get_attempt_review",
+   "http": 200,
+   "error": null,
+   "bytes": 18930,
+   "canaries": [
+    "CANARY-GENFB-ES",
+    "CANARY-GENFB-TF"
+   ],
+   "result": "OK"
+  },
+  "reviewopts_B_s1": {
+   "function": "mod_quiz_get_combined_review_options",
+   "http": 200,
+   "error": null,
+   "bytes": 374,
+   "canaries": [],
+   "result": "OK"
+  },
+  "reviewopts_A_s1": {
+   "function": "mod_quiz_get_combined_review_options",
+   "http": 200,
+   "error": null,
+   "bytes": 374,
+   "canaries": [],
+   "result": "OK"
+  },
+  "bestgrade_B_s1_hiddenitem": {
+   "function": "mod_quiz_get_user_best_grade",
+   "http": 200,
+   "error": null,
+   "bytes": 42,
+   "canaries": [],
+   "result": "OK"
+  },
+  "bestgrade_C_s2_ungraded": {
+   "function": "mod_quiz_get_user_best_grade",
+   "http": 200,
+   "error": null,
+   "bytes": 32,
+   "canaries": [],
+   "result": "OK"
+  },
+  "overrides_A": {
+   "function": "mod_quiz_get_overrides",
+   "http": 200,
+   "error": null,
+   "bytes": 345,
+   "canaries": [],
+   "result": "OK"
+  },
+  "user_quiz_attempts_A_s1": {
+   "function": "mod_quiz_get_user_quiz_attempts",
+   "http": 200,
+   "error": null,
+   "bytes": 668,
+   "canaries": [],
+   "result": "OK"
+  },
+  "assignments": {
+   "function": "mod_assign_get_assignments",
+   "http": 200,
+   "error": null,
+   "bytes": 3566,
+   "canaries": [],
+   "result": "OK"
+  },
+  "submissions_X": {
+   "function": "mod_assign_get_submissions",
+   "http": 200,
+   "error": null,
+   "bytes": 1753,
+   "canaries": [],
+   "result": "OK"
+  },
+  "status_X_s1": {
+   "function": "mod_assign_get_submission_status",
+   "http": 200,
+   "error": null,
+   "bytes": 1801,
+   "canaries": [],
+   "result": "OK"
+  },
+  "status_Y_s1_unreleased": {
+   "function": "mod_assign_get_submission_status",
+   "http": 200,
+   "error": null,
+   "bytes": 1368,
+   "canaries": [],
+   "result": "OK"
+  },
+  "grades_Y_unreleased": {
+   "function": "mod_assign_get_grades",
+   "http": 200,
+   "error": null,
+   "bytes": 181,
+   "canaries": [],
+   "result": "OK"
+  },
+  "userflags_X": {
+   "function": "mod_assign_get_user_flags",
+   "http": 200,
+   "error": null,
+   "bytes": 129,
+   "canaries": [],
+   "result": "OK"
+  },
+  "participant_X_s2": {
+   "function": "mod_assign_get_participant",
+   "http": 200,
+   "error": null,
+   "bytes": 271,
+   "canaries": [],
+   "result": "OK"
+  },
+  "grading_defs_X": {
+   "function": "core_grading_get_definitions",
+   "http": 200,
+   "error": null,
+   "bytes": 1021,
+   "canaries": [
+    "CANARY-CRIT-Clarity",
+    "CANARY-CRIT-Method",
+    "CANARY-LVL-full",
+    "CANARY-LVL-good",
+    "CANARY-LVL-none",
+    "CANARY-LVL-ok",
+    "CANARY-LVL-poor",
+    "CANARY-LVL-some",
+    "CANARY-RUBRICDESC"
+   ],
+   "result": "OK"
+  },
+  "grading_instances_X": {
+   "function": "core_grading_get_gradingform_instances",
+   "http": 200,
+   "error": null,
+   "bytes": 348,
+   "canaries": [],
+   "result": "OK"
+  },
+  "grade_items_s1": {
+   "function": "gradereport_user_get_grade_items",
+   "http": 200,
+   "error": null,
+   "bytes": 3659,
+   "canaries": [],
+   "result": "OK"
+  },
+  "DENIED_categories": {
+   "function": "core_course_get_categories",
+   "http": 200,
+   "error": {
+    "errorcode": "accessexception",
+    "message": "Access control exception"
+   },
+   "bytes": 110,
+   "canaries": [],
+   "result": "ERROR"
+  },
+  "file_download": {
+   "urls_found": 2,
+   "downloads": [
+    {
+     "http": 200,
+     "bytes": 40,
+     "ctype": "text/plain; charset=utf-8"
+    },
+    {
+     "http": 200,
+     "bytes": 40,
+     "ctype": "text/plain; charset=utf-8"
+    }
+   ]
+  }
+ }
+}

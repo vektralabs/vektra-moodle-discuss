@@ -1,0 +1,89 @@
+{
+ "gradingsummary": {
+  "participantcount": 4,
+  "submissiondraftscount": 0,
+  "submissionsenabled": true,
+  "submissionssubmittedcount": 2,
+  "submissionsneedgradingcount": 2,
+  "warnofungroupedusers": ""
+ },
+ "lastattempt": {
+  "submission": {
+   "id": 15,
+   "userid": 52,
+   "attemptnumber": 0,
+   "timecreated": 1793549636,
+   "timemodified": 1793549636,
+   "timestarted": null,
+   "status": "submitted",
+   "groupid": 0,
+   "assignment": 8,
+   "latest": 1,
+   "plugins": [
+    {
+     "type": "onlinetext",
+     "name": "Online text",
+     "fileareas": [
+      {
+       "area": "submissions_onlinetext",
+       "files": []
+      }
+     ],
+     "editorfields": [
+      {
+       "name": "onlinetext",
+       "description": "Online text submissions",
+       "text": "VISIBLE-ONLINETEXT-Y-s1",
+       "format": 1
+      }
+     ]
+    },
+    {
+     "type": "file",
+     "name": "File submissions",
+     "fileareas": [
+      {
+       "area": "submission_files",
+       "files": [
+        {
+         "filename": "oq025_submission.txt",
+         "filepath": "/",
+         "filesize": 40,
+         "fileurl": "http://localhost:10452/webservice/pluginfile.php/119/assignsubmission_file/submission_files/15/oq025_submission.txt",
+         "timemodified": 1793549636,
+         "mimetype": "text/plain",
+         "isexternalfile": false,
+         "icon": "f/text"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "comments",
+     "name": "Submission comments"
+    }
+   ]
+  },
+  "submissiongroupmemberswhoneedtosubmit": [],
+  "submissionsenabled": true,
+  "locked": false,
+  "graded": true,
+  "canedit": false,
+  "caneditowner": false,
+  "cansubmit": false,
+  "extensionduedate": 0,
+  "timelimit": 0,
+  "blindmarking": false,
+  "gradingstatus": "inmarking",
+  "usergroups": [
+   17
+  ]
+ },
+ "assignmentdata": {
+  "attachments": {
+   "intro": []
+  }
+ },
+ "warnings": []
+}

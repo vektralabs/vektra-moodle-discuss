@@ -1,0 +1,73 @@
+{
+    "release": "5.2.4+ (Build: 20261030)",
+    "courseid": 10,
+    "users": {
+        "s1": 52,
+        "s2": 53,
+        "s3": 54,
+        "s4": 55,
+        "t1": 56,
+        "t2": 57
+    },
+    "groups": {
+        "G1": 17,
+        "G2": 18
+    },
+    "questions": {
+        "tf": 41,
+        "mc": 42,
+        "sa": 43,
+        "num": 44,
+        "es": 45
+    },
+    "quizzes": {
+        "A": {
+            "id": 25,
+            "cmid": 40
+        },
+        "B": {
+            "id": 26,
+            "cmid": 41
+        },
+        "C": {
+            "id": 27,
+            "cmid": 42
+        }
+    },
+    "attempts": {
+        "A": {
+            "s1": 48,
+            "s2": 49,
+            "s3": 50,
+            "s1_second": 54
+        },
+        "B": {
+            "s1": 51,
+            "s2": 52,
+            "s3": 53
+        },
+        "C": {
+            "s1": 55,
+            "s2": 56
+        }
+    },
+    "overrides": {
+        "quizA_user_s2_timeclose": 1794154436,
+        "quizA_user_s2_timelimit": 3600,
+        "quizA_group_G2_timeclose": 1793722436
+    },
+    "assigns": {
+        "X": {
+            "id": 7,
+            "cmid": 43
+        },
+        "Y": {
+            "id": 8,
+            "cmid": 44
+        }
+    },
+    "rubric_definitionid": 4,
+    "extensions": {
+        "assignX_s2": 1793808836
+    }
+}

@@ -1,0 +1,84 @@
+{
+ "areas": [
+  {
+   "cmid": 43,
+   "contextid": 118,
+   "component": "mod_assign",
+   "areaname": "submissions",
+   "activemethod": "rubric",
+   "definitions": [
+    {
+     "id": 4,
+     "method": "rubric",
+     "name": "Rubric X",
+     "description": "CANARY-RUBRICDESC",
+     "descriptionformat": 1,
+     "status": 20,
+     "copiedfromid": null,
+     "timecreated": 1793549636,
+     "usercreated": 2,
+     "timemodified": 1793549636,
+     "usermodified": 2,
+     "timecopied": 0,
+     "rubric": {
+      "rubric_criteria": [
+       {
+        "id": 7,
+        "sortorder": 1,
+        "description": "CANARY-CRIT-Clarity",
+        "descriptionformat": 1,
+        "levels": [
+         {
+          "id": 19,
+          "score": 0,
+          "definition": "CANARY-LVL-poor",
+          "definitionformat": 1
+         },
+         {
+          "id": 20,
+          "score": 5,
+          "definition": "CANARY-LVL-ok",
+          "definitionformat": 1
+         },
+         {
+          "id": 21,
+          "score": 10,
+          "definition": "CANARY-LVL-good",
+          "definitionformat": 1
+         }
+        ]
+       },
+       {
+        "id": 8,
+        "sortorder": 2,
+        "description": "CANARY-CRIT-Method",
+        "descriptionformat": 1,
+        "levels": [
+         {
+          "id": 22,
+          "score": 0,
+          "definition": "CANARY-LVL-none",
+          "definitionformat": 1
+         },
+         {
+          "id": 23,
+          "score": 5,
+          "definition": "CANARY-LVL-some",
+          "definitionformat": 1
+         },
+         {
+          "id": 24,
+          "score": 10,
+          "definition": "CANARY-LVL-full",
+          "definitionformat": 1
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ]
+  }
+ ],
+ "warnings": []
+}

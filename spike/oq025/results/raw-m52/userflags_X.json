@@ -1,0 +1,18 @@
+{
+ "assignments": [
+  {
+   "assignmentid": 7,
+   "userflags": [
+    {
+     "id": 6,
+     "userid": 53,
+     "locked": 0,
+     "mailed": 2,
+     "extensionduedate": 1793808836,
+     "workflowstate": ""
+    }
+   ]
+  }
+ ],
+ "warnings": []
+}

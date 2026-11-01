@@ -1,0 +1,11 @@
+{
+ "groups": [],
+ "warnings": [
+  {
+   "item": "course",
+   "itemid": 12,
+   "warningcode": "cannotmanagegroups",
+   "message": "User 63 cannot manage groups in course 12"
+  }
+ ]
+}

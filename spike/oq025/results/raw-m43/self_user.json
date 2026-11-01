@@ -1,0 +1,30 @@
+[
+ {
+  "id": 63,
+  "username": "vektra_assess_svc",
+  "fullname": "Vektra Assess service",
+  "email": "vektra-assess-svc@example.invalid",
+  "department": "",
+  "firstaccess": 0,
+  "lastaccess": 0,
+  "auth": "webservice",
+  "suspended": false,
+  "confirmed": true,
+  "lang": "en",
+  "theme": "",
+  "timezone": "99",
+  "mailformat": 1,
+  "profileimageurlsmall": "http://localhost:10443/theme/image.php/boost/core/1793549626/u/f2",
+  "profileimageurl": "http://localhost:10443/theme/image.php/boost/core/1793549626/u/f1",
+  "preferences": [
+   {
+    "name": "last_time_enrolments_synced",
+    "value": "1793563732"
+   },
+   {
+    "name": "_lastloaded",
+    "value": 1793563818
+   }
+  ]
+ }
+]

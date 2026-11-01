@@ -1,0 +1,239 @@
+[
+ {
+  "id": 61,
+  "name": "General",
+  "visible": 1,
+  "summary": "",
+  "summaryformat": 1,
+  "section": 0,
+  "hiddenbynumsections": 0,
+  "uservisible": true,
+  "modules": [
+   {
+    "id": 30,
+    "url": "http://localhost:10443/mod/quiz/view.php?id=30",
+    "name": "Quiz A open review",
+    "instance": 22,
+    "contextid": 118,
+    "visible": 1,
+    "uservisible": true,
+    "visibleoncoursepage": 1,
+    "modicon": "http://localhost:10443/theme/image.php/boost/quiz/1793549626/monologo?filtericon=1",
+    "modname": "quiz",
+    "modplural": "Quizzes",
+    "availability": null,
+    "indent": 0,
+    "onclick": "",
+    "afterlink": null,
+    "customdata": "{\"timeopen\":\"1792944835\",\"timeclose\":\"1793546035\"}",
+    "noviewlink": false,
+    "completion": 0,
+    "downloadcontent": 1,
+    "dates": [
+     {
+      "label": "Opened:",
+      "timestamp": 1792944835,
+      "dataid": "timeopen"
+     },
+     {
+      "label": "Closed:",
+      "timestamp": 1793546035,
+      "dataid": "timeclose"
+     }
+    ],
+    "groupmode": 0
+   },
+   {
+    "id": 31,
+    "url": "http://localhost:10443/mod/quiz/view.php?id=31",
+    "name": "Quiz B hidden review",
+    "instance": 23,
+    "contextid": 119,
+    "visible": 1,
+    "uservisible": true,
+    "visibleoncoursepage": 1,
+    "modicon": "http://localhost:10443/theme/image.php/boost/quiz/1793549626/monologo?filtericon=1",
+    "modname": "quiz",
+    "modplural": "Quizzes",
+    "availability": null,
+    "indent": 0,
+    "onclick": "",
+    "afterlink": null,
+    "customdata": "{\"timeopen\":\"1792944835\",\"timeclose\":\"1793546035\"}",
+    "noviewlink": false,
+    "completion": 0,
+    "downloadcontent": 1,
+    "dates": [
+     {
+      "label": "Opened:",
+      "timestamp": 1792944835,
+      "dataid": "timeopen"
+     },
+     {
+      "label": "Closed:",
+      "timestamp": 1793546035,
+      "dataid": "timeclose"
+     }
+    ],
+    "groupmode": 0
+   },
+   {
+    "id": 32,
+    "url": "http://localhost:10443/mod/quiz/view.php?id=32",
+    "name": "Quiz C essay",
+    "instance": 24,
+    "contextid": 120,
+    "visible": 1,
+    "uservisible": true,
+    "visibleoncoursepage": 1,
+    "modicon": "http://localhost:10443/theme/image.php/boost/quiz/1793549626/monologo?filtericon=1",
+    "modname": "quiz",
+    "modplural": "Quizzes",
+    "availability": null,
+    "indent": 0,
+    "onclick": "",
+    "afterlink": null,
+    "customdata": "{\"timeopen\":\"1792944835\",\"timeclose\":\"1793546035\"}",
+    "noviewlink": false,
+    "completion": 0,
+    "downloadcontent": 1,
+    "dates": [
+     {
+      "label": "Opened:",
+      "timestamp": 1792944835,
+      "dataid": "timeopen"
+     },
+     {
+      "label": "Closed:",
+      "timestamp": 1793546035,
+      "dataid": "timeclose"
+     }
+    ],
+    "groupmode": 0
+   },
+   {
+    "id": 33,
+    "url": "http://localhost:10443/mod/assign/view.php?id=33",
+    "name": "Assign X rubric released",
+    "instance": 9,
+    "contextid": 121,
+    "visible": 1,
+    "uservisible": true,
+    "visibleoncoursepage": 1,
+    "modicon": "http://localhost:10443/theme/image.php/boost/assign/1793549626/monologo?filtericon=1",
+    "modname": "assign",
+    "modplural": "Assignments",
+    "availability": null,
+    "indent": 0,
+    "onclick": "",
+    "afterlink": null,
+    "customdata": "{\"duedate\":1793376835,\"cutoffdate\":\"1793463235\",\"allowsubmissionsfromdate\":\"1792685635\"}",
+    "noviewlink": false,
+    "completion": 0,
+    "downloadcontent": 1,
+    "dates": [
+     {
+      "label": "Opened:",
+      "timestamp": 1792685635,
+      "dataid": "allowsubmissionsfromdate"
+     },
+     {
+      "label": "Due:",
+      "timestamp": 1793376835,
+      "dataid": "duedate"
+     }
+    ],
+    "groupmode": 0
+   },
+   {
+    "id": 34,
+    "url": "http://localhost:10443/mod/assign/view.php?id=34",
+    "name": "Assign Y marking workflow unreleased",
+    "instance": 10,
+    "contextid": 122,
+    "visible": 1,
+    "uservisible": true,
+    "visibleoncoursepage": 1,
+    "modicon": "http://localhost:10443/theme/image.php/boost/assign/1793549626/monologo?filtericon=1",
+    "modname": "assign",
+    "modplural": "Assignments",
+    "availability": null,
+    "indent": 0,
+    "onclick": "",
+    "afterlink": null,
+    "customdata": "{\"duedate\":1793376835,\"cutoffdate\":\"1793463235\",\"allowsubmissionsfromdate\":\"1792685635\"}",
+    "noviewlink": false,
+    "completion": 0,
+    "downloadcontent": 1,
+    "dates": [
+     {
+      "label": "Opened:",
+      "timestamp": 1792685635,
+      "dataid": "allowsubmissionsfromdate"
+     },
+     {
+      "label": "Due:",
+      "timestamp": 1793376835,
+      "dataid": "duedate"
+     }
+    ],
+    "groupmode": 0
+   }
+  ]
+ },
+ {
+  "id": 62,
+  "name": "Topic 1",
+  "visible": 1,
+  "summary": "",
+  "summaryformat": 1,
+  "section": 1,
+  "hiddenbynumsections": 0,
+  "uservisible": true,
+  "modules": []
+ },
+ {
+  "id": 63,
+  "name": "Topic 2",
+  "visible": 1,
+  "summary": "",
+  "summaryformat": 1,
+  "section": 2,
+  "hiddenbynumsections": 0,
+  "uservisible": true,
+  "modules": []
+ },
+ {
+  "id": 64,
+  "name": "Topic 3",
+  "visible": 1,
+  "summary": "",
+  "summaryformat": 1,
+  "section": 3,
+  "hiddenbynumsections": 0,
+  "uservisible": true,
+  "modules": []
+ },
+ {
+  "id": 65,
+  "name": "Topic 4",
+  "visible": 1,
+  "summary": "",
+  "summaryformat": 1,
+  "section": 4,
+  "hiddenbynumsections": 0,
+  "uservisible": true,
+  "modules": []
+ },
+ {
+  "id": 66,
+  "name": "Topic 5",
+  "visible": 1,
+  "summary": "",
+  "summaryformat": 1,
+  "section": 5,
+  "hiddenbynumsections": 0,
+  "uservisible": true,
+  "modules": []
+ }
+]

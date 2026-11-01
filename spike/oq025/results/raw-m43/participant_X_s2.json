@@ -1,0 +1,13 @@
+{
+ "id": 65,
+ "fullname": "Student S2",
+ "submitted": true,
+ "requiregrading": true,
+ "grantedextension": true,
+ "blindmarking": false,
+ "allowsubmissionsfromdate": 1792685635,
+ "duedate": 1793376835,
+ "cutoffdate": 1793463235,
+ "duedatestr": "30 October 2026, 4:13 PM",
+ "submissionstatus": "submitted"
+}

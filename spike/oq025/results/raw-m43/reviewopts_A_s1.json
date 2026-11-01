@@ -1,0 +1,47 @@
+{
+ "someoptions": [
+  {
+   "name": "feedback",
+   "value": 1
+  },
+  {
+   "name": "generalfeedback",
+   "value": 1
+  },
+  {
+   "name": "rightanswer",
+   "value": 1
+  },
+  {
+   "name": "overallfeedback",
+   "value": 1
+  },
+  {
+   "name": "marks",
+   "value": 2
+  }
+ ],
+ "alloptions": [
+  {
+   "name": "feedback",
+   "value": 1
+  },
+  {
+   "name": "generalfeedback",
+   "value": 1
+  },
+  {
+   "name": "rightanswer",
+   "value": 1
+  },
+  {
+   "name": "overallfeedback",
+   "value": 1
+  },
+  {
+   "name": "marks",
+   "value": 2
+  }
+ ],
+ "warnings": []
+}

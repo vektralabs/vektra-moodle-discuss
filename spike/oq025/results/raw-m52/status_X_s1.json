@@ -1,0 +1,123 @@
+{
+ "gradingsummary": {
+  "participantcount": 4,
+  "submissiondraftscount": 0,
+  "submissionsenabled": true,
+  "submissionssubmittedcount": 2,
+  "submissionsneedgradingcount": 2,
+  "warnofungroupedusers": ""
+ },
+ "lastattempt": {
+  "submission": {
+   "id": 13,
+   "userid": 52,
+   "attemptnumber": 0,
+   "timecreated": 1793549636,
+   "timemodified": 1793549636,
+   "timestarted": null,
+   "status": "submitted",
+   "groupid": 0,
+   "assignment": 7,
+   "latest": 1,
+   "plugins": [
+    {
+     "type": "onlinetext",
+     "name": "Online text",
+     "fileareas": [
+      {
+       "area": "submissions_onlinetext",
+       "files": []
+      }
+     ],
+     "editorfields": [
+      {
+       "name": "onlinetext",
+       "description": "Online text submissions",
+       "text": "VISIBLE-ONLINETEXT-X-s1",
+       "format": 1
+      }
+     ]
+    },
+    {
+     "type": "file",
+     "name": "File submissions",
+     "fileareas": [
+      {
+       "area": "submission_files",
+       "files": [
+        {
+         "filename": "oq025_submission.txt",
+         "filepath": "/",
+         "filesize": 40,
+         "fileurl": "http://localhost:10452/webservice/pluginfile.php/118/assignsubmission_file/submission_files/13/oq025_submission.txt",
+         "timemodified": 1793549636,
+         "mimetype": "text/plain",
+         "isexternalfile": false,
+         "icon": "f/text"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "comments",
+     "name": "Submission comments"
+    }
+   ]
+  },
+  "submissiongroupmemberswhoneedtosubmit": [],
+  "submissionsenabled": true,
+  "locked": false,
+  "graded": true,
+  "canedit": false,
+  "caneditowner": false,
+  "cansubmit": false,
+  "extensionduedate": null,
+  "timelimit": 0,
+  "blindmarking": false,
+  "gradingstatus": "graded",
+  "usergroups": [
+   17
+  ]
+ },
+ "feedback": {
+  "grade": {
+   "id": 6,
+   "assignment": 7,
+   "userid": 52,
+   "attemptnumber": 0,
+   "timecreated": 1793549636,
+   "timemodified": 1793549636,
+   "grader": 2,
+   "grade": "75.00000"
+  },
+  "gradefordisplay": "75.00 / 100.00",
+  "gradeddate": 1793549636,
+  "plugins": [
+   {
+    "type": "comments",
+    "name": "Feedback comments",
+    "fileareas": [
+     {
+      "area": "feedback",
+      "files": []
+     }
+    ],
+    "editorfields": [
+     {
+      "name": "comments",
+      "description": "Feedback comments",
+      "text": "VISIBLE-FEEDBACK-X-s1",
+      "format": 1
+     }
+    ]
+   }
+  ]
+ },
+ "assignmentdata": {
+  "attachments": {
+   "intro": []
+  }
+ },
+ "warnings": []
+}

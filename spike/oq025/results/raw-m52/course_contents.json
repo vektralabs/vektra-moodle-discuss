@@ -1,0 +1,266 @@
+[
+ {
+  "id": 49,
+  "name": "General",
+  "visible": 1,
+  "summary": "",
+  "summaryformat": 1,
+  "section": 0,
+  "hiddenbynumsections": 0,
+  "uservisible": true,
+  "component": null,
+  "itemid": null,
+  "modules": [
+   {
+    "id": 40,
+    "url": "http://localhost:10452/mod/quiz/view.php?id=40",
+    "name": "Quiz A open review",
+    "instance": 25,
+    "contextid": 115,
+    "visible": 1,
+    "uservisible": true,
+    "visibleoncoursepage": 1,
+    "modicon": "http://localhost:10452/theme/image.php/boost/quiz/1793549054/monologo?filtericon=1",
+    "modname": "quiz",
+    "purpose": "assessment",
+    "branded": false,
+    "modplural": "Quizzes",
+    "availability": null,
+    "indent": 0,
+    "onclick": "",
+    "afterlink": null,
+    "customdata": "{\"timeopen\":\"1792944836\",\"timeclose\":\"1793546036\"}",
+    "noviewlink": false,
+    "candisplay": true,
+    "completion": 0,
+    "downloadcontent": 1,
+    "dates": [
+     {
+      "label": "Opened:",
+      "timestamp": 1792944836,
+      "dataid": "timeopen"
+     },
+     {
+      "label": "Closed:",
+      "timestamp": 1793546036,
+      "dataid": "timeclose"
+     }
+    ],
+    "groupmode": 0
+   },
+   {
+    "id": 41,
+    "url": "http://localhost:10452/mod/quiz/view.php?id=41",
+    "name": "Quiz B hidden review",
+    "instance": 26,
+    "contextid": 116,
+    "visible": 1,
+    "uservisible": true,
+    "visibleoncoursepage": 1,
+    "modicon": "http://localhost:10452/theme/image.php/boost/quiz/1793549054/monologo?filtericon=1",
+    "modname": "quiz",
+    "purpose": "assessment",
+    "branded": false,
+    "modplural": "Quizzes",
+    "availability": null,
+    "indent": 0,
+    "onclick": "",
+    "afterlink": null,
+    "customdata": "{\"timeopen\":\"1792944836\",\"timeclose\":\"1793546036\"}",
+    "noviewlink": false,
+    "candisplay": true,
+    "completion": 0,
+    "downloadcontent": 1,
+    "dates": [
+     {
+      "label": "Opened:",
+      "timestamp": 1792944836,
+      "dataid": "timeopen"
+     },
+     {
+      "label": "Closed:",
+      "timestamp": 1793546036,
+      "dataid": "timeclose"
+     }
+    ],
+    "groupmode": 0
+   },
+   {
+    "id": 42,
+    "url": "http://localhost:10452/mod/quiz/view.php?id=42",
+    "name": "Quiz C essay",
+    "instance": 27,
+    "contextid": 117,
+    "visible": 1,
+    "uservisible": true,
+    "visibleoncoursepage": 1,
+    "modicon": "http://localhost:10452/theme/image.php/boost/quiz/1793549054/monologo?filtericon=1",
+    "modname": "quiz",
+    "purpose": "assessment",
+    "branded": false,
+    "modplural": "Quizzes",
+    "availability": null,
+    "indent": 0,
+    "onclick": "",
+    "afterlink": null,
+    "customdata": "{\"timeopen\":\"1792944836\",\"timeclose\":\"1793546036\"}",
+    "noviewlink": false,
+    "candisplay": true,
+    "completion": 0,
+    "downloadcontent": 1,
+    "dates": [
+     {
+      "label": "Opened:",
+      "timestamp": 1792944836,
+      "dataid": "timeopen"
+     },
+     {
+      "label": "Closed:",
+      "timestamp": 1793546036,
+      "dataid": "timeclose"
+     }
+    ],
+    "groupmode": 0
+   },
+   {
+    "id": 43,
+    "url": "http://localhost:10452/mod/assign/view.php?id=43",
+    "name": "Assign X rubric released",
+    "instance": 7,
+    "contextid": 118,
+    "visible": 1,
+    "uservisible": true,
+    "visibleoncoursepage": 1,
+    "modicon": "http://localhost:10452/theme/image.php/boost/assign/1793549054/monologo?filtericon=1",
+    "modname": "assign",
+    "purpose": "assessment",
+    "branded": false,
+    "modplural": "Assignments",
+    "availability": null,
+    "indent": 0,
+    "onclick": "",
+    "afterlink": null,
+    "customdata": "{\"duedate\":1793376836,\"cutoffdate\":\"1793463236\",\"allowsubmissionsfromdate\":\"1792685636\"}",
+    "noviewlink": false,
+    "candisplay": true,
+    "completion": 0,
+    "downloadcontent": 1,
+    "dates": [
+     {
+      "label": "Opened:",
+      "timestamp": 1792685636,
+      "dataid": "allowsubmissionsfromdate"
+     },
+     {
+      "label": "Due:",
+      "timestamp": 1793376836,
+      "dataid": "duedate"
+     }
+    ],
+    "groupmode": 0
+   },
+   {
+    "id": 44,
+    "url": "http://localhost:10452/mod/assign/view.php?id=44",
+    "name": "Assign Y marking workflow unreleased",
+    "instance": 8,
+    "contextid": 119,
+    "visible": 1,
+    "uservisible": true,
+    "visibleoncoursepage": 1,
+    "modicon": "http://localhost:10452/theme/image.php/boost/assign/1793549054/monologo?filtericon=1",
+    "modname": "assign",
+    "purpose": "assessment",
+    "branded": false,
+    "modplural": "Assignments",
+    "availability": null,
+    "indent": 0,
+    "onclick": "",
+    "afterlink": null,
+    "customdata": "{\"duedate\":1793376836,\"cutoffdate\":\"1793463236\",\"allowsubmissionsfromdate\":\"1792685636\"}",
+    "noviewlink": false,
+    "candisplay": true,
+    "completion": 0,
+    "downloadcontent": 1,
+    "dates": [
+     {
+      "label": "Opened:",
+      "timestamp": 1792685636,
+      "dataid": "allowsubmissionsfromdate"
+     },
+     {
+      "label": "Due:",
+      "timestamp": 1793376836,
+      "dataid": "duedate"
+     }
+    ],
+    "groupmode": 0
+   }
+  ]
+ },
+ {
+  "id": 50,
+  "name": "New section",
+  "visible": 1,
+  "summary": "",
+  "summaryformat": 1,
+  "section": 1,
+  "hiddenbynumsections": 0,
+  "uservisible": true,
+  "component": null,
+  "itemid": null,
+  "modules": []
+ },
+ {
+  "id": 51,
+  "name": "New section",
+  "visible": 1,
+  "summary": "",
+  "summaryformat": 1,
+  "section": 2,
+  "hiddenbynumsections": 0,
+  "uservisible": true,
+  "component": null,
+  "itemid": null,
+  "modules": []
+ },
+ {
+  "id": 52,
+  "name": "New section",
+  "visible": 1,
+  "summary": "",
+  "summaryformat": 1,
+  "section": 3,
+  "hiddenbynumsections": 0,
+  "uservisible": true,
+  "component": null,
+  "itemid": null,
+  "modules": []
+ },
+ {
+  "id": 53,
+  "name": "New section",
+  "visible": 1,
+  "summary": "",
+  "summaryformat": 1,
+  "section": 4,
+  "hiddenbynumsections": 0,
+  "uservisible": true,
+  "component": null,
+  "itemid": null,
+  "modules": []
+ },
+ {
+  "id": 54,
+  "name": "New section",
+  "visible": 1,
+  "summary": "",
+  "summaryformat": 1,
+  "section": 5,
+  "hiddenbynumsections": 0,
+  "uservisible": true,
+  "component": null,
+  "itemid": null,
+  "modules": []
+ }
+]

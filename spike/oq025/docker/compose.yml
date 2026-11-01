@@ -1,0 +1,21 @@
+# OQ-025 spike: Moodle 4.3 + 5.2 side by side. Loopback ports only. Throwaway.
+name: oq025
+services:
+  db:
+    image: mariadb:10.11
+    environment: {MYSQL_ROOT_PASSWORD: spike_root, MYSQL_USER: moodleuser, MYSQL_PASSWORD: moodlepass}
+    volumes: [db:/var/lib/mysql, ./initdb.sql:/docker-entrypoint-initdb.d/initdb.sql:ro]
+    healthcheck: {test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"], interval: 5s, retries: 20}
+  m43:
+    build: {context: ., args: {PHP_VERSION: "8.2", MOODLE_TGZ_URL: "https://packaging.moodle.org/stable403/moodle-latest-403.tgz", MOODLE_DOCROOT: /var/www/html}}
+    environment: {MOODLE_URL: "http://localhost:10443", MOODLE_LABEL: "43", DB_HOST: db, DB_NAME: moodle43, DB_USER: moodleuser, DB_PASS: moodlepass}
+    ports: ["127.0.0.1:10443:80"]
+    volumes: [m43data:/var/moodledata, ../cli:/spike:ro]
+    depends_on: {db: {condition: service_healthy}}
+  m52:
+    build: {context: ., args: {PHP_VERSION: "8.4", MOODLE_TGZ_URL: "https://packaging.moodle.org/stable502/moodle-latest-502.tgz", MOODLE_DOCROOT: /var/www/html/public}}
+    environment: {MOODLE_URL: "http://localhost:10452", MOODLE_LABEL: "52", DB_HOST: db, DB_NAME: moodle52, DB_USER: moodleuser, DB_PASS: moodlepass}
+    ports: ["127.0.0.1:10452:80"]
+    volumes: [m52data:/var/moodledata, ../cli:/spike:ro]
+    depends_on: {db: {condition: service_healthy}}
+volumes: {db: {}, m43data: {}, m52data: {}}
