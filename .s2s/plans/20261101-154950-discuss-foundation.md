@@ -1,7 +1,7 @@
 # Implementation Plan: local_vektradiscuss foundation: repo layout, scaffold, assess HTTP client, settings, capabilities, CI and release packaging
 
 **ID**: 20261101-154950-discuss-foundation
-**Status**: active
+**Status**: completed
 **Branch**: N/A
 **Created**: 2026-11-01T14:49:50Z
 **Updated**: 2026-11-01T20:58:19Z
@@ -331,3 +331,8 @@ real stack in the plan-4 envs, recorded as raw status codes in the PR descriptio
   `.claude/` and `.s2s/`; G1 should go out before the next block release regardless of this feature.
 - Risk: if Option B is chosen, existing git-clone deploys of `blocks/vektra` on both production
   sites must be migrated in a maintenance window; add that to the ADR consequences.
+
+> Wave W1 close-out (2026-11-02): plan marked completed with three items deliberately left OPEN because they cannot be verified inside wave W1, each with its owner:
+> (1) F3 and the criterion "block admin key against an assess:mint endpoint returns 403, the mint key 2xx": no `assess:mint` endpoint exists before plan assess-session-lifecycle (wave W3). `cli/smoke.php` is ready and exits 2 (BLOCKED) on a backend without it; re-run it when that endpoint lands. The equivalent property is already asserted in the backend on a live stack: a key holding `assess:mint` gets 403 ERR-AUTH-003 on the exact-scope setup-check route, and `admin` is refused wherever only `assess:*` is accepted (vektra-stack `vektra-assess/tests/integration/test_setup_check_api.py`, `vektra-shared` auth tests).
+> (2) "CI runs phpunit, behat, mustache, phpdoc on both matrix legs and fails on 0 tests" and the CI half of "Install succeeds": GitHub Actions only; the first run of the workflows on the PR is the evidence. Behat, phpdoc and PHP 8.4 were not run locally.
+> (3) `BLOCK_VEKTRA_REF` still defaults to `develop` until a block_vektra release containing the zip fix is tagged.
