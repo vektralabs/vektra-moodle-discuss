@@ -16,3 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   envelope parsing, `X-Vektra-Plugin-Version` header, bounded streaming.
 - Site settings: kill switch (off by default), discussion UI origin, site identifier,
   separate mint and teacher keys (the block admin key is refused).
+
+### Security
+
+- The site kill switch is enforced by the client: a disabled site sends nothing to Vektra.
+- https is mandatory for the API URL and the UI origin; `$CFG->debugdeveloper` no longer relaxes it (only an
+  explicit code-level override, used by the smoke CLI `--allow-local`).
+- Log redaction is structural (any depth, any value type) and cannot fail on very long values; a body that
+  cannot be JSON-encoded is refused instead of being sent empty.
+- `viewtranscripts` carries `RISK_PERSONAL` and `setupcheck` carries `RISK_CONFIG`.

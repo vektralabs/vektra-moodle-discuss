@@ -241,6 +241,30 @@ Moodle capabilities are a first filter only; Vektra re-verifies graders through 
 > delete in git; the local file was left alone (the main working tree was not touched). Open: tag a block
 > release that contains this fix, then pin `BLOCK_VEKTRA_REF` and the `dependencies` version to it.
 
+> Note (code review, 2026-11-02): 10 findings fixed, each with a test that fails on the old code (verified by
+> running the new tests against the pre-fix sources: 12 failures and 1 error). (1) a body that cannot be JSON
+> encoded returns `invalid_body` with no call (JSON_THROW_ON_ERROR). (2) `redact()` no longer uses nested
+> alternation: possessive patterns, every `preg_replace` wrapped so a PCRE failure yields a placeholder, never
+> null; tested with a 280 KB value, through the client too. (3) redaction is structural: the embedded JSON is
+> decoded, sensitive keys (token, solution, rubric, authorization, apikey, api_key, secret, password) are
+> replaced at any depth and for any scalar type; unparseable text that mentions one is dropped entirely. (4)
+> `prepare()` refuses with `disabled` before anything else (request and stream); `explicit_config` carries the
+> switch; `cli/smoke.php` reads the site value and exits 2 unless `--ignore-disabled`. (5) the https rule no
+> longer looks at `$CFG->debugdeveloper`: `config::allow_insecure()` is false for the site and true only through
+> `explicit_config` (smoke `--allow-local`); `setting_uiurl` is https-only. (6) `ui_origin()` returns empty for
+> a non-https origin from any source. (7) a body on GET is a coding_exception in the client and in
+> `curl_transport`. (8) `viewtranscripts` RISK_PERSONAL, `setupcheck` RISK_CONFIG (`manage` unchanged), new
+> `tests/capabilities_test.php`; version bumped to 2026110101 so installs pick it up (the dev containers were
+> upgraded: riskbitmask 8, 8, 2 in `mdl_capabilities`). (9) `checkout-block-vektra.sh` (strict mode refuses a
+> branch on main, tags and PRs to main; lenient logs the resolved SHA; fails when the block version is below the
+> required one; the block goes in through `--extra-plugins`), `assert-release-tag.sh` in `release.yml` with a
+> self-test run in `ci.yml`; both scripts were exercised locally (good and bad refs and tags). (10) `prepare()`
+> takes `$accept`; the array_filter is gone.
+> Deliberately not done: the workflow YAML itself (`--extra-plugins`, the `workflow_dispatch` input) has not
+> run on GitHub, and the default ref is still the moving `develop` because 0.6.2 is not tagged (lenient mode
+> logs the SHA; main will refuse it until a tag or SHA is set). Existing PHPUnit 11 doc-comment deprecations
+> remain (now 9).
+
 ## State & Data Lifecycle
 
 | State element | Created by | Updated by | Invalidated/Deleted by |
