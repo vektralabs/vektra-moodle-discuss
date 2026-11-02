@@ -229,7 +229,17 @@ Moodle capabilities are a first filter only; Vektra re-verifies graders through 
 > script does it with a raw `\curl`.
 
 ### G. block_vektra hygiene (separate small PR in vektra-moodle, flagged)
-- [ ] G1. vektra-moodle: delete the stray root file `release` (stale 5.1-only `version.php` copy, version 2026071801); replace the rsync in `release.yml` and the `release-zip` job in `ci.yml` with `git archive` + `.gitattributes` export-ignore for `docker/`, `docker-moodle43/`, `n8n/`, `.s2s/`, `.claude/`, `CTX-MEMORY.md`, `CONTRIBUTING.md`; add the same forbidden-path assertion as E2. CHANGELOG `[Unreleased]` entry under Fixed. Verify by listing the built zip: 0 entries under the excluded paths (today it ships n8n instance configs for both production sites).
+- [x] G1. vektra-moodle: delete the stray root file `release` (stale 5.1-only `version.php` copy, version 2026071801); replace the rsync in `release.yml` and the `release-zip` job in `ci.yml` with `git archive` + `.gitattributes` export-ignore for `docker/`, `docker-moodle43/`, `n8n/`, `.s2s/`, `.claude/`, `CTX-MEMORY.md`, `CONTRIBUTING.md`; add the same forbidden-path assertion as E2. CHANGELOG `[Unreleased]` entry under Fixed. Verify by listing the built zip: 0 entries under the excluded paths (today it ships n8n instance configs for both production sites).
+
+> Note (G, 2026-11-02): done in vektra-moodle on branch `fix/release-zip-docker` (from `develop`, commit e45c63b,
+> not pushed, built in a temporary git worktree that was removed): `.gitattributes` export-ignore, `git archive`
+> in `release.yml` and in the `release-zip` job of `ci.yml`, the same `assert-release-zip.sh`, and a CHANGELOG
+> Fixed entry. Evidence: the old rsync zip of `develop` lists 29 entries under `.s2s/`, `.claude/`, `docker/`,
+> `n8n/` (incl. `n8n/instances/*.json`) and `CONTRIBUTING.md`; the new zip has 0 of them (24 entries, `tests/`
+> and `version.php` present). The stray root file `release` is not tracked on `develop`: it exists only as an
+> untracked file in the developer's working tree, where the old rsync zip would have shipped it. Nothing to
+> delete in git; the local file was left alone (the main working tree was not touched). Open: tag a block
+> release that contains this fix, then pin `BLOCK_VEKTRA_REF` and the `dependencies` version to it.
 
 ## State & Data Lifecycle
 
@@ -243,14 +253,20 @@ The plugin creates no DB tables (`db/install.xml` absent by design: ARCH-065, no
 
 ## Acceptance Criteria
 
-- [ ] ADR-0001 exists in vektra-moodle-discuss and records the client decision; layout points to the ADR-0028 amendment (ARCH-065, COMP-001)
+- [x] ADR-0001 exists in vektra-moodle-discuss and records the client decision; layout points to the ADR-0028 amendment (ARCH-065, COMP-001)
 - [ ] Install succeeds on Moodle 4.3/PHP 8.2 and 5.2/PHP 8.4 in CI and in the plan-4 docker envs; installing without block_vektra fails with the dependency error (COMP-001)
-- [ ] With the mint key empty or set to the block admin key, `assess_client` makes 0 HTTP calls (asserted on the mock queue) and returns `not_configured`; the settings page refuses the admin-key value (ARCH-067, NFR-014)
+- [x] With the mint key empty or set to the block admin key, `assess_client` makes 0 HTTP calls (asserted on the mock queue) and returns `not_configured`; the settings page refuses the admin-key value (ARCH-067, NFR-014)
 - [ ] Live: the block admin key against an assess:mint endpoint returns 403 (raw status recorded), the mint key returns 2xx (ARCH-067)
-- [ ] No request follows a redirect: a mocked 302 to another host yields status 302 and 0 further requests (B.1 redirect defect)
-- [ ] `X-Vektra-Plugin-Version` is present on every request (ARCH-067 minimum plugin_version)
+- [x] No request follows a redirect: a mocked 302 to another host yields status 302 and 0 further requests (B.1 redirect defect)
+- [x] `X-Vektra-Plugin-Version` is present on every request (ARCH-067 minimum plugin_version)
 - [ ] CI runs phpunit, behat, mustache, phpdoc on both matrix legs and fails when either suite reports 0 tests
-- [ ] The discuss release zip and the block_vektra release zip contain 0 entries under `.s2s/`, `.claude/`, `docker*/`, `n8n/`, and no `CTX-MEMORY.md` (zip listing, not workflow status)
+- [x] The discuss release zip and the block_vektra release zip contain 0 entries under `.s2s/`, `.claude/`, `docker*/`, `n8n/`, and no `CTX-MEMORY.md` (zip listing, not workflow status)
+
+> Note (acceptance, 2026-11-02): not ticked, with the reason. Install: verified in the Moodle 4.3 and 5.2 docker
+> envs, including the dependency error (F2 note); the CI half needs the first GitHub run. Live 403/2xx pair:
+> BLOCKED (F3 note). CI runs phpunit/behat/mustache/phpdoc: workflows written, not yet run on GitHub; the
+> 0-test guard was reasoned and its zip twin tested, but not exercised on a runner. The block zip item is
+> proven on the unmerged `fix/release-zip-docker` branch.
 
 ## Testing Approach
 
