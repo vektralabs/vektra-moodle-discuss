@@ -28,6 +28,7 @@ namespace local_vektradiscuss\local;
  * Tests for {@see config}.
  *
  * @covers \local_vektradiscuss\local\config
+ * @covers \local_vektradiscuss\local\explicit_config
  */
 final class config_test extends \advanced_testcase {
     /**
@@ -146,5 +147,24 @@ final class config_test extends \advanced_testcase {
         $plugin = new \stdClass();
         require(__DIR__ . '/../../version.php');
         $this->assertSame($plugin->release, (new config())->plugin_version());
+    }
+
+    /**
+     * The explicit configuration ignores the site settings and honours the same key rules.
+     */
+    public function test_explicit_config(): void {
+        set_config('apiurl', 'https://site.example.test', 'block_vektra');
+        set_config('mintkey', 'site-mint', 'local_vektradiscuss');
+
+        $config = new explicit_config('https://cli.example.test/', ['mint' => 'cli-mint', 'teacher' => 'cli-teacher'], 'cli-admin');
+
+        $this->assertSame('https://cli.example.test', $config->api_url());
+        $this->assertSame('cli-mint', $config->key('mint'));
+        $this->assertTrue($config->key_usable('teacher'));
+        $this->assertSame('cli-admin', $config->block_admin_key());
+
+        $same = new explicit_config('https://cli.example.test', ['mint' => 'cli-admin', 'teacher' => 't'], 'cli-admin');
+        $this->assertFalse($same->key_usable('mint'));
+        $this->assertFalse((new explicit_config('https://cli.example.test', []))->key_usable('mint'));
     }
 }

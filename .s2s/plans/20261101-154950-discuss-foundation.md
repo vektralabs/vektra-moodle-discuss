@@ -203,9 +203,30 @@ Moodle capabilities are a first filter only; Vektra re-verifies graders through 
 > with exit 1. `.moodle-plugin-ci.yml` is export-ignored too.
 
 ### F. Dev environment and smoke (needs 20261101-154950-assess-moodle-ws)
-- [ ] F1. Add a compose override (or document the one plan 4 provides) that bind-mounts this repo read-only at `local/vektradiscuss` next to block_vektra at `blocks/vektra` in the 4.3 and 5.2 envs (5.2 uses the `public/` docroot: mount under `public/local/vektradiscuss`).
-- [ ] F2. Install on both envs via CLI upgrade; record `admin/cli/upgrade.php --non-interactive` output and `SELECT * FROM mdl_config_plugins WHERE plugin='local_vektradiscuss' AND name='version'` showing 2026110100 on each.
+- [x] F1. Add a compose override (or document the one plan 4 provides) that bind-mounts this repo read-only at `local/vektradiscuss` next to block_vektra at `blocks/vektra` in the 4.3 and 5.2 envs (5.2 uses the `public/` docroot: mount under `public/local/vektradiscuss`).
+- [x] F2. Install on both envs via CLI upgrade; record `admin/cli/upgrade.php --non-interactive` output and `SELECT * FROM mdl_config_plugins WHERE plugin='local_vektradiscuss' AND name='version'` showing 2026110100 on each.
 - [ ] F3. Live smoke (when plan 1 has landed): CLI script `cli/smoke.php` calling `GET /health/assess` and an assess endpoint with the mint key; assert the admin key returns 403 ERR-AUTH-* on an assess:mint endpoint (non-inheriting scope proven from the Moodle side). Record raw status codes.
+
+> Note (F, 2026-11-02): F1 is `docker/compose.vektradiscuss.yml` (override, validated with `docker compose config`
+> for 4.3 and 5.2; mount follows `MOODLE_DOCROOT`, so `public/local/vektradiscuss` on 5.2) plus `docker/README.md`.
+> The running containers were NOT recreated: the plugin was copied in (`docker cp`/tar) and installed with
+> `admin/cli/upgrade.php`. Evidence on both Moodle 4.3.11+ and 5.2.4+: dependency failure
+> ("Dependencies check failed for local_vektradiscuss", exit 1, 0 rows in config_plugins) with
+> `block_vektra` swapped for an absent plugin in a temporary copy of version.php; install of 2026110099 then
+> upgrade to 2026110100 (`SELECT ... name='version'` = 2026110100 on each); admin tree location
+> "Site administration > Local plugins > Vektra assessment discussion", `enabled` = 0 by default, 6
+> capabilities (5 in CONTEXT_MODULE, setupcheck in CONTEXT_SYSTEM) and 10 role_capabilities rows;
+> real web form: the block admin key (also with surrounding spaces), a key shared by both roles and an `http`
+> UI origin are refused with their messages; clean `uninstall_plugins.php --run` (0 config rows, 0
+> capabilities, 0 role_capabilities, no tables). The plugin was then reinstalled (version 2026110100).
+> F3: `cli/smoke.php` exists (keys on the command line, raw statuses, exit 0/1/2). Against a local fake backend
+> it records 200 (health), 200 (mint key), 403 ERR-AUTH-003 (admin key) and 202 (teacher setup-check) on both
+> versions. Against the live vektra-stack dev instance (`:18000`, assess-foundations image: assess scopes
+> migrated, but no `/api/v1/assess/*` route mounted, `/health/assess` needs a valid key) every call is
+> 401/404, so the 403-versus-2xx pair on a real `assess:mint` endpoint is BLOCKED (no such endpoint exists
+> before plan session-lifecycle; the setup-check endpoint is not in that image). F3 stays unticked.
+> The plugin cannot call `/health/assess` through `assess_client` (outside `/api/v1/assess/`); the smoke
+> script does it with a raw `\curl`.
 
 ### G. block_vektra hygiene (separate small PR in vektra-moodle, flagged)
 - [ ] G1. vektra-moodle: delete the stray root file `release` (stale 5.1-only `version.php` copy, version 2026071801); replace the rsync in `release.yml` and the `release-zip` job in `ci.yml` with `git archive` + `.gitattributes` export-ignore for `docker/`, `docker-moodle43/`, `n8n/`, `.s2s/`, `.claude/`, `CTX-MEMORY.md`, `CONTRIBUTING.md`; add the same forbidden-path assertion as E2. CHANGELOG `[Unreleased]` entry under Fixed. Verify by listing the built zip: 0 entries under the excluded paths (today it ships n8n instance configs for both production sites).

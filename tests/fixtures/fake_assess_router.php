@@ -70,6 +70,22 @@ switch ($path) {
         http_response_code(403);
         echo json_encode(['error' => ['code' => 'ERR-AUTH-003', 'message' => 'download token refused']]);
         break;
+    case '/health/assess':
+        echo json_encode(['name' => 'assess', 'status' => 'healthy']);
+        break;
+    case '/api/v1/assess/mint-probe':
+        // Stands in for an assess:mint endpoint: an admin-looking key is not accepted (non-inheriting scope).
+        if (str_starts_with($headers['authorization'] ?? '', 'Bearer admin-')) {
+            http_response_code(403);
+            echo json_encode(['error' => ['code' => 'ERR-AUTH-003', 'message' => 'scope assess:mint required']]);
+        } else {
+            echo json_encode(['ok' => true]);
+        }
+        break;
+    case '/api/v1/assess/sites/site1/setup-check':
+        http_response_code(202);
+        echo json_encode(['report_id' => 'fake-report']);
+        break;
     default:
         http_response_code(404);
         echo json_encode(['error' => ['code' => 'ERR-ASSESS-003', 'message' => 'unknown']]);
