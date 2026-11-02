@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
 /**
  * Admin setting for the discussion UI origin.
  *
@@ -68,8 +69,8 @@ class setting_uiurl extends \admin_setting_configtext {
             return get_string('error_uiurl_scheme', config::COMPONENT);
         }
         $path = $parts['path'] ?? '';
-        if (($path !== '' && $path !== '/') || isset($parts['query']) || isset($parts['fragment'])
-                || isset($parts['user']) || isset($parts['pass'])) {
+        $extras = array_intersect(['query', 'fragment', 'user', 'pass'], array_keys($parts));
+        if (($path !== '' && $path !== '/') || $extras) {
             return get_string('error_uiurl_origin', config::COMPONENT);
         }
         return parent::write_setting(config::origin_of($value));

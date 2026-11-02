@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
 /**
  * Fake assess backend for the loopback HTTP test (router script of `php -S`).
  *
@@ -24,7 +25,7 @@
  */
 
 // Not a Moodle script: it runs standalone under the PHP built-in web server.
-// phpcs:disable moodle.Files.MoodleInternal.MoodleInternalNotNeeded
+// phpcs:disable moodle.Files.MoodleInternal.MoodleInternalGlobalState
 
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $headers = array_change_key_case(getallheaders(), CASE_LOWER);

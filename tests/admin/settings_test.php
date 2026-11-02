@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
 /**
  * Tests for the admin settings of local_vektradiscuss.
  *
@@ -22,8 +23,6 @@
  */
 
 namespace local_vektradiscuss\admin;
-
-defined('MOODLE_INTERNAL') || die();
 
 /**
  * Tests for {@see setting_assess_key} and {@see setting_uiurl}.

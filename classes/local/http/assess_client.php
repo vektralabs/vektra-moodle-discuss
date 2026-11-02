@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
 /**
  * HTTP client for the Vektra assess API (/api/v1/assess/*).
  *
@@ -124,7 +125,14 @@ class assess_client {
             return assess_response::failure('transport', $message);
         }
 
-        return $this->build_response($method, $path, $status, (string) $result['body'], (array) $result['headers'], $secret);
+        return $this->build_response(
+            $method,
+            $path,
+            $status,
+            (string) $result['body'],
+            (array) $result['headers'],
+            $secret
+        );
     }
 
     /**
@@ -205,7 +213,15 @@ class assess_client {
         $result = $this->transport->stream($url, $headers, $onheaderline, $writer, $timeout, $connecttimeout);
 
         if ($state->toolarge) {
-            return new assess_response($state->status, null, 'too_large', 'response body exceeds the limit', null, null, $state->headers);
+            return new assess_response(
+                $state->status,
+                null,
+                'too_large',
+                'response body exceeds the limit',
+                null,
+                null,
+                $state->headers
+            );
         }
         if ($result['errno'] !== 0 || $state->status === 0) {
             $message = self::redact('transport failure: ' . $result['error'], $secret);
@@ -321,7 +337,10 @@ class assess_client {
         if ($errorcode === null && $status >= 300 && $status < 400) {
             $errorcode = 'redirect_refused';
         }
-        debugging(self::redact("Vektra assess {$method} {$path} failed: HTTP {$status} - {$body}", $secret), DEBUG_DEVELOPER);
+        debugging(
+            self::redact("Vektra assess {$method} {$path} failed: HTTP {$status} - {$body}", $secret),
+            DEBUG_DEVELOPER
+        );
         return new assess_response($status, $json, $errorcode, $message, $details, $requestid, $headers);
     }
 
@@ -348,8 +367,11 @@ class assess_client {
             $text
         );
         // Sensitive JSON fields: string values, and object or array values up to the matching close.
+        $string = '"(?:[^"\\\\]|\\\\.)*"';
+        $object = '\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}';
+        $array = '\[[^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*\]';
         $text = preg_replace(
-            '/("(?:token|solution|rubric)"\s*:\s*)("(?:[^"\\\\]|\\\\.)*"|\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}|\[[^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*\])/i',
+            '/("(?:token|solution|rubric)"\s*:\s*)(' . $string . '|' . $object . '|' . $array . ')/i',
             '$1"[REDACTED]"',
             $text
         );

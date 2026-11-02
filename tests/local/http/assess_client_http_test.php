@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
 /**
  * Loopback HTTP tests: the default \curl transport against a local fake assess backend.
  *
@@ -26,8 +27,6 @@
  */
 
 namespace local_vektradiscuss\local\http;
-
-defined('MOODLE_INTERNAL') || die();
 
 /**
  * Tests for {@see assess_client} with {@see curl_transport} over loopback.
