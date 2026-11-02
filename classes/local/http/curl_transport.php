@@ -39,6 +39,10 @@ class curl_transport implements transport {
         int $timeout,
         int $connecttimeout
     ): array {
+        if ($method === 'GET' && $body !== null) {
+            // Moodle's curl would silently drop it.
+            throw new \coding_exception('A GET request cannot carry a body.');
+        }
         $curl = $this->new_curl($headers, $timeout, $connecttimeout);
 
         if ($method === 'GET') {

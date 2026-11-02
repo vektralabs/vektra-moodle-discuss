@@ -58,7 +58,7 @@ final class settings_test extends \advanced_testcase {
         $error = $this->key_setting('mintkey', 'teacher')->write_setting('adminkey-value');
 
         $this->assertSame(get_string('error_key_is_adminkey', 'local_vektradiscuss'), $error);
-        $this->assertFalse(get_config('local_vektradiscuss', 'mintkey'));
+        $this->assertEmpty(get_config('local_vektradiscuss', 'mintkey'));
     }
 
     /**
@@ -67,7 +67,7 @@ final class settings_test extends \advanced_testcase {
     public function test_admin_key_refused_with_whitespace(): void {
         $error = $this->key_setting('teacherkey', 'mint')->write_setting("  adminkey-value\n");
         $this->assertNotSame('', $error);
-        $this->assertFalse(get_config('local_vektradiscuss', 'teacherkey'));
+        $this->assertEmpty(get_config('local_vektradiscuss', 'teacherkey'));
     }
 
     /**
@@ -79,7 +79,7 @@ final class settings_test extends \advanced_testcase {
         $error = $this->key_setting('mintkey', 'teacher')->write_setting('shared-value');
 
         $this->assertSame(get_string('error_key_duplicate', 'local_vektradiscuss'), $error);
-        $this->assertFalse(get_config('local_vektradiscuss', 'mintkey'));
+        $this->assertEmpty(get_config('local_vektradiscuss', 'mintkey'));
     }
 
     /**
@@ -147,20 +147,22 @@ final class settings_test extends \advanced_testcase {
             $this->assertSame($stored, get_config('local_vektradiscuss', 'uiurl'));
         } else {
             $this->assertNotSame('', $error);
-            $this->assertFalse(get_config('local_vektradiscuss', 'uiurl'));
+            $this->assertEmpty(get_config('local_vektradiscuss', 'uiurl'));
         }
     }
 
     /**
-     * Plain http is accepted only under developer debugging.
+     * Plain http is refused even under developer debugging.
      */
-    public function test_uiurl_http_allowed_in_developer_mode(): void {
+    public function test_uiurl_http_refused_in_developer_mode(): void {
         global $CFG;
         $CFG->debugdeveloper = true;
         $setting = new setting_uiurl('local_vektradiscuss/uiurl', 'UI', 'Desc');
 
-        $this->assertSame('', $setting->write_setting('http://localhost:8081'));
-        $this->assertSame('http://localhost:8081', get_config('local_vektradiscuss', 'uiurl'));
+        $error = $setting->write_setting('http://localhost:8081');
+
+        $this->assertSame(get_string('error_uiurl_scheme', 'local_vektradiscuss'), $error);
+        $this->assertEmpty(get_config('local_vektradiscuss', 'uiurl'));
     }
 
     /**

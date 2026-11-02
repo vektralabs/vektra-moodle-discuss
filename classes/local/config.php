@@ -50,6 +50,17 @@ class config {
     }
 
     /**
+     * Whether plain http and loopback targets are allowed. Never true for the site configuration:
+     * only an explicit, code-level override (the smoke CLI, tests) can turn it on. It is NOT tied to
+     * $CFG->debugdeveloper, which is routinely on in staging and sometimes in production.
+     *
+     * @return bool
+     */
+    public function allow_insecure(): bool {
+        return false;
+    }
+
+    /**
      * The Vektra API base URL (shared with the block), without trailing slash.
      *
      * @return string Empty when the block is not configured.
@@ -73,12 +84,18 @@ class config {
      *
      * The plugin setting wins; when empty the origin of the block's public URL is used.
      *
-     * @return string Empty when nothing is configured.
+     * @return string Empty when nothing is configured or the origin is not https.
      */
     public function ui_origin(): string {
         $own = trim((string) get_config(self::COMPONENT, 'uiurl'));
         $source = $own !== '' ? $own : $this->public_url();
-        return self::origin_of($source);
+        $origin = self::origin_of($source);
+        // Https only, whatever the source: a value saved earlier or inherited from the block's public
+        // URL must not hand an http origin to the UI.
+        if ($origin !== '' && !str_starts_with($origin, 'https://') && !$this->allow_insecure()) {
+            return '';
+        }
+        return $origin;
     }
 
     /**

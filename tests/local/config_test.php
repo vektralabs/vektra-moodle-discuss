@@ -167,4 +167,35 @@ final class config_test extends \advanced_testcase {
         $this->assertFalse($same->key_usable('mint'));
         $this->assertFalse((new explicit_config('https://cli.example.test', []))->key_usable('mint'));
     }
+
+    /**
+     * The UI origin is https only: an http value (saved earlier, or inherited from the block public URL)
+     * yields an empty origin, whatever $CFG->debugdeveloper says; only the explicit override allows it.
+     */
+    public function test_ui_origin_requires_https(): void {
+        global $CFG;
+        $CFG->debugdeveloper = true;
+
+        set_config('uiurl', 'http://ui.example.test', 'local_vektradiscuss');
+        $this->assertSame('', (new config())->ui_origin());
+
+        set_config('uiurl', '', 'local_vektradiscuss');
+        set_config('publicurl', 'http://public.example.test:8080/x', 'block_vektra');
+        $this->assertSame('', (new config())->ui_origin());
+
+        set_config('uiurl', 'https://ui.example.test', 'local_vektradiscuss');
+        $this->assertSame('https://ui.example.test', (new config())->ui_origin());
+
+        $explicit = new explicit_config('http://api.example.test', [], '', true, true);
+        $this->assertTrue($explicit->allow_insecure());
+        $this->assertFalse((new config())->allow_insecure());
+    }
+
+    /**
+     * The explicit configuration carries the kill switch.
+     */
+    public function test_explicit_config_kill_switch(): void {
+        $this->assertFalse((new explicit_config('https://a.test', [], '', false))->is_enabled());
+        $this->assertTrue((new explicit_config('https://a.test', []))->is_enabled());
+    }
 }

@@ -79,11 +79,21 @@ final class assess_client_http_test extends \advanced_testcase {
         // Moodle's curl security helper blocks loopback and non-standard ports by default.
         $CFG->curlsecurityblockedhosts = '';
         $CFG->curlsecurityallowedport = (string) $this->port;
-        $CFG->debugdeveloper = true;
-        set_config('apiurl', 'http://127.0.0.1:' . $this->port, 'block_vektra');
-        set_config('apikey', 'loopback-admin-key', 'block_vektra');
-        set_config('mintkey', 'loopback-mint-key', 'local_vektradiscuss');
-        set_config('teacherkey', 'loopback-teacher-key', 'local_vektradiscuss');
+    }
+
+    /**
+     * A client aimed at the fake backend; http is allowed only by the explicit override.
+     *
+     * @return assess_client
+     */
+    private function client(): assess_client {
+        return new assess_client(new \local_vektradiscuss\local\explicit_config(
+            'http://127.0.0.1:' . $this->port,
+            ['mint' => 'loopback-mint-key', 'teacher' => 'loopback-teacher-key'],
+            'loopback-admin-key',
+            true,
+            true
+        ));
     }
 
     /**
@@ -114,7 +124,7 @@ final class assess_client_http_test extends \advanced_testcase {
      * A JSON POST arrives with method, body, bearer and version header intact.
      */
     public function test_json_round_trip(): void {
-        $response = (new assess_client())->request('POST', '/api/v1/assess/ok', ['q' => '1'], ['hello' => 'wörld']);
+        $response = $this->client()->request('POST', '/api/v1/assess/ok', ['q' => '1'], ['hello' => 'wörld']);
 
         $this->assertTrue($response->ok(), (string) $response->message);
         $this->assertSame('POST', $response->json['method']);
@@ -132,7 +142,7 @@ final class assess_client_http_test extends \advanced_testcase {
      * GET, PUT, PATCH and DELETE reach the server with the right verb.
      */
     public function test_verbs(): void {
-        $client = new assess_client();
+        $client = $this->client();
         foreach (['GET', 'PUT', 'PATCH', 'DELETE'] as $verb) {
             $response = $client->request($verb, '/api/v1/assess/ok', [], $verb === 'GET' ? null : ['v' => $verb], 'teacher');
             $this->assertTrue($response->ok(), $verb);
@@ -146,7 +156,7 @@ final class assess_client_http_test extends \advanced_testcase {
      * A 403 envelope over a real socket.
      */
     public function test_forbidden_envelope(): void {
-        $response = (new assess_client())->request('GET', '/api/v1/assess/forbidden');
+        $response = $this->client()->request('GET', '/api/v1/assess/forbidden');
         $this->resetDebugging();
 
         $this->assertSame(403, $response->status);
@@ -157,7 +167,7 @@ final class assess_client_http_test extends \advanced_testcase {
      * A 302 to another path is not followed: status 302 and exactly one request reached the server.
      */
     public function test_redirect_not_followed_over_real_http(): void {
-        $response = (new assess_client())->request('GET', '/api/v1/assess/redirect');
+        $response = $this->client()->request('GET', '/api/v1/assess/redirect');
         $this->resetDebugging();
 
         $this->assertSame(302, $response->status);
@@ -173,7 +183,7 @@ final class assess_client_http_test extends \advanced_testcase {
         proc_close($this->server);
         $this->server = null;
 
-        $response = (new assess_client())->request('GET', '/api/v1/assess/ok', [], null, 'mint', ['timeout' => 2]);
+        $response = $this->client()->request('GET', '/api/v1/assess/ok', [], null, 'mint', ['timeout' => 2]);
         $this->resetDebugging();
 
         $this->assertSame(0, $response->status);
@@ -187,7 +197,7 @@ final class assess_client_http_test extends \advanced_testcase {
         $events = [];
         $bytes = 0;
 
-        $response = (new assess_client())->stream(
+        $response = $this->client()->stream(
             '/api/v1/assess/stream',
             'dl-token',
             function (int $status) use (&$events): void {
@@ -210,7 +220,7 @@ final class assess_client_http_test extends \advanced_testcase {
      */
     public function test_stream_too_large_over_real_http(): void {
         $received = 0;
-        $response = (new assess_client())->stream(
+        $response = $this->client()->stream(
             '/api/v1/assess/stream',
             'dl-token',
             function (): void {
@@ -230,7 +240,7 @@ final class assess_client_http_test extends \advanced_testcase {
      */
     public function test_stream_forbidden_over_real_http(): void {
         $called = false;
-        $response = (new assess_client())->stream(
+        $response = $this->client()->stream(
             '/api/v1/assess/stream-forbidden',
             'dl-token',
             function () use (&$called): void {

@@ -37,17 +37,52 @@ class explicit_config extends config {
     /** @var string Block admin key, for refusal only. */
     private string $adminkey;
 
+    /** @var bool Whether the kill switch counts as on. */
+    private bool $enabled;
+
+    /** @var bool Whether http and loopback targets are allowed. */
+    private bool $insecure;
+
     /**
      * Constructor.
      *
      * @param string $apiurl API base URL.
      * @param string[] $keys Key role => secret.
      * @param string $adminkey The block admin key (never sent by the client).
+     * @param bool $enabled Whether the kill switch counts as on (the smoke CLI passes the site value
+     *        or its explicit override).
+     * @param bool $allowinsecure Explicit dev-only override: allow an http API URL.
      */
-    public function __construct(string $apiurl, array $keys, string $adminkey = '') {
+    public function __construct(
+        string $apiurl,
+        array $keys,
+        string $adminkey = '',
+        bool $enabled = true,
+        bool $allowinsecure = false
+    ) {
         $this->apiurl = rtrim(trim($apiurl), '/');
         $this->keys = $keys;
         $this->adminkey = trim($adminkey);
+        $this->enabled = $enabled;
+        $this->insecure = $allowinsecure;
+    }
+
+    /**
+     * Kill switch.
+     *
+     * @return bool
+     */
+    public function is_enabled(): bool {
+        return $this->enabled;
+    }
+
+    /**
+     * Explicit dev-only override for http targets.
+     *
+     * @return bool
+     */
+    public function allow_insecure(): bool {
+        return $this->insecure;
     }
 
     /**

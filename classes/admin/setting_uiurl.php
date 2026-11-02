@@ -53,8 +53,6 @@ class setting_uiurl extends \admin_setting_configtext {
      * @return string Empty on success, else the error message.
      */
     public function write_setting($data) {
-        global $CFG;
-
         $value = trim((string) $data);
         if ($value === '') {
             return parent::write_setting('');
@@ -65,7 +63,7 @@ class setting_uiurl extends \admin_setting_configtext {
             return get_string('error_uiurl_origin', config::COMPONENT);
         }
         $scheme = strtolower($parts['scheme']);
-        if ($scheme !== 'https' && !($scheme === 'http' && !empty($CFG->debugdeveloper))) {
+        if ($scheme !== 'https') {
             return get_string('error_uiurl_scheme', config::COMPONENT);
         }
         $path = $parts['path'] ?? '';

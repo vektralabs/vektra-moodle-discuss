@@ -49,6 +49,7 @@ $capabilities = [
     // List and download the transcripts of an activity.
     'local/vektradiscuss:viewtranscripts' => [
         'captype' => 'read',
+        'riskbitmask' => RISK_PERSONAL,
         'contextlevel' => CONTEXT_MODULE,
         'archetypes' => [
             'teacher' => CAP_ALLOW,
@@ -81,6 +82,7 @@ $capabilities = [
     // Run and read the site setup check (key separation, service account).
     'local/vektradiscuss:setupcheck' => [
         'captype' => 'read',
+        'riskbitmask' => RISK_CONFIG,
         'contextlevel' => CONTEXT_SYSTEM,
         'archetypes' => [
             'manager' => CAP_ALLOW,

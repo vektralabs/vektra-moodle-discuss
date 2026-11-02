@@ -54,6 +54,7 @@ final class assess_client_test extends \advanced_testcase {
     protected function setUp(): void {
         parent::setUp();
         $this->resetAfterTest();
+        set_config('enabled', 1, 'local_vektradiscuss');
         set_config('apiurl', 'https://vektra.example.test/', 'block_vektra');
         set_config('apikey', self::ADMINKEY, 'block_vektra');
         set_config('mintkey', self::MINTKEY, 'local_vektradiscuss');
@@ -324,13 +325,102 @@ final class assess_client_test extends \advanced_testcase {
         $this->assertSame('not_configured', $none->errorcode);
 
         set_config('apiurl', 'http://vektra.example.test', 'block_vektra');
-        $CFG->debugdeveloper = false;
+        // Developer debugging, common in staging, must NOT relax the https rule.
+        $CFG->debugdeveloper = true;
         $insecure = $this->client()->request('GET', '/api/v1/assess/x');
         $this->assertSame('insecure_url', $insecure->errorcode);
+        $this->assertCount(0, $this->transport->calls);
         $this->assertSame(1, $this->transport->remaining());
 
-        $CFG->debugdeveloper = true;
+        // Only an explicit, code-level override does.
+        $explicit = new \local_vektradiscuss\local\explicit_config(
+            'http://vektra.example.test',
+            ['mint' => self::MINTKEY],
+            '',
+            true,
+            true
+        );
+        $this->assertTrue((new assess_client($explicit, $this->transport))->request('GET', '/api/v1/assess/x')->ok());
+        $notinsecure = new \local_vektradiscuss\local\explicit_config(
+            'http://vektra.example.test',
+            ['mint' => self::MINTKEY]
+        );
+        $this->transport->respond(200, []);
+        $refused = (new assess_client($notinsecure, $this->transport))->request('GET', '/api/v1/assess/x');
+        $this->assertSame('insecure_url', $refused->errorcode);
+    }
+
+    /**
+     * The kill switch: disabled means 0 HTTP calls, for request() and stream().
+     */
+    public function test_disabled_site_sends_nothing(): void {
+        set_config('enabled', 0, 'local_vektradiscuss');
+        $this->transport->respond(200, [])->respond(200, 'x');
+
+        $request = $this->client()->request('GET', '/api/v1/assess/x');
+        $stream = $this->client()->stream('/api/v1/assess/x', 'tok', function (): void {
+        }, function (): void {
+        });
+
+        $this->assertSame('disabled', $request->errorcode);
+        $this->assertSame('disabled', $stream->errorcode);
+        $this->assertCount(0, $this->transport->calls);
+        $this->assertSame(2, $this->transport->remaining());
+
+        set_config('enabled', 1, 'local_vektradiscuss');
         $this->assertTrue($this->client()->request('GET', '/api/v1/assess/x')->ok());
+    }
+
+    /**
+     * A body that cannot be JSON-encoded (invalid UTF-8) is refused, not sent as an empty body.
+     */
+    public function test_invalid_utf8_body_is_refused(): void {
+        $this->transport->respond(200, []);
+
+        $response = $this->client()->request('POST', '/api/v1/assess/x', [], ['text' => "bad \xB1\x31 utf8"]);
+
+        $this->assertSame('invalid_body', $response->errorcode);
+        $this->assertSame(0, $response->status);
+        $this->assertCount(0, $this->transport->calls);
+        $this->assertSame(1, $this->transport->remaining());
+    }
+
+    /**
+     * A body on a GET is a programming error: refused, no Content-Type, no call.
+     */
+    public function test_get_with_body_rejected(): void {
+        $this->transport->respond(200, []);
+
+        try {
+            $this->client()->request('GET', '/api/v1/assess/x', [], ['a' => 1]);
+            $this->fail('coding_exception expected');
+        } catch (\coding_exception $e) {
+            $this->assertStringContainsString('GET', $e->getMessage());
+        }
+        $this->assertCount(0, $this->transport->calls);
+    }
+
+    /**
+     * The default transport refuses a GET body instead of silently dropping it.
+     */
+    public function test_curl_transport_rejects_get_body(): void {
+        $this->expectException(\coding_exception::class);
+        (new curl_transport())->send('GET', 'https://vektra.example.test/api/v1/assess/x', [], '{"a":1}', 5, 3);
+    }
+
+    /**
+     * A streamed download does not ask for JSON.
+     */
+    public function test_stream_sends_no_accept_header(): void {
+        $this->transport->respond(200, 'abc')->respond(200, []);
+
+        $this->client()->stream('/api/v1/assess/x', 'tok', function (): void {
+        }, function (): void {
+        });
+        $this->client()->request('GET', '/api/v1/assess/x');
+
+        $this->assertArrayNotHasKey('accept', $this->transport->header_map(0));
+        $this->assertSame('application/json', $this->transport->header_map(1)['accept']);
     }
 
     /**
@@ -428,15 +518,94 @@ final class assess_client_test extends \advanced_testcase {
     }
 
     /**
-     * Redaction of plain text: secret, bearer, JWT, JSON fields.
+     * Redaction of free text: secret, bearer, JWT.
      */
-    public function test_redact(): void {
-        $text = 'k=abc123 Bearer abc123 "token":"t0k3n" "solution": "s" "rubric": {"a": {"b": 1}, "c": [1]} "keep": "yes"';
-        $out = assess_client::redact($text, 'abc123');
+    public function test_redact_text(): void {
+        $out = assess_client::redact('k=abc123 Bearer abc123x eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.c2ln ok', 'abc123');
+
         $this->assertStringNotContainsString('abc123', $out);
-        $this->assertStringNotContainsString('t0k3n', $out);
-        $this->assertStringNotContainsString('"b": 1', $out);
-        $this->assertStringContainsString('"keep": "yes"', $out);
+        $this->assertStringNotContainsString('eyJhbGci', $out);
+        $this->assertStringEndsWith(' ok', $out);
+    }
+
+    /**
+     * Redaction is structural: any depth, any value type, other keys kept.
+     */
+    public function test_redact_structural(): void {
+        $body = json_encode([
+            'keep' => 'yes',
+            'solution' => 42,
+            'token' => 123456,
+            'flag' => ['solution' => true, 'Rubric' => null, 'ok' => 1],
+            'rubric' => ['a' => ['b' => ['c' => ['d' => ['deep secret criterion']]]]],
+            'nested' => ['l1' => ['l2' => ['l3' => ['l4' => ['Token' => 'deep-token-value']]]]],
+            'list' => [['solution' => 'in a list'], ['x' => 'y']],
+        ]);
+
+        $out = assess_client::redact('Vektra assess GET /x failed: HTTP 403 - ' . $body);
+
+        $this->assertStringStartsWith('Vektra assess GET /x failed: HTTP 403 - {', $out);
+        foreach (['deep secret criterion', 'deep-token-value', '123456', '"solution":42', 'in a list'] as $secret) {
+            $this->assertStringNotContainsString($secret, $out);
+        }
+        $this->assertStringContainsString('"keep":"yes"', $out);
+        $this->assertStringContainsString('"ok":1', $out);
+        $this->assertStringContainsString('"x":"y"', $out);
+    }
+
+    /**
+     * Unparseable text that mentions a sensitive key is dropped entirely.
+     */
+    public function test_redact_unparseable_with_sensitive_key(): void {
+        $out = assess_client::redact('oops "solution" : 42 {broken');
+
+        $this->assertStringNotContainsString('42', $out);
+        $this->assertStringContainsString('REDACTED', $out);
+    }
+
+    /**
+     * A tens-of-KB value full of escapes neither returns null nor throws (PCRE limits), and is redacted.
+     */
+    public function test_redact_huge_value_never_fails(): void {
+        $huge = str_repeat('a\\"b ', 40000);
+        $json = '{"solution":"' . $huge . '","keep":"yes"}';
+        $this->assertGreaterThan(200000, strlen($json));
+
+        $out = assess_client::redact($json, 'a');
+        $this->assertIsString($out);
+        $this->assertStringNotContainsString('b b', $out);
+
+        $unparsed = assess_client::redact('"rubric":"' . str_repeat('x\\"', 100000) . '  trailing garbage {');
+        $this->assertIsString($unparsed);
+        $this->assertStringNotContainsString('xx', $unparsed);
+
+        // And through the client: a 500 with a huge body still yields a response, not an exception.
+        $this->transport->respond(500, $json);
+        $response = $this->client()->request('GET', '/api/v1/assess/x');
+        $this->assertSame(500, $response->status);
+        $this->resetDebugging();
+    }
+
+    /**
+     * Debugging output redacts deep rubrics and scalar sensitive values.
+     */
+    public function test_debugging_redacts_deep_and_scalar_values(): void {
+        $leaky = json_encode([
+            'error' => ['code' => 'ERR-X-001', 'message' => 'bad'],
+            'solution' => 42,
+            'token' => 987654321,
+            'rubric' => ['a' => ['b' => ['c' => ['d' => 'depth-four-criterion']]]],
+        ]);
+        $this->transport->respond(403, $leaky);
+
+        $this->client()->request('GET', '/api/v1/assess/x');
+        $messages = $this->getDebuggingMessages();
+
+        $this->assertCount(1, $messages);
+        foreach (['depth-four-criterion', '987654321', '"solution":42'] as $secret) {
+            $this->assertStringNotContainsString($secret, $messages[0]->message);
+        }
+        $this->resetDebugging();
     }
 
     /**

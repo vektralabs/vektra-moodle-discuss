@@ -88,7 +88,7 @@ class assess_client {
      * @param string $keyrole Key role (mint or teacher): selects the secret.
      * @param array $opts Options: timeout (seconds), bearer (a token replacing the key).
      * @return assess_response
-     * @throws \coding_exception For an invalid method or path.
+     * @throws \coding_exception For an invalid method or path, or a body on a GET.
      */
     public function request(
         string $method,
@@ -112,7 +112,15 @@ class assess_client {
 
         $payload = null;
         if ($body !== null) {
-            $payload = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            if ($method === 'GET') {
+                throw new \coding_exception('A GET request cannot carry a body.');
+            }
+            try {
+                $payload = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+            } catch (\JsonException $e) {
+                // Never send a silently emptied body (e.g. invalid UTF-8 in a student's text).
+                return assess_response::failure('invalid_body', 'The request body cannot be encoded as JSON.');
+            }
             $headers[] = 'Content-Type: application/json';
         }
 
@@ -159,12 +167,11 @@ class assess_client {
         array $opts = []
     ): assess_response {
         $this->assert_path($path);
-        $prepared = $this->prepare($path, [], 'mint', ['bearer' => $bearer] + $opts);
+        $prepared = $this->prepare($path, [], 'mint', ['bearer' => $bearer] + $opts, false);
         if ($prepared instanceof assess_response) {
             return $prepared;
         }
         [$url, $headers, $secret, $timeout, $connecttimeout] = $prepared;
-        $headers = array_values(array_filter($headers, fn($h) => stripos($h, 'Accept:') !== 0));
 
         $limit = min(self::MAX_STREAM_BYTES, max(1, (int) ($opts['maxbytes'] ?? self::MAX_STREAM_BYTES)));
         $state = (object) [
@@ -267,10 +274,14 @@ class assess_client {
      * @param array $query
      * @param string $keyrole
      * @param array $opts
+     * @param bool $accept Whether to ask for application/json (not for a streamed download).
      * @return array|assess_response [url, headers, secret, timeout, connecttimeout] or a refusal
      */
-    private function prepare(string $path, array $query, string $keyrole, array $opts) {
-        global $CFG;
+    private function prepare(string $path, array $query, string $keyrole, array $opts, bool $accept = true) {
+        // Site kill switch: disabled means nothing is sent to Vektra.
+        if (!$this->config->is_enabled()) {
+            return assess_response::failure('disabled', 'The assessment discussion is disabled on this site.');
+        }
 
         $bearer = $opts['bearer'] ?? null;
         if ($bearer !== null) {
@@ -288,7 +299,9 @@ class assess_client {
         if ($apiurl === '') {
             return assess_response::failure('not_configured', 'The Vektra API URL is not configured.');
         }
-        if (!str_starts_with(strtolower($apiurl), 'https://') && empty($CFG->debugdeveloper)) {
+        // Only an explicit dev override (explicit_config, smoke CLI) may relax this; $CFG->debugdeveloper
+        // does not, because it is on in staging and sometimes in production.
+        if (!str_starts_with(strtolower($apiurl), 'https://') && !$this->config->allow_insecure()) {
             return assess_response::failure('insecure_url', 'The Vektra API URL must use https.');
         }
 
@@ -299,10 +312,12 @@ class assess_client {
 
         $timeout = max(1, (int) ($opts['timeout'] ?? self::DEFAULT_TIMEOUT));
         $headers = [
-            'Accept: application/json',
             'Authorization: Bearer ' . $secret,
             self::VERSION_HEADER . ': ' . $this->config->plugin_version(),
         ];
+        if ($accept) {
+            array_unshift($headers, 'Accept: application/json');
+        }
         return [$url, $headers, $secret, $timeout, min($timeout, self::MAX_CONNECT_TIMEOUT)];
     }
 
@@ -349,10 +364,13 @@ class assess_client {
      *
      * Copied from block_vektra\vektra_client::redact() (vektralabs/vektra-moodle, release 0.6.2;
      * ADR-0001 decision 2) and extended: the known secret, any Authorization bearer value,
-     * JWT-shaped strings, and the values of the token, solution and rubric fields of a JSON body.
-     * Keep the two copies in step until the backlog item to dedupe is done.
+     * JWT-shaped strings, and, structurally, the value of every sensitive key (token, solution,
+     * rubric and a few credential names) at any depth and of any type in an embedded JSON document.
+     * Text that mentions a sensitive key but whose JSON cannot be parsed is replaced entirely. It
+     * never returns null and never throws, whatever the input. Keep the two copies in step until the
+     * backlog item to dedupe is done.
      *
-     * @param string $text Raw text (e.g., an HTTP response body).
+     * @param string $text Raw text (e.g., "HTTP 403 - <body>").
      * @param string $secret A key or token known to the caller, removed verbatim.
      * @return string Text with secrets replaced by [REDACTED].
      */
@@ -360,22 +378,66 @@ class assess_client {
         if ($secret !== '') {
             $text = str_replace($secret, '[REDACTED]', $text);
         }
-        $text = preg_replace('/Bearer\s+\S+/', 'Bearer [REDACTED]', $text);
-        $text = preg_replace(
-            '/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/',
-            '[REDACTED]',
-            $text
-        );
-        // Sensitive JSON fields: string values, and object or array values up to the matching close.
-        $string = '"(?:[^"\\\\]|\\\\.)*"';
-        $object = '\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}';
-        $array = '\[[^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*\]';
-        $text = preg_replace(
-            '/("(?:token|solution|rubric)"\s*:\s*)(' . $string . '|' . $object . '|' . $array . ')/i',
-            '$1"[REDACTED]"',
-            $text
-        );
+        $text = self::safe_replace('/Bearer\s++\S++/', 'Bearer [REDACTED]', $text);
+        $text = self::safe_replace('/eyJ[A-Za-z0-9_-]++\.[A-Za-z0-9_-]++\.[A-Za-z0-9_-]++/', '[REDACTED]', $text);
+
+        // Structural redaction of an embedded JSON document (object or array), prefix kept.
+        foreach (['{', '['] as $open) {
+            $start = strpos($text, $open);
+            if ($start === false) {
+                continue;
+            }
+            $decoded = json_decode(substr($text, $start), true, 512);
+            if (is_array($decoded)) {
+                $encoded = json_encode(
+                    self::redact_value($decoded),
+                    JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE
+                );
+                return $encoded === false ? '[REDACTED: unencodable]' : substr($text, 0, $start) . $encoded;
+            }
+        }
+
+        // Not parseable as JSON: if a sensitive key is mentioned, drop everything.
+        $pattern = '/"(?:' . implode('|', self::SENSITIVE_KEYS) . ')"\s*+:/i';
+        if (preg_match($pattern, $text) !== 0) {
+            return '[REDACTED: sensitive fields in unparseable text]';
+        }
         return $text;
+    }
+
+    /** @var string[] Keys whose values are never logged, at any depth. */
+    private const SENSITIVE_KEYS = ['token', 'solution', 'rubric', 'authorization', 'apikey', 'api_key', 'secret', 'password'];
+
+    /**
+     * Replace the value of every sensitive key, at any depth and of any type.
+     *
+     * @param array $value Decoded JSON.
+     * @param int $depth Current depth.
+     * @return array
+     */
+    private static function redact_value(array $value, int $depth = 0): array {
+        foreach ($value as $key => $item) {
+            if (is_string($key) && in_array(strtolower($key), self::SENSITIVE_KEYS, true)) {
+                $value[$key] = '[REDACTED]';
+            } else if (is_array($item)) {
+                $value[$key] = $depth >= 64 ? '[REDACTED]' : self::redact_value($item, $depth + 1);
+            }
+        }
+        return $value;
+    }
+
+    /**
+     * preg_replace that cannot return null: on a PCRE error (backtrack or JIT stack limit) the whole
+     * text is replaced, so a secret can never survive a failed replacement.
+     *
+     * @param string $pattern
+     * @param string $replacement
+     * @param string $text
+     * @return string
+     */
+    private static function safe_replace(string $pattern, string $replacement, string $text): string {
+        $result = preg_replace($pattern, $replacement, $text);
+        return $result ?? '[REDACTED: redaction failed]';
     }
 
     /**

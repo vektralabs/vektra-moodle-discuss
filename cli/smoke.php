@@ -49,6 +49,7 @@ use local_vektradiscuss\local\http\assess_client;
     'site' => '',
     'mintpath' => '',
     'allow-local' => false,
+    'ignore-disabled' => false,
 ], ['h' => 'help']);
 
 if ($unrecognised || $options['help'] || $options['apiurl'] === '' || $options['mintkey'] === '') {
@@ -62,7 +63,10 @@ Usage: php local/vektradiscuss/cli/smoke.php --apiurl=URL --mintkey=KEY [options
   --site=ID          Site identifier for the setup-check path.
   --mintpath=PATH    An assess:mint endpoint under /api/v1/assess/ to probe (none exists before the
                      session-lifecycle plan: without it the pair is reported BLOCKED).
-  --allow-local      Let Moodle's curl reach loopback and private addresses on any port (dev only).
+  --allow-local      Let Moodle's curl reach loopback and private addresses on any port, and allow an http
+                     API URL (dev only; the only way to relax the https rule).
+  --ignore-disabled  Run although the site kill switch (enabled) is off. Without it a disabled site
+                     sends nothing and the smoke exits with 2.
 HELP);
     exit($options['help'] ? 0 : 1);
 }
@@ -71,13 +75,28 @@ if ($options['allow-local']) {
     // Dev only: the curl security helper blocks loopback and non-standard ports by default.
     $CFG->curlsecurityblockedhosts = '';
     $CFG->curlsecurityallowedport = '';
-    $CFG->debugdeveloper = true;
+}
+
+// The kill switch is honoured: a disabled site sends nothing, unless the smoke is told to override it.
+$enabled = (new \local_vektradiscuss\local\config())->is_enabled() || $options['ignore-disabled'];
+if (!$enabled) {
+    cli_writeln('DISABLED: the site kill switch (local_vektradiscuss enabled) is off; nothing was sent.');
+    cli_writeln('Enable the plugin or pass --ignore-disabled.');
+    exit(2);
+}
+
+// The raw probes below bypass assess_client, so the https rule is enforced here as well.
+if (!str_starts_with(strtolower($options['apiurl']), 'https://') && !$options['allow-local']) {
+    cli_writeln('REFUSED: the API URL must use https (--allow-local is the dev-only override).');
+    exit(1);
 }
 
 $cliconfig = new explicit_config(
     $options['apiurl'],
     ['mint' => $options['mintkey'], 'teacher' => $options['teacherkey']],
-    $options['adminkey']
+    $options['adminkey'],
+    true,
+    (bool) $options['allow-local']
 );
 
 $client = new assess_client($cliconfig);
