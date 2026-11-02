@@ -148,10 +148,23 @@ Moodle capabilities are a first filter only; Vektra re-verifies graders through 
 > through a small transport interface.
 
 ### B. Assess HTTP client
-- [ ] B1. `classes/local/http/assess_response.php` (immutable DTO) and `classes/local/http/assess_client.php` with `request()` per Design Notes, using Moodle `\curl`; copy `redact()`, `parse_error_envelope()`, `extract_error_object()` from `block_vektra\vektra_client` with a source comment.
-- [ ] B2. Enforce in `assess_client`: path prefix `/api/v1/assess/`, no redirects, TLS verify, `X-Vektra-Plugin-Version`, key selection by role, refusal (no HTTP call, `error_code = 'not_configured'`) when the role's key is empty or equals `block_vektra/apikey`.
-- [ ] B3. `stream()` with header/write callbacks; status line captured before the first body byte is forwarded; max-bytes guard (setting-free constant, 20 MB) aborting with `error_code = 'too_large'`.
-- [ ] B4. PHPUnit `tests/local/http/assess_client_test.php` using `\curl::mock_response()`: 2xx JSON, REQ-010 envelope 403/409/422/429 (error_code and details extracted), legacy envelope, transport failure (status 0, no exception), non-assess path rejected, empty key = 0 HTTP calls (assert mock queue untouched), admin-key value refused, Authorization absent from `debugging()` output (assert with `assertDebuggingCalled` message content).
+- [x] B1. `classes/local/http/assess_response.php` (immutable DTO) and `classes/local/http/assess_client.php` with `request()` per Design Notes, using Moodle `\curl`; copy `redact()`, `parse_error_envelope()`, `extract_error_object()` from `block_vektra\vektra_client` with a source comment.
+- [x] B2. Enforce in `assess_client`: path prefix `/api/v1/assess/`, no redirects, TLS verify, `X-Vektra-Plugin-Version`, key selection by role, refusal (no HTTP call, `error_code = 'not_configured'`) when the role's key is empty or equals `block_vektra/apikey`.
+- [x] B3. `stream()` with header/write callbacks; status line captured before the first body byte is forwarded; max-bytes guard (setting-free constant, 20 MB) aborting with `error_code = 'too_large'`.
+- [x] B4. PHPUnit `tests/local/http/assess_client_test.php` using `\curl::mock_response()`: 2xx JSON, REQ-010 envelope 403/409/422/429 (error_code and details extracted), legacy envelope, transport failure (status 0, no exception), non-assess path rejected, empty key = 0 HTTP calls (assert mock queue untouched), admin-key value refused, Authorization absent from `debugging()` output (assert with `assertDebuggingCalled` message content).
+
+> Note (B, 2026-11-02): Moodle's `\curl::mock_response()` answers every mocked call with HTTP 200 and
+> the queued body, so it cannot simulate 302, 403/409/422/429 or a transport failure (the plan's B4
+> assumed it could). Decision: `assess_client` sends through a small `transport` interface (default
+> `curl_transport` on `\curl`, so Moodle's curl security helper stays in force). Unit tests use a
+> scripted transport (`tests/fixtures/scripted_transport.php`) whose unconsumed queue proves "0 HTTP
+> calls"; `tests/local/http/assess_client_http_test.php` proves the default transport over a real
+> socket against a PHP built-in server playing the assess backend (redirect, error envelope,
+> streaming, byte limit, connection failure). One test uses `\curl::mock_response()` to assert the
+> transport options (no redirects, TLS verify). The client also refuses (not_configured) a key equal
+> to the other role's key and a non-https API URL outside `$CFG->debugdeveloper`, and returns
+> error_code `redirect_refused` on a 3xx. PHPUnit 11 (Moodle 5.2) reports 5 "metadata in doc-comments"
+> deprecations: annotations are kept because Moodle 4.3 runs PHPUnit 9, which ignores attributes.
 
 ### C. Settings
 - [ ] C1. `settings.php` with `enabled`, `uiurl`, `siteid`, `mintkey`, `teacherkey`, read-only display of block_vektra apiurl/publicurl; `classes/admin/setting_assess_key.php` rejecting the admin-key value and duplicate keys; `classes/admin/setting_uiurl.php` (https, origin only, no path).
