@@ -136,10 +136,16 @@ Moodle capabilities are a first filter only; Vektra re-verifies graders through 
 ## Tasks
 
 ### A. Layout decision and scaffold
-- [ ] A1. Repo layout is decided and the repo exists (2026-11-01). Remaining: write `.s2s/decisions/ADR-0001-local-vektradiscuss-repo-layout.md` (MADR) in vektra-moodle-discuss recording the client decision from Design Notes and pointing to the ADR-0028 amendment for layout; copy CODEOWNERS and PR template from vektra-moodle `.github/`; add `.gitattributes` export-ignore for `.s2s/`, `.claude/`, `CTX-MEMORY.md` from the first commit.
-- [ ] A2. `version.php`: `component = 'local_vektradiscuss'`, `version = 2026110100`, `requires = 2023100900` (4.3), `supported = [403, 502]`, `maturity = MATURITY_ALPHA`, `release = '0.1.0'`, `dependencies = ['block_vektra' => 2026103001]`. GPL header, `@package local_vektradiscuss`, `@copyright 2026 VektraLabs`, MOODLE_INTERNAL guard (repo conventions).
-- [ ] A3. `db/access.php` with the six capabilities in Design Notes; `lang/en/local_vektradiscuss.php` and `lang/it/local_vektradiscuss.php` with `pluginname`, capability strings, settings strings; `README.md` (install prerequisites: block_vektra, keys from operator, link to this repo's plans); `CHANGELOG.md` (Keep a Changelog, `[Unreleased]`).
-- [ ] A4. `classes/privacy/provider.php` placeholder implementing `\core_privacy\local\metadata\provider` with only `get_metadata()` declaring `add_external_location_link('vektra_assess', ...)` (fields: userid, courseid, cmid, attempt and submission content, conversation turns, transcript). Not a null_provider: data does leave the site. Export/delete come in P3; until then `local/vektradiscuss` stays MATURITY_ALPHA and `enabled` defaults 0, so no data flows.
+- [x] A1. Repo layout is decided and the repo exists (2026-11-01). Remaining: write `.s2s/decisions/ADR-0001-local-vektradiscuss-repo-layout.md` (MADR) in vektra-moodle-discuss recording the client decision from Design Notes and pointing to the ADR-0028 amendment for layout; copy CODEOWNERS and PR template from vektra-moodle `.github/`; add `.gitattributes` export-ignore for `.s2s/`, `.claude/`, `CTX-MEMORY.md` from the first commit.
+- [x] A2. `version.php`: `component = 'local_vektradiscuss'`, `version = 2026110100`, `requires = 2023100900` (4.3), `supported = [403, 502]`, `maturity = MATURITY_ALPHA`, `release = '0.1.0'`, `dependencies = ['block_vektra' => 2026103001]`. GPL header, `@package local_vektradiscuss`, `@copyright 2026 VektraLabs`, MOODLE_INTERNAL guard (repo conventions).
+- [x] A3. `db/access.php` with the six capabilities in Design Notes; `lang/en/local_vektradiscuss.php` and `lang/it/local_vektradiscuss.php` with `pluginname`, capability strings, settings strings; `README.md` (install prerequisites: block_vektra, keys from operator, link to this repo's plans); `CHANGELOG.md` (Keep a Changelog, `[Unreleased]`).
+- [x] A4. `classes/privacy/provider.php` placeholder implementing `\core_privacy\local\metadata\provider` with only `get_metadata()` declaring `add_external_location_link('vektra_assess', ...)` (fields: userid, courseid, cmid, attempt and submission content, conversation turns, transcript). Not a null_provider: data does leave the site. Export/delete come in P3; until then `local/vektradiscuss` stays MATURITY_ALPHA and `enabled` defaults 0, so no data flows.
+
+> Note (A, 2026-11-02): `spike/` (the OQ-025 spike, already in the repo) is added to `.gitattributes`
+> export-ignore as well, otherwise it would ship in the release zip. Settings and privacy strings
+> were written with A3 so the later groups only use them. The A1 ADR records a third consequence
+> found in group B: Moodle's `\curl::mock_response()` always answers HTTP 200, so the client sends
+> through a small transport interface.
 
 ### B. Assess HTTP client
 - [ ] B1. `classes/local/http/assess_response.php` (immutable DTO) and `classes/local/http/assess_client.php` with `request()` per Design Notes, using Moodle `\curl`; copy `redact()`, `parse_error_envelope()`, `extract_error_object()` from `block_vektra\vektra_client` with a source comment.
