@@ -80,7 +80,15 @@ class scripted_transport implements transport {
     }
 
     /**
-     * {@inheritDoc}
+     * Send one request and buffer the response.
+     *
+     * @param string $method GET, POST, PUT, PATCH or DELETE.
+     * @param string $url Absolute URL.
+     * @param string[] $headers Header lines ("Name: value").
+     * @param string|null $body Raw request body.
+     * @param int $timeout Total timeout in seconds.
+     * @param int $connecttimeout Connect timeout in seconds.
+     * @return array{status: int, headers: array, body: string, errno: int, error: string}
      */
     public function send(
         string $method,
@@ -99,7 +107,15 @@ class scripted_transport implements transport {
     }
 
     /**
-     * {@inheritDoc}
+     * Send a GET and hand header lines and body chunks to callbacks as they arrive.
+     *
+     * @param string $url Absolute URL.
+     * @param string[] $headers Header lines.
+     * @param callable $onheaderline Called with each raw response header line.
+     * @param callable $onchunk Called with each body chunk; return false to abort.
+     * @param int $timeout Total timeout in seconds.
+     * @param int $connecttimeout Connect timeout in seconds.
+     * @return array{status: int, errno: int, error: string}
      */
     public function stream(
         string $url,
