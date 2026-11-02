@@ -179,13 +179,28 @@ Moodle capabilities are a first filter only; Vektra re-verifies graders through 
 > containers); it runs in CI (group D).
 
 ### D. CI
-- [ ] D1. `.github/workflows/moodle-plugin-ci.yml` (copied from vektra-moodle, same pinned action SHAs, Postgres 16, matrix MOODLE_403_STABLE/8.2 and MOODLE_502_STABLE/8.4): add `moodle-plugin-ci add-plugin vektralabs/vektra-moodle` (pinned to the tag carrying the required block version) before `install`; steps phplint, phpcs (`--max-warnings 0`), phpdoc, validate, savepoints, mustache, grunt (`--max-lint-warnings 0`, checks committed `amd/build`), phpunit (`--fail-on-warning`), behat `--profile chrome`.
-- [ ] D2. Guard against empty suites: a CI step fails if `phpunit` reports 0 tests or `behat` reports 0 scenarios for this component (moodle-plugin-ci passes on "no tests found"). Seed with one Behat smoke `tests/behat/settings.feature` (admin opens settings, admin-key value refused with the error string).
-- [ ] D3. `.github/workflows/ci.yml`: php -l on 8.2/8.3/8.4 and moodle-cs phpcs, as in vektra-moodle.
+- [x] D1. `.github/workflows/moodle-plugin-ci.yml` (copied from vektra-moodle, same pinned action SHAs, Postgres 16, matrix MOODLE_403_STABLE/8.2 and MOODLE_502_STABLE/8.4): add `moodle-plugin-ci add-plugin vektralabs/vektra-moodle` (pinned to the tag carrying the required block version) before `install`; steps phplint, phpcs (`--max-warnings 0`), phpdoc, validate, savepoints, mustache, grunt (`--max-lint-warnings 0`, checks committed `amd/build`), phpunit (`--fail-on-warning`), behat `--profile chrome`.
+- [x] D2. Guard against empty suites: a CI step fails if `phpunit` reports 0 tests or `behat` reports 0 scenarios for this component (moodle-plugin-ci passes on "no tests found"). Seed with one Behat smoke `tests/behat/settings.feature` (admin opens settings, admin-key value refused with the error string).
+- [x] D3. `.github/workflows/ci.yml`: php -l on 8.2/8.3/8.4 and moodle-cs phpcs, as in vektra-moodle.
+
+> Note (D, 2026-11-02): `block_vektra` 2026103001 (release 0.6.2) is not tagged yet (latest tag v0.6.0), so
+> `add-plugin` pins `--branch develop` through `BLOCK_VEKTRA_REF` in the workflow; switch it to the tag
+> once released (Integration Notes: the release must contain G1). `.moodle-plugin-ci.yml` excludes `spike/`
+> from the checks. The empty-suite guards grep the runner output: PHPUnit `OK (N tests` or `Tests: N,` with
+> N > 0 (PHPUnit 11 prints the latter when it reports deprecations) and Behat `N scenarios (` with N > 0.
+> Not verifiable here: the workflows themselves run only on GitHub; locally I ran phpcs (moodle-cs, 0 errors
+> 0 warnings), phplint, validate (moodle-plugin-ci) and the PHPUnit suite on both Moodle versions. phpdoc
+> (moodlecheck needs an installed Moodle plugin), savepoints, mustache, grunt and Behat were not run locally.
 
 ### E. Release packaging
-- [ ] E1. `.gitattributes` with `export-ignore` for `.github/`, `.s2s/`, `.claude/`, `docker*/`, `CTX-MEMORY.md`, `*.local.md`, `.superpowers/`; `release.yml` builds the zip with `git archive --prefix=vektradiscuss/ HEAD` (tracked files only, so untracked `.env` files cannot leak), on tag `v*`.
-- [ ] E2. Zip content assertion in `ci.yml` (`release-zip` job): `vektradiscuss/version.php` present; `unzip -l` fails the job if any path matches `/(\.s2s|\.claude|\.github|docker|n8n)/|CTX-MEMORY\.md|\.env`; `tests/` and `amd/build/` present (Moodle ships tests).
+- [x] E1. `.gitattributes` with `export-ignore` for `.github/`, `.s2s/`, `.claude/`, `docker*/`, `CTX-MEMORY.md`, `*.local.md`, `.superpowers/`; `release.yml` builds the zip with `git archive --prefix=vektradiscuss/ HEAD` (tracked files only, so untracked `.env` files cannot leak), on tag `v*`.
+- [x] E2. Zip content assertion in `ci.yml` (`release-zip` job): `vektradiscuss/version.php` present; `unzip -l` fails the job if any path matches `/(\.s2s|\.claude|\.github|docker|n8n)/|CTX-MEMORY\.md|\.env`; `tests/` and `amd/build/` present (Moodle ships tests).
+
+> Note (E, 2026-11-02): E1 landed in group A (`.gitattributes`); `release.yml` and the `release-zip` job now
+> share `.github/scripts/assert-release-zip.sh`, run on the `git archive` zip. The `amd/build/` presence check
+> is conditional on `amd/src/` existing (there is no JavaScript yet); the plugin ships `tests/`. Verified: the
+> real zip (40 entries) passes, and a hand-made zip with `.s2s/`, `docker/`, `.env` and `CTX-MEMORY.md` fails
+> with exit 1. `.moodle-plugin-ci.yml` is export-ignored too.
 
 ### F. Dev environment and smoke (needs 20261101-154950-assess-moodle-ws)
 - [ ] F1. Add a compose override (or document the one plan 4 provides) that bind-mounts this repo read-only at `local/vektradiscuss` next to block_vektra at `blocks/vektra` in the 4.3 and 5.2 envs (5.2 uses the `public/` docroot: mount under `public/local/vektradiscuss`).
