@@ -167,8 +167,16 @@ Moodle capabilities are a first filter only; Vektra re-verifies graders through 
 > deprecations: annotations are kept because Moodle 4.3 runs PHPUnit 9, which ignores attributes.
 
 ### C. Settings
-- [ ] C1. `settings.php` with `enabled`, `uiurl`, `siteid`, `mintkey`, `teacherkey`, read-only display of block_vektra apiurl/publicurl; `classes/admin/setting_assess_key.php` rejecting the admin-key value and duplicate keys; `classes/admin/setting_uiurl.php` (https, origin only, no path).
-- [ ] C2. `classes/local/config.php`: typed accessors (`api_url()`, `ui_origin()`, `key(string $role)`, `is_enabled()`), single place that reads `block_vektra` config. PHPUnit for fallbacks and refusals.
+- [x] C1. `settings.php` with `enabled`, `uiurl`, `siteid`, `mintkey`, `teacherkey`, read-only display of block_vektra apiurl/publicurl; `classes/admin/setting_assess_key.php` rejecting the admin-key value and duplicate keys; `classes/admin/setting_uiurl.php` (https, origin only, no path).
+- [x] C2. `classes/local/config.php`: typed accessors (`api_url()`, `ui_origin()`, `key(string $role)`, `is_enabled()`), single place that reads `block_vektra` config. PHPUnit for fallbacks and refusals.
+
+> Note (C, 2026-11-02): `classes/local/config.php` landed with group B because the client needs it; its tests
+> (`tests/local/config_test.php`) and the settings classes and tests land here. `siteid` is stored as
+> PARAM_ALPHANUMEXT (letters, digits, `_`, `-`); revisit if Vektra issues site ids with other characters
+> (Integration Notes). The duplicate-key check compares against the other key as submitted in the same
+> form (`s_local_vektradiscuss_<name>`), else the stored one, so two keys cannot be saved as equal in one go.
+> The Behat feature (`tests/behat/settings.feature`) could not be run locally (no browser in the dev
+> containers); it runs in CI (group D).
 
 ### D. CI
 - [ ] D1. `.github/workflows/moodle-plugin-ci.yml` (copied from vektra-moodle, same pinned action SHAs, Postgres 16, matrix MOODLE_403_STABLE/8.2 and MOODLE_502_STABLE/8.4): add `moodle-plugin-ci add-plugin vektralabs/vektra-moodle` (pinned to the tag carrying the required block version) before `install`; steps phplint, phpcs (`--max-warnings 0`), phpdoc, validate, savepoints, mustache, grunt (`--max-lint-warnings 0`, checks committed `amd/build`), phpunit (`--fail-on-warning`), behat `--profile chrome`.
