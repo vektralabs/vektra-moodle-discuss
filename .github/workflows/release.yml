@@ -18,6 +18,10 @@ jobs:
 
       # Tracked files only (an untracked .env can never leak); .gitattributes export-ignore
       # drops .github/, .s2s/, .claude/, docker*/, spike/ and local notes.
+      # The tag must be v<release> from version.php: a tag/version mismatch ships a zip that lies.
+      - name: Assert the tag matches version.php
+        run: ./.github/scripts/assert-release-tag.sh "$GITHUB_REF_NAME" version.php
+
       - name: Build Moodle plugin zip
         run: git archive --format=zip --prefix=vektradiscuss/ -o "$RUNNER_TEMP/vektradiscuss.zip" HEAD
 

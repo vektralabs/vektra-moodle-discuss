@@ -5,14 +5,26 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      block_vektra_ref:
+        description: 'block_vektra ref: a v* tag or a commit SHA (a branch is refused on main)'
+        required: false
+        default: 'develop'
 
 permissions:
   contents: read
 
 env:
-  # block_vektra release the plugin depends on (version.php: 2026103001 = 0.6.2). That release is not
-  # tagged yet, so CI tracks its develop branch; switch to the tag (v0.6.2 or later) once it exists.
-  BLOCK_VEKTRA_REF: develop
+  # The block_vektra dependency (version.php: 2026103001 = 0.6.2). Pinning rule, enforced by
+  # .github/scripts/checkout-block-vektra.sh:
+  #   - main, tags and pull requests to main: a v* tag or a 40-hex commit SHA (a branch fails the job);
+  #   - develop and pull requests to develop: a branch is tolerated, and the commit it resolved to is
+  #     printed in the log; the job fails if the block's version is lower than the one required.
+  # Override per run with the workflow_dispatch input. 0.6.2 is not tagged yet (latest v0.6.0), so the
+  # default is develop; replace it with the tag or SHA of the block release that contains the release-zip fix.
+  BLOCK_VEKTRA_REF: ${{ inputs.block_vektra_ref || 'develop' }}
+  BLOCK_VEKTRA_REPO: https://github.com/vektralabs/vektra-moodle.git
 
 jobs:
   test:
@@ -61,14 +73,22 @@ jobs:
           sudo locale-gen en_AU.UTF-8
           echo "NVM_DIR=$HOME/.nvm" >> $GITHUB_ENV
 
-      # The dependency declared in version.php must be installed before this plugin.
-      - name: Add the block_vektra dependency
-        run: moodle-plugin-ci add-plugin vektralabs/vektra-moodle --branch "$BLOCK_VEKTRA_REF"
+      # The dependency declared in version.php must be installed before this plugin: check it out at a
+      # pinned ref, verify its version, and hand it to the installer as an extra plugin.
+      - name: Check out the block_vektra dependency
+        run: |
+          if [ "$GITHUB_REF" = refs/heads/main ] || [[ "$GITHUB_REF" == refs/tags/* ]] || [ "$GITHUB_BASE_REF" = main ]; then
+            mode=strict
+          else
+            mode=lenient
+          fi
+          ./plugin/.github/scripts/checkout-block-vektra.sh "$BLOCK_VEKTRA_REPO" "$BLOCK_VEKTRA_REF" "$mode" \
+            "$GITHUB_WORKSPACE/extra-plugins/block_vektra" ./plugin/version.php
 
       # Installs Moodle and the plugin from scratch: fails if version.php
       # rejects this Moodle release or the plugin breaks the install.
       - name: Install Moodle and plugin
-        run: moodle-plugin-ci install --plugin ./plugin --db-host=127.0.0.1
+        run: moodle-plugin-ci install --plugin ./plugin --extra-plugins="$GITHUB_WORKSPACE/extra-plugins" --db-host=127.0.0.1
         env:
           DB: pgsql
           MOODLE_BRANCH: ${{ matrix.moodle-branch }}

@@ -45,6 +45,15 @@ Copy the plugin directory to `local/vektradiscuss` (`public/local/vektradiscuss`
 
 Released zips contain the plugin only (`vektradiscuss/`).
 
+## Continuous integration
+
+The `block_vektra` dependency is installed by `.github/scripts/checkout-block-vektra.sh` from
+`BLOCK_VEKTRA_REF` (override per run with the `block_vektra_ref` dispatch input). On `main`, on tags and on
+pull requests to `main` the ref must be a `v*` tag or a 40-hex commit SHA (a branch fails the job); on
+`develop` a branch is tolerated and the commit it resolved to is logged. The job also fails when the block's
+version is lower than the one in `version.php` `dependencies`. A release tag must equal `v` plus
+`$plugin->release` (`.github/scripts/assert-release-tag.sh`; self-test: `.github/scripts/test-release-tag.sh`).
+
 ## Compatibility
 
 Targets Moodle **4.3 (403)** and **5.2 (502)**, matching the Vektra fleet.
