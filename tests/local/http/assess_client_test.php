@@ -601,6 +601,34 @@ final class assess_client_test extends \advanced_testcase {
     }
 
     /**
+     * A sensitive key written with \uXXXX escapes in unparseable text is still caught.
+     */
+    public function test_redact_unparseable_with_escaped_sensitive_key(): void {
+        foreach (['{"solution": "leaked-answer"', '{"access_token": "leaked-answer"'] as $text) {
+            $out = assess_client::redact('HTTP 400 - ' . $text);
+
+            $this->assertStringNotContainsString('leaked-answer', $out);
+            $this->assertStringContainsString('REDACTED', $out);
+        }
+        // Unparseable text without a sensitive key is kept as is.
+        $this->assertSame('HTTP 500 - {"message": "boom"', assess_client::redact('HTTP 500 - {"message": "boom"'));
+    }
+
+    /**
+     * OAuth-style credential keys are redacted at any depth, in parseable and unparseable text.
+     */
+    public function test_redact_credential_key_family(): void {
+        foreach (['access_token', 'refresh_token', 'id_token', 'client_secret'] as $key) {
+            $parsed = assess_client::redact('HTTP 400 - ' . json_encode(['a' => [$key => 'leaked-value'], 'keep' => 'yes']));
+            $this->assertStringNotContainsString('leaked-value', $parsed, $key);
+            $this->assertStringContainsString('"keep":"yes"', $parsed);
+
+            $broken = assess_client::redact('HTTP 400 - {"' . $key . '": "leaked-value"');
+            $this->assertStringNotContainsString('leaked-value', $broken, $key);
+        }
+    }
+
+    /**
      * A tens-of-KB value full of escapes neither returns null nor throws (PCRE limits), and is redacted.
      */
     public function test_redact_huge_value_never_fails(): void {

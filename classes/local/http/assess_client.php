@@ -401,16 +401,26 @@ class assess_client {
             }
         }
 
-        // Not parseable as JSON: if a sensitive key is mentioned, drop everything.
+        // Not parseable as JSON: if a sensitive key is mentioned, drop everything. A key can be written with
+        // \uXXXX escapes (solution), so the check also runs on the unescaped text. preg_match() returns
+        // false on a PCRE error, which counts as a match here: when in doubt, redact.
         $pattern = '/"(?:' . implode('|', self::SENSITIVE_KEYS) . ')"\s*+:/i';
-        if (preg_match($pattern, $text) !== 0) {
+        $unescaped = preg_replace_callback(
+            '/\\\\u([0-9a-fA-F]{4})/',
+            fn(array $m): string => (string) mb_chr((int) hexdec($m[1]), 'UTF-8'),
+            $text
+        ) ?? $text;
+        if (preg_match($pattern, $text) !== 0 || preg_match($pattern, $unescaped) !== 0) {
             return '[REDACTED: sensitive fields in unparseable text]';
         }
         return $text;
     }
 
     /** @var string[] Keys whose values are never logged, at any depth. */
-    private const SENSITIVE_KEYS = ['token', 'solution', 'rubric', 'authorization', 'apikey', 'api_key', 'secret', 'password'];
+    private const SENSITIVE_KEYS = [
+        'token', 'access_token', 'refresh_token', 'id_token', 'solution', 'rubric', 'authorization',
+        'apikey', 'api_key', 'secret', 'client_secret', 'password',
+    ];
 
     /**
      * Replace the value of every sensitive key, at any depth and of any type.
