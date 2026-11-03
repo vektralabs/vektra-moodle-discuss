@@ -169,6 +169,16 @@ final class config_test extends \advanced_testcase {
     }
 
     /**
+     * An unknown role is a programming error, as in the site configuration (not a silent empty key).
+     */
+    public function test_explicit_config_unknown_role_throws(): void {
+        $config = new explicit_config('https://cli.example.test', ['mint' => 'cli-mint', 'admin' => 'x']);
+
+        $this->expectException(\coding_exception::class);
+        $config->key('admin');
+    }
+
+    /**
      * The UI origin is https only: an http value (saved earlier, or inherited from the block public URL)
      * yields an empty origin, whatever $CFG->debugdeveloper says; only the explicit override allows it.
      */

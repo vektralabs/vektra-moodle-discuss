@@ -97,10 +97,14 @@ class explicit_config extends config {
     /**
      * Key of a role.
      *
-     * @param string $role
-     * @return string
+     * @param string $role A key of {@see self::KEY_ROLES}.
+     * @return string Empty when not set.
+     * @throws \coding_exception For an unknown role (same contract as {@see config::key()}).
      */
     public function key(string $role): string {
+        if (!isset(self::KEY_ROLES[$role])) {
+            throw new \coding_exception('Unknown assess key role: ' . $role);
+        }
         return trim($this->keys[$role] ?? '');
     }
 
