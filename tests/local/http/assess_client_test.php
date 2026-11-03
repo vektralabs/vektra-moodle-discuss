@@ -446,6 +446,22 @@ final class assess_client_test extends \advanced_testcase {
     }
 
     /**
+     * A body on a GET is a programming error whatever the site state: it must not be hidden by the kill
+     * switch (a disabled site returns a failure response before the body would be looked at).
+     */
+    public function test_get_body_is_rejected_even_when_site_disabled(): void {
+        set_config('enabled', 0, 'local_vektradiscuss');
+
+        try {
+            $this->client()->request('GET', '/api/v1/assess/x', [], ['a' => 1]);
+            $this->fail('A GET with a body must throw coding_exception.');
+        } catch (\coding_exception $e) {
+            $this->assertStringContainsString('GET', $e->getMessage());
+        }
+        $this->assertCount(0, $this->transport->calls);
+    }
+
+    /**
      * A streamed download does not ask for JSON.
      */
     public function test_stream_sends_no_accept_header(): void {

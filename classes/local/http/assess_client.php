@@ -103,6 +103,11 @@ class assess_client {
             throw new \coding_exception('Unsupported HTTP method: ' . $method);
         }
         $this->assert_path($path);
+        // A programming error, so it is raised before prepare(): on a disabled or unconfigured site
+        // prepare() returns a failure response, which would hide it until the site is enabled.
+        if ($method === 'GET' && $body !== null) {
+            throw new \coding_exception('A GET request cannot carry a body.');
+        }
 
         $prepared = $this->prepare($path, $query, $keyrole, $opts);
         if ($prepared instanceof assess_response) {
@@ -112,9 +117,6 @@ class assess_client {
 
         $payload = null;
         if ($body !== null) {
-            if ($method === 'GET') {
-                throw new \coding_exception('A GET request cannot carry a body.');
-            }
             try {
                 $payload = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
             } catch (\JsonException $e) {
