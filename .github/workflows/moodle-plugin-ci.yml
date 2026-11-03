@@ -10,7 +10,7 @@ on:
       block_vektra_ref:
         description: 'block_vektra ref: a v* tag or a commit SHA (a branch is refused on main)'
         required: false
-        default: 'develop'
+        default: '03e5b12640865c72931a26507f9941fa825a605b'
 
 permissions:
   contents: read
@@ -22,8 +22,14 @@ env:
   #   - develop and pull requests to develop: a branch is tolerated, and the commit it resolved to is
   #     printed in the log; the job fails if the block's version is lower than the one required.
   # Override per run with the workflow_dispatch input. 0.6.2 is not tagged yet (latest v0.6.0), so the
-  # default is develop; replace it with the tag or SHA of the block release that contains the release-zip fix.
-  BLOCK_VEKTRA_REF: ${{ inputs.block_vektra_ref || 'develop' }}
+  # default is a commit SHA of vektra-moodle develop, not a tag and not the moving branch: runs stay
+  # reproducible and the pin is valid on main and on pull requests to main too. The pinned commit is the
+  # merge of vektra-moodle PR #42 (block_vektra 2026103001 = 0.6.2, release-zip fix included).
+  # To update: take the 40-hex SHA of a newer vektra-moodle develop commit (git rev-parse origin/develop),
+  # check that its version.php is >= the block_vektra version in this plugin's version.php dependencies,
+  # and replace the SHA here and in the workflow_dispatch default above. Once 0.6.2 is tagged, a v* tag
+  # can replace it.
+  BLOCK_VEKTRA_REF: ${{ inputs.block_vektra_ref || '03e5b12640865c72931a26507f9941fa825a605b' }}
   BLOCK_VEKTRA_REPO: https://github.com/vektralabs/vektra-moodle.git
 
 jobs:
