@@ -124,7 +124,10 @@ $rawget = function (string $url, string $bearer): array {
 
 // 1. Readiness of the assess feature.
 [$status, $code] = $rawget($cliconfig->api_url() . '/health/assess', $options['mintkey']);
-$record('GET /health/assess (mint key)', $status, $code, $status === 200 ? 'PASS' : ($status === 0 ? 'FAIL' : 'BLOCKED'));
+// A refused key (401/403) or an unreachable host (0) is a failure of the configuration under test; any other
+// non-200 (e.g. 404 on a backend without the feature) means the check cannot be exercised yet.
+$healthverdict = $status === 200 ? 'PASS' : (in_array($status, [0, 401, 403], true) ? 'FAIL' : 'BLOCKED');
+$record('GET /health/assess (mint key)', $status, $code, $healthverdict);
 
 // 2. The non-inheriting scope proof: mint key accepted, admin key refused.
 $mintpath = trim($options['mintpath']);
