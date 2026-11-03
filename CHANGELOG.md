@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - Plugin scaffold: `version.php` (Moodle 4.3 to 5.2, depends on `block_vektra`), six
-  capabilities in the course-module context, English and Italian language packs, privacy
+  capabilities (five in the course-module context, `setupcheck` in the system context), English and Italian language packs, privacy
   provider declaring the external Vektra location.
 - Assess HTTP client (`\local_vektradiscuss\local\http\assess_client`): assess-only paths,
   no redirects, TLS verification, per-role narrow keys, secret redaction, REQ-010 error

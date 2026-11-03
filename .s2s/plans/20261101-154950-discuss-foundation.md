@@ -184,7 +184,7 @@ Moodle capabilities are a first filter only; Vektra re-verifies graders through 
 - [x] D3. `.github/workflows/ci.yml`: php -l on 8.2/8.3/8.4 and moodle-cs phpcs, as in vektra-moodle.
 
 > Note (D, 2026-11-02): `block_vektra` 2026103001 (release 0.6.2) is not tagged yet (latest tag v0.6.0), so
-> `add-plugin` pins `--branch develop` through `BLOCK_VEKTRA_REF` in the workflow; switch it to the tag
+> `add-plugin` pinned `--branch develop` through `BLOCK_VEKTRA_REF` in the workflow (a commit SHA since 2026-11-03, see the W1 close-out note); switch it to the tag
 > once released (Integration Notes: the release must contain G1). `.moodle-plugin-ci.yml` excludes `spike/`
 > from the checks. The empty-suite guards grep the runner output: PHPUnit `OK (N tests` or `Tests: N,` with
 > N > 0 (PHPUnit 11 prints the latter when it reports deprecations) and Behat `N scenarios (` with N > 0.
@@ -335,7 +335,7 @@ real stack in the plan-4 envs, recorded as raw status codes in the PR descriptio
 > Wave W1 close-out (2026-11-02): plan marked completed with three items deliberately left OPEN because they cannot be verified inside wave W1, each with its owner:
 > (1) F3 and the criterion "block admin key against an assess:mint endpoint returns 403, the mint key 2xx": no `assess:mint` endpoint exists before plan assess-session-lifecycle (wave W3). `cli/smoke.php` is ready and exits 2 (BLOCKED) on a backend without it; re-run it when that endpoint lands. The equivalent property is already asserted in the backend on a live stack: a key holding `assess:mint` gets 403 ERR-AUTH-003 on the exact-scope setup-check route, and `admin` is refused wherever only `assess:*` is accepted (vektra-stack `vektra-assess/tests/integration/test_setup_check_api.py`, `vektra-shared` auth tests).
 > (2) "CI runs phpunit, behat, mustache, phpdoc on both matrix legs and fails on 0 tests" and the CI half of "Install succeeds": GitHub Actions only; the first run of the workflows on the PR is the evidence. Behat, phpdoc and PHP 8.4 were not run locally.
-> (3) `BLOCK_VEKTRA_REF` still defaults to `develop` until a block_vektra release containing the zip fix is tagged.
+> (3) `BLOCK_VEKTRA_REF` was `develop` until a block_vektra release containing the zip fix is tagged. Since 2026-11-03 it is pinned to commit `03e5b12640865c72931a26507f9941fa825a605b` (the merge of vektra-moodle PR #42, block_vektra 0.6.2). Replace the SHA with a `v*` tag once block_vektra 0.6.2 is tagged.
 
 > Note (independent review, 2026-11-03): (a) MEDIUM fixed: `assert_path()` now rejects `%2e`, `%2f` and `%5c` in
 > any case, and any `%` that does not start a valid escape; the four reported paths plus upper-case, backslash,

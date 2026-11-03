@@ -50,7 +50,8 @@ if [ -n "${unexpected}" ]; then
   fail=1
 fi
 
-# Forbidden entries: development artefacts and anything that could hold secrets.
+# Forbidden entries (second layer, also catches artefacts nested inside allowed directories): development
+# and tooling directories, local notes and .env files. It is not a secret scanner.
 forbidden="$(grep -E '(^|/)(\.s2s|\.claude|\.github|\.superpowers|docker[^/]*|n8n|spike)/|(^|/)CTX-MEMORY\.md$|(^|/)\.env' <<<"${list}" || true)"
 if [ -n "${forbidden}" ]; then
   echo "::error::Forbidden paths in the zip:"
