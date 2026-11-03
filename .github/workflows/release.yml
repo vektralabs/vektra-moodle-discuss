@@ -1,0 +1,35 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create release with zip
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Tracked files only (an untracked .env can never leak); .gitattributes export-ignore
+      # drops .github/, .s2s/, .claude/, docker*/, spike/ and local notes.
+      # The tag must be v<release> from version.php: a tag/version mismatch ships a zip that lies.
+      - name: Assert the tag matches version.php
+        run: bash ./.github/scripts/assert-release-tag.sh "$GITHUB_REF_NAME" version.php
+
+      - name: Build Moodle plugin zip
+        run: git archive --format=zip --prefix=vektradiscuss/ -o "$RUNNER_TEMP/vektradiscuss.zip" HEAD
+
+      - name: Validate zip content
+        run: bash ./.github/scripts/assert-release-zip.sh "$RUNNER_TEMP/vektradiscuss.zip" vektradiscuss
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ runner.temp }}/vektradiscuss.zip
+          generate_release_notes: true

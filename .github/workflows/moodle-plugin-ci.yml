@@ -1,0 +1,165 @@
+name: Moodle Plugin CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      block_vektra_ref:
+        description: 'block_vektra ref: a v* tag or a commit SHA (a branch is refused on main)'
+        required: false
+        default: '03e5b12640865c72931a26507f9941fa825a605b'
+
+permissions:
+  contents: read
+
+env:
+  # The block_vektra dependency (version.php: 2026103001 = 0.6.2). Pinning rule, enforced by
+  # .github/scripts/checkout-block-vektra.sh:
+  #   - main, tags and pull requests to main: a v* tag or a 40-hex commit SHA (a branch fails the job);
+  #   - develop and pull requests to develop: a branch is tolerated, and the commit it resolved to is
+  #     printed in the log; the job fails if the block's version is lower than the one required.
+  # Override per run with the workflow_dispatch input. 0.6.2 is not tagged yet (latest v0.6.0), so the
+  # default is a commit SHA of vektra-moodle develop, not a tag and not the moving branch: runs stay
+  # reproducible and the pin is valid on main and on pull requests to main too. The pinned commit is the
+  # merge of vektra-moodle PR #42 (block_vektra 2026103001 = 0.6.2, release-zip fix included).
+  # To update: take the 40-hex SHA of a newer vektra-moodle develop commit (git rev-parse origin/develop),
+  # check that its version.php is >= the block_vektra version in this plugin's version.php dependencies,
+  # and replace the SHA here and in the workflow_dispatch default above. Once 0.6.2 is tagged, a v* tag
+  # can replace it.
+  BLOCK_VEKTRA_REF: ${{ inputs.block_vektra_ref || '03e5b12640865c72931a26507f9941fa825a605b' }}
+  BLOCK_VEKTRA_REPO: https://github.com/vektralabs/vektra-moodle.git
+
+jobs:
+  test:
+    name: Moodle ${{ matrix.moodle-branch }} / PHP ${{ matrix.php }}
+    runs-on: ubuntu-24.04
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: 'postgres'
+          POSTGRES_HOST_AUTH_METHOD: 'trust'
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 3
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # The two production servers: mooc.unical.it and elearning.unical.it.
+        include:
+          - moodle-branch: 'MOODLE_403_STABLE'
+            php: '8.2'
+          - moodle-branch: 'MOODLE_502_STABLE'
+            php: '8.4'
+
+    steps:
+      - name: Check out plugin
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          path: plugin
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: ${{ matrix.php }}
+          ini-values: max_input_vars=5000, opcache.enable_cli=1, opcache.jit=disable
+          coverage: none
+
+      - name: Initialise moodle-plugin-ci
+        run: |
+          composer create-project -n --no-dev --prefer-dist moodlehq/moodle-plugin-ci ci ^4
+          echo $(cd ci/bin; pwd) >> $GITHUB_PATH
+          echo $(cd ci/vendor/bin; pwd) >> $GITHUB_PATH
+          sudo locale-gen en_AU.UTF-8
+          echo "NVM_DIR=$HOME/.nvm" >> $GITHUB_ENV
+
+      # The dependency declared in version.php must be installed before this plugin: check it out at a
+      # pinned ref, verify its version, and hand it to the installer as an extra plugin.
+      - name: Check out the block_vektra dependency
+        run: |
+          if [ "$GITHUB_REF" = refs/heads/main ] || [[ "$GITHUB_REF" == refs/tags/* ]] || [ "$GITHUB_BASE_REF" = main ]; then
+            mode=strict
+          else
+            mode=lenient
+          fi
+          bash ./plugin/.github/scripts/checkout-block-vektra.sh "$BLOCK_VEKTRA_REPO" "$BLOCK_VEKTRA_REF" "$mode" \
+            "$GITHUB_WORKSPACE/extra-plugins/block_vektra" ./plugin/version.php
+
+      # Installs Moodle and the plugin from scratch: fails if version.php
+      # rejects this Moodle release or the plugin breaks the install.
+      - name: Install Moodle and plugin
+        run: moodle-plugin-ci install --plugin ./plugin --extra-plugins="$GITHUB_WORKSPACE/extra-plugins" --db-host=127.0.0.1
+        env:
+          DB: pgsql
+          MOODLE_BRANCH: ${{ matrix.moodle-branch }}
+
+      - name: PHP lint
+        if: ${{ !cancelled() }}
+        run: moodle-plugin-ci phplint
+
+      - name: Moodle Code Checker
+        if: ${{ !cancelled() }}
+        run: moodle-plugin-ci phpcs --max-warnings 0
+
+      - name: Moodle PHPDoc Checker
+        if: ${{ !cancelled() }}
+        run: moodle-plugin-ci phpdoc
+
+      - name: Validate plugin structure
+        if: ${{ !cancelled() }}
+        run: moodle-plugin-ci validate
+
+      - name: Check upgrade savepoints
+        if: ${{ !cancelled() }}
+        run: moodle-plugin-ci savepoints
+
+      - name: Mustache lint
+        if: ${{ !cancelled() }}
+        run: moodle-plugin-ci mustache
+
+      # Checks that the committed amd/build matches amd/src (no JS yet: passes trivially).
+      - name: Grunt
+        if: ${{ !cancelled() }}
+        run: moodle-plugin-ci grunt --max-lint-warnings 0
+
+      # moodle-plugin-ci passes on "no tests found"; the guard turns an empty suite into a failure.
+      - name: PHPUnit tests
+        id: phpunit
+        if: ${{ !cancelled() }}
+        run: |
+          set -o pipefail
+          moodle-plugin-ci phpunit --fail-on-warning 2>&1 | tee "$RUNNER_TEMP/phpunit.log"
+          if ! grep -Eq '^OK \([1-9][0-9]* tests?,|^Tests: [1-9][0-9]*,' "$RUNNER_TEMP/phpunit.log"; then
+            echo "::error::PHPUnit executed 0 tests for local_vektradiscuss (empty suite)"
+            exit 1
+          fi
+
+      - name: Behat features
+        id: behat
+        if: ${{ !cancelled() }}
+        run: |
+          set -o pipefail
+          moodle-plugin-ci behat --profile chrome 2>&1 | tee "$RUNNER_TEMP/behat.log"
+          if ! grep -Eq '^[1-9][0-9]* scenarios? \(' "$RUNNER_TEMP/behat.log"; then
+            echo "::error::Behat executed 0 scenarios for local_vektradiscuss (empty suite)"
+            exit 1
+          fi
+
+      - name: Upload Behat faildump
+        if: ${{ failure() && steps.behat.outcome == 'failure' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: Behat faildump (${{ matrix.moodle-branch }}, PHP ${{ matrix.php }})
+          path: ${{ github.workspace }}/moodledata/behat_dump
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Mark cancelled jobs as failed
+        if: ${{ cancelled() }}
+        run: exit 1

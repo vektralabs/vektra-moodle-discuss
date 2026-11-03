@@ -1,0 +1,4 @@
+# moodle-plugin-ci configuration. spike/ holds the OQ-025 spike tooling (not plugin code, not shipped).
+filter:
+  notPaths:
+    - spike

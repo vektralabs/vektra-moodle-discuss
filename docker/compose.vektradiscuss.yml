@@ -1,0 +1,20 @@
+# Mounts this repository read-only as local/vektradiscuss in the Moodle 4.3 / 5.2 dev environments of the
+# vektra-moodle repository (docker/compose.moodle.yml), next to block_vektra at blocks/vektra. Dev only.
+#
+#   export DISCUSS_PLUGIN_DIR=/absolute/path/to/vektra-moodle-discuss
+#   cd /path/to/vektra-moodle/docker
+#   docker compose -f compose.moodle.yml -f "$DISCUSS_PLUGIN_DIR/docker/compose.vektradiscuss.yml" \
+#       --env-file env.43 up -d           # Moodle 4.3, docroot /var/www/html
+#   docker compose -f compose.moodle.yml -f "$DISCUSS_PLUGIN_DIR/docker/compose.vektradiscuss.yml" \
+#       --env-file env.52 up -d           # Moodle 5.2, docroot /var/www/html/public
+#
+# MOODLE_DOCROOT comes from the env file, so the mount follows the web docroot (public/local in 5.x).
+# Then install the plugin:  docker exec <container> php /var/www/html/admin/cli/upgrade.php --non-interactive
+#
+# Note: running this against containers that already exist recreates them (the compose file changes);
+# the composer dev dependencies installed inside a container are lost when that happens. To add the plugin
+# to a running environment without recreating it, copy it in instead (docker cp, see docker/README.md).
+services:
+  moodle:
+    volumes:
+      - ${DISCUSS_PLUGIN_DIR:?set DISCUSS_PLUGIN_DIR to the absolute path of vektra-moodle-discuss}:${MOODLE_DOCROOT}/local/vektradiscuss:ro
