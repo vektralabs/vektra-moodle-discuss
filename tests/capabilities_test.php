@@ -68,4 +68,45 @@ final class capabilities_test extends \advanced_testcase {
         $this->assertEquals(RISK_CONFIG, $caps['local/vektradiscuss:setupcheck']->riskbitmask);
         $this->assertEquals(0, $caps['local/vektradiscuss:start']->riskbitmask);
     }
+
+    /**
+     * The archetype roles that hold a capability by default (system context grants).
+     *
+     * @param string $capability Capability name.
+     * @return string[] Sorted archetype names.
+     */
+    private function default_archetypes(string $capability): array {
+        global $DB;
+        $sql = "SELECT DISTINCT r.archetype
+                  FROM {role_capabilities} rc
+                  JOIN {role} r ON r.id = rc.roleid
+                 WHERE rc.capability = :cap AND rc.contextid = :ctx AND rc.permission = :perm AND r.archetype <> ''";
+        $archetypes = $DB->get_fieldset_sql($sql, [
+            'cap' => $capability,
+            'ctx' => \context_system::instance()->id,
+            'perm' => CAP_ALLOW,
+        ]);
+        sort($archetypes);
+        return $archetypes;
+    }
+
+    /**
+     * Who gets each capability by default: students start and read their own transcript, teachers read
+     * transcripts, only editing teachers and managers manage and configure, only managers run the setup check.
+     */
+    public function test_default_role_grants(): void {
+        $this->resetAfterTest();
+
+        $expected = [
+            'local/vektradiscuss:start' => ['student'],
+            'local/vektradiscuss:viewowntranscript' => ['student'],
+            'local/vektradiscuss:viewtranscripts' => ['editingteacher', 'manager', 'teacher'],
+            'local/vektradiscuss:manage' => ['editingteacher', 'manager'],
+            'local/vektradiscuss:configure' => ['editingteacher', 'manager'],
+            'local/vektradiscuss:setupcheck' => ['manager'],
+        ];
+        foreach ($expected as $capability => $archetypes) {
+            $this->assertSame($archetypes, $this->default_archetypes($capability), $capability);
+        }
+    }
 }
