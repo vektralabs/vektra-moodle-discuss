@@ -237,7 +237,44 @@ final class assess_client_test extends \advanced_testcase {
             'query smuggled in path' => ['/api/v1/assess/x?token=1'],
             'newline' => ["/api/v1/assess/x\r\nX-Evil: 1"],
             'double slash' => ['/api/v1/assess//x'],
+            'encoded traversal 1' => ['/api/v1/assess/..%2f..%2fadmin'],
+            'encoded traversal 2' => ['/api/v1/assess/%2e%2e%2fadmin'],
+            'encoded traversal upper' => ['/api/v1/assess/..%2Fadmin'],
+            'encoded traversal inner' => ['/api/v1/assess/a%2f..%2f..%2fadmin'],
+            'encoded dot upper' => ['/api/v1/assess/%2E%2E/admin'],
+            'encoded slash alone' => ['/api/v1/assess/a%2Fb'],
+            'encoded backslash' => ['/api/v1/assess/a%5Cb'],
+            'encoded backslash lower' => ['/api/v1/assess/..%5c..%5cadmin'],
+            'bare percent' => ['/api/v1/assess/50%'],
+            'broken escape' => ['/api/v1/assess/a%zzb'],
         ];
+    }
+
+    /**
+     * Data provider: paths built with rawurlencode() that must keep working.
+     *
+     * @return array
+     */
+    public static function valid_path_provider(): array {
+        return [
+            'uuid' => ['/api/v1/assess/sessions/' . rawurlencode('3f2b8c1e-6a4d-4e0b-9d57-0c1f2a3b4c5d') . '/token'],
+            'int id' => ['/api/v1/assess/sites/' . rawurlencode('42') . '/setup-check'],
+            'space in id' => ['/api/v1/assess/sites/' . rawurlencode('a b') . '/x'],
+            'encoded colon and at' => ['/api/v1/assess/x/' . rawurlencode('a:b@c') . '/y'],
+            'plain' => ['/api/v1/assess/transcripts/t1/download'],
+        ];
+    }
+
+    /**
+     * Legitimate encoded identifiers (no separators, no dots) are accepted.
+     *
+     * @dataProvider valid_path_provider
+     * @param string $path
+     */
+    public function test_valid_paths_accepted(string $path): void {
+        $this->transport->respond(200, []);
+
+        $this->assertTrue($this->client()->request('GET', $path)->ok());
     }
 
     /**

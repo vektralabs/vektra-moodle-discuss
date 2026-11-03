@@ -53,7 +53,7 @@ jobs:
         run: git archive --format=zip --prefix=vektradiscuss/ -o "$RUNNER_TEMP/vektradiscuss.zip" HEAD
 
       - name: Self-test the release tag assertion
-        run: ./.github/scripts/test-release-tag.sh
+        run: bash ./.github/scripts/test-release-tag.sh
 
       - name: Validate zip content
-        run: ./.github/scripts/assert-release-zip.sh "$RUNNER_TEMP/vektradiscuss.zip" vektradiscuss
+        run: bash ./.github/scripts/assert-release-zip.sh "$RUNNER_TEMP/vektradiscuss.zip" vektradiscuss

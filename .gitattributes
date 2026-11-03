@@ -12,3 +12,4 @@ CTX-MEMORY.md   export-ignore
 .gitattributes  export-ignore
 .gitignore      export-ignore
 .moodle-plugin-ci.yml export-ignore
+cli/            export-ignore

@@ -82,7 +82,7 @@ jobs:
           else
             mode=lenient
           fi
-          ./plugin/.github/scripts/checkout-block-vektra.sh "$BLOCK_VEKTRA_REPO" "$BLOCK_VEKTRA_REF" "$mode" \
+          bash ./plugin/.github/scripts/checkout-block-vektra.sh "$BLOCK_VEKTRA_REPO" "$BLOCK_VEKTRA_REF" "$mode" \
             "$GITHUB_WORKSPACE/extra-plugins/block_vektra" ./plugin/version.php
 
       # Installs Moodle and the plugin from scratch: fails if version.php

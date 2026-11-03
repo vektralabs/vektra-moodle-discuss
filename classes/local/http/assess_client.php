@@ -261,6 +261,10 @@ class assess_client {
         $valid = str_starts_with($path, self::PATH_PREFIX)
             && preg_match('#^/api/v1/assess/[A-Za-z0-9._~%!$&\'()*+,;=:@/-]*$#', $path)
             && !preg_match('#(^|/)(\.|%2e){2}(/|$)#i', $path)
+            // Encoded dots, slashes and backslashes: a server that decodes them would leave the prefix.
+            && !preg_match('#%(2e|2f|5c)#i', $path)
+            // Every percent sign must start a valid escape.
+            && !preg_match('#%(?![0-9A-Fa-f]{2})#', $path)
             && !str_contains($path, '//');
         if (!$valid) {
             throw new \coding_exception('assess_client only calls ' . self::PATH_PREFIX . '* paths: ' . $path);

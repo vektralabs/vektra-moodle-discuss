@@ -336,3 +336,17 @@ real stack in the plan-4 envs, recorded as raw status codes in the PR descriptio
 > (1) F3 and the criterion "block admin key against an assess:mint endpoint returns 403, the mint key 2xx": no `assess:mint` endpoint exists before plan assess-session-lifecycle (wave W3). `cli/smoke.php` is ready and exits 2 (BLOCKED) on a backend without it; re-run it when that endpoint lands. The equivalent property is already asserted in the backend on a live stack: a key holding `assess:mint` gets 403 ERR-AUTH-003 on the exact-scope setup-check route, and `admin` is refused wherever only `assess:*` is accepted (vektra-stack `vektra-assess/tests/integration/test_setup_check_api.py`, `vektra-shared` auth tests).
 > (2) "CI runs phpunit, behat, mustache, phpdoc on both matrix legs and fails on 0 tests" and the CI half of "Install succeeds": GitHub Actions only; the first run of the workflows on the PR is the evidence. Behat, phpdoc and PHP 8.4 were not run locally.
 > (3) `BLOCK_VEKTRA_REF` still defaults to `develop` until a block_vektra release containing the zip fix is tagged.
+
+> Note (independent review, 2026-11-03): (a) MEDIUM fixed: `assert_path()` now rejects `%2e`, `%2f` and `%5c` in
+> any case, and any `%` that does not start a valid escape; the four reported paths plus upper-case, backslash,
+> bare-percent and broken-escape variants are in the `bad_path_provider`, and a `valid_path_provider` proves
+> `rawurlencode()` of a uuid, an int, a space and `a:b@c` still passes. Identifiers that legitimately contain a
+> slash or dot must therefore be passed as opaque ids by the caller, never as path fragments. (b) LOW decided:
+> `cli/smoke.php` is a dev/staging tool, so `cli/` is `export-ignore`d. `assert-release-zip.sh` now has an
+> allowlist of top-level files and directories (version.php, settings.php, lib.php, locallib.php, styles.css,
+> README.md, CHANGELOG.md, LICENSE, thirdpartylibs.xml, readme_moodle.txt; classes, db, lang, tests, amd,
+> templates, pix, backup) and fails closed on anything else; a zip with a planted `deploy.sh` and `secrets.yml`
+> exits 1, as does one with `cli/` or `x.php`, and the real zip exits 0. A new top-level entry must be added to
+> the allowlist on purpose. The workflows call the scripts with `bash ./.github/scripts/...` instead of relying on
+> the exec bit. Not addressed: the reviewer's open items (capability enforcement, attempt ownership, server-side
+> `%2f` decoding) belong to later waves or to the Vektra repo.

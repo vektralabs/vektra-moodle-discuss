@@ -26,6 +26,30 @@ if grep -q "^${prefix}/amd/src/" <<<"${list}" && ! grep -q "^${prefix}/amd/build
   fail=1
 fi
 
+# Allowlist of the plugin surface, failing closed: any top-level entry that is not listed here is an
+# unanticipated artefact (a deploy script, a secrets file, a new tool) and fails the job. Adding a new
+# top-level file or directory to the plugin means adding it here on purpose.
+allow_files=${ALLOW_FILES:-"version.php settings.php lib.php locallib.php styles.css README.md CHANGELOG.md LICENSE thirdpartylibs.xml readme_moodle.txt"}
+allow_dirs=${ALLOW_DIRS:-"classes db lang tests amd templates pix backup"}
+unexpected=""
+while IFS= read -r entry; do
+  rel="${entry#"${prefix}"/}"
+  [ -z "${rel}" ] || [ "${entry}" = "${prefix}/" ] && continue
+  top="${rel%%/*}"
+  if [ "${top}" = "${rel}" ]; then
+    # A top-level name without a slash: must be an allowed file.
+    case " ${allow_files} " in *" ${top} "*) continue ;; esac
+  else
+    case " ${allow_dirs} " in *" ${top} "*) continue ;; esac
+  fi
+  unexpected="${unexpected}${entry}"$'\n'
+done <<<"${list}"
+if [ -n "${unexpected}" ]; then
+  echo "::error::Entries outside the plugin allowlist (fail closed):"
+  printf '%s' "${unexpected}"
+  fail=1
+fi
+
 # Forbidden entries: development artefacts and anything that could hold secrets.
 forbidden="$(grep -E '(^|/)(\.s2s|\.claude|\.github|\.superpowers|docker[^/]*|n8n|spike)/|(^|/)CTX-MEMORY\.md$|(^|/)\.env' <<<"${list}" || true)"
 if [ -n "${forbidden}" ]; then
