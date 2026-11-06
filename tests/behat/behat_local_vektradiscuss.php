@@ -25,15 +25,31 @@
 // NOTE: no MOODLE_INTERNAL test here, this file may be required by behat before including /config.php.
 
 require_once(__DIR__ . '/../../../../lib/behat/behat_base.php');
-require_once(__DIR__ . '/../fixtures/behat_stub_transport.php');
 
 use Behat\Mink\Exception\ExpectationException;
-use local_vektradiscuss\tests\behat_stub_transport;
 
 /**
  * Steps that configure the Vektra assess stub and read its request log.
  */
 class behat_local_vektradiscuss extends behat_base {
+    /** @var string Config name of the stub's request log (same as self::STUB_LOG). */
+    private const STUB_LOG = 'behatstublog';
+
+    /** @var string Config name prefix of a state fixture (same as self::STUB_STATE). */
+    private const STUB_STATE = 'behatstubstate_';
+
+    /**
+     * The requests recorded by the stub.
+     *
+     * Read from the config row directly: this file is loaded before Moodle's autoloader, so it must not
+     * load the stub class (which implements a plugin interface).
+     *
+     * @return array[]
+     */
+    private static function stub_log(): array {
+        $log = json_decode((string) get_config('local_vektradiscuss', self::STUB_LOG), true);
+        return is_array($log) ? $log : [];
+    }
     /**
      * Turn the plugin on against the stub: an https API URL and a UI origin distinct from wwwroot, two
      * dedicated keys, an empty request log. No request leaves the site.
@@ -48,7 +64,7 @@ class behat_local_vektradiscuss extends behat_base {
         set_config('uiurl', 'https://ui-stub.invalid', 'local_vektradiscuss');
         set_config('enabled', 1, 'local_vektradiscuss');
         set_config('behatstub', 1, 'local_vektradiscuss');
-        set_config(behat_stub_transport::LOG, '[]', 'local_vektradiscuss');
+        set_config(self::STUB_LOG, '[]', 'local_vektradiscuss');
     }
 
     /**
@@ -100,7 +116,7 @@ class behat_local_vektradiscuss extends behat_base {
      * @param string $path
      */
     public function the_stub_received_requests_to(int $count, string $path): void {
-        $actual = count(array_filter(behat_stub_transport::log(), fn(array $r): bool => $r['path'] === $path));
+        $actual = count(array_filter(self::stub_log(), fn(array $r): bool => $r['path'] === $path));
         if ($actual !== $count) {
             throw new ExpectationException(
                 "The stub received {$actual} requests to {$path}, expected {$count}",
@@ -116,7 +132,7 @@ class behat_local_vektradiscuss extends behat_base {
      * @param int $count
      */
     public function the_stub_received_in_total(int $count): void {
-        $actual = count(behat_stub_transport::log());
+        $actual = count(self::stub_log());
         if ($actual !== $count) {
             throw new ExpectationException("The stub received {$actual} requests, expected {$count}", $this->getSession());
         }
@@ -128,7 +144,7 @@ class behat_local_vektradiscuss extends behat_base {
      * @Then /^every Vektra assess stub mint asserted no login-as$/
      */
     public function every_mint_asserted_no_loginas(): void {
-        foreach (behat_stub_transport::log() as $request) {
+        foreach (self::stub_log() as $request) {
             if ($request['path'] !== '/api/v1/assess/tokens') {
                 continue;
             }
@@ -181,7 +197,7 @@ class behat_local_vektradiscuss extends behat_base {
         if (!$cm) {
             throw new ExpectationException("No activity with idnumber {$idnumber}", $this->getSession());
         }
-        set_config(behat_stub_transport::STATE . $cm->id, json_encode($fixture), 'local_vektradiscuss');
+        set_config(self::STUB_STATE . $cm->id, json_encode($fixture), 'local_vektradiscuss');
     }
 
     /**
