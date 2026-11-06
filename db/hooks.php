@@ -30,6 +30,7 @@ defined('MOODLE_INTERNAL') || die();
 $callbacks = [
     [
         'hook' => \core\hook\output\before_footer_html_generation::class,
-        'callback' => [\local_vektradiscuss\local\hook_callbacks::class, 'before_footer'],
+        // A "class::method" string: the 4.3 hook manager refuses the array form with a debugging message.
+        'callback' => \local_vektradiscuss\local\hook_callbacks::class . '::before_footer',
     ],
 ];

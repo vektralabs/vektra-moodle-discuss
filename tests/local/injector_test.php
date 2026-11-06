@@ -114,4 +114,18 @@ final class injector_test extends \advanced_testcase {
         role_assign($roleid, $this->student->id, $context->id);
         $this->assertSame('', injector::inject($page));
     }
+
+    /**
+     * db/hooks.php uses the "class::method" string form, the only one the Moodle 4.3 hook manager accepts,
+     * and it points to an existing static method.
+     */
+    public function test_hook_definition_is_43_compatible(): void {
+        $callbacks = [];
+        require(__DIR__ . '/../../db/hooks.php');
+        $this->assertCount(1, $callbacks);
+        $this->assertSame('core\\hook\\output\\before_footer_html_generation', ltrim($callbacks[0]['hook'], '\\'));
+        $this->assertIsString($callbacks[0]['callback']);
+        [$class, $method] = explode('::', $callbacks[0]['callback']);
+        $this->assertTrue(is_callable([$class, $method]));
+    }
 }
