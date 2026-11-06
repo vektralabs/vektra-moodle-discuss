@@ -71,6 +71,28 @@ final class state_dto_test extends \advanced_testcase {
     }
 
     /**
+     * The closing date (state 6) and the end date (state 11) are kept only in their own state and rendered.
+     */
+    public function test_closed_and_ended_dates(): void {
+        $this->resetAfterTest();
+        $iso = '2026-12-01T10:00:00Z';
+        $closed = state_dto::from_vektra(['state' => 'closed', 'closed_at' => $iso, 'ended_at' => $iso]);
+        $this->assertSame(gmmktime(10, 0, 0, 12, 1, 2026), $closed['closed_at']);
+        $this->assertArrayNotHasKey('ended_at', $closed);
+        $ended = state_dto::from_vektra(['state' => 'ended', 'ended_at' => $iso, 'closed_at' => $iso]);
+        $this->assertSame(gmmktime(10, 0, 0, 12, 1, 2026), $ended['ended_at']);
+        $this->assertArrayNotHasKey('closed_at', $ended);
+        $this->assertArrayNotHasKey('closed_at', state_dto::from_vektra(['state' => 'closed', 'closed_at' => 'yesterday']));
+
+        $date = userdate($ended['ended_at'], get_string('strftimedatetime', 'langconfig'));
+        $this->assertSame(get_string('state_ended_date', 'local_vektradiscuss', $date), state_view::context($ended, 7)['message']);
+        $this->assertSame(
+            get_string('state_ended', 'local_vektradiscuss'),
+            state_view::context(['state' => 'ended', 'reason' => null], 7)['message']
+        );
+    }
+
+    /**
      * The full schema agreed with vektra-stack (plan 9/10 fields) is kept, typed and bounded.
      */
     public function test_full_schema(): void {

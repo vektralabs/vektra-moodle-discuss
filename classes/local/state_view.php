@@ -102,10 +102,19 @@ final class state_view {
                 return get_string('state_not_selected', self::C, $dto['selected_attempt_no']);
             case 'eligible':
             case 'reset_granted':
-            case 'not_graded':
             case 'closed':
-            case 'loginas':
             case 'ended':
+                $field = $state === 'closed' ? 'closed_at' : 'ended_at';
+                if (isset($dto[$field])) {
+                    return get_string(
+                        'state_' . $state . '_date',
+                        self::C,
+                        userdate($dto[$field], get_string('strftimedatetime', 'langconfig'))
+                    );
+                }
+                return get_string('state_' . $state, self::C);
+            case 'not_graded':
+            case 'loginas':
             case 'not_enabled':
                 return get_string('state_' . $state, self::C);
             default:

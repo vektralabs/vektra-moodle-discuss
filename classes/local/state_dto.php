@@ -68,6 +68,13 @@ final class state_dto {
     /** @var string[] States in which Vektra may send transcript links. */
     private const TRANSCRIPT_STATES = ['closed', 'reset_granted', 'ended'];
 
+    /** @var string[] Render state => the date field Vektra may send in it (ISO-8601, optional). */
+    private const DATE_FIELDS = [
+        'not_open' => 'opens_at',
+        'closed' => 'closed_at',
+        'ended' => 'ended_at',
+    ];
+
     /** @var string[] Predicted readability of a submitted file. */
     private const FILE_PREDICTIONS = ['readable', 'partial', 'unreadable'];
 
@@ -91,7 +98,7 @@ final class state_dto {
      * Normalise the decoded body of GET /state.
      *
      * @param mixed $json Decoded JSON (anything: it is validated here).
-     * @return array Keys: state, reason, and optionally opens_at (int timestamp), session_no_next,
+     * @return array Keys: state, reason, and optionally opens_at, closed_at or ended_at (int timestamps), session_no_next,
      *         active, selected_attempt_no, pre_session, transcripts.
      */
     public static function from_vektra($json): array {
@@ -106,10 +113,12 @@ final class state_dto {
 
         $dto = ['state' => $state, 'reason' => self::code($json['reason'] ?? null)];
 
-        if ($state === 'not_open') {
-            $opens = self::timestamp($json['opens_at'] ?? null);
-            if ($opens !== null) {
-                $dto['opens_at'] = $opens;
+        // One date per state, only in the state it belongs to: state 3 opening, state 6 closing, state 11 end.
+        $datefield = self::DATE_FIELDS[$state] ?? null;
+        if ($datefield !== null) {
+            $date = self::timestamp($json[$datefield] ?? null);
+            if ($date !== null) {
+                $dto[$datefield] = $date;
             }
         }
         $next = self::count($json['session_no_next'] ?? null, 2);
