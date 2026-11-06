@@ -41,13 +41,16 @@ class behat_local_vektradiscuss extends behat_base {
     /**
      * The requests recorded by the stub.
      *
-     * Read from the config row directly: this file is loaded before Moodle's autoloader, so it must not
-     * load the stub class (which implements a plugin interface).
+     * Read from the config_plugins row directly: this file is loaded before Moodle's autoloader, so it must
+     * not load the stub class (which implements a plugin interface).
      *
      * @return array[]
      */
     private static function stub_log(): array {
-        $log = json_decode((string) get_config('local_vektradiscuss', self::STUB_LOG), true);
+        global $DB;
+        // Straight from the table: get_config() may return a copy cached before the browser's requests.
+        $value = $DB->get_field('config_plugins', 'value', ['plugin' => 'local_vektradiscuss', 'name' => self::STUB_LOG]);
+        $log = json_decode((string) $value, true);
         return is_array($log) ? $log : [];
     }
     /**

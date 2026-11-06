@@ -58,7 +58,10 @@ class behat_stub_transport implements transport {
      * @return array[]
      */
     public static function log(): array {
-        $log = json_decode((string) get_config(self::COMPONENT, self::LOG), true);
+        global $DB;
+        // Straight from the table: the Behat process may hold a cached copy from before the browser's requests.
+        $value = $DB->get_field('config_plugins', 'value', ['plugin' => self::COMPONENT, 'name' => self::LOG]);
+        $log = json_decode((string) $value, true);
         return is_array($log) ? $log : [];
     }
 

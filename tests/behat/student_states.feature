@@ -60,7 +60,8 @@ Feature: Student entry point states
   Scenario Outline: Not enabled renders nothing
     Given the Vektra assess stub returns state "not_enabled" for "<activity>"
     When I am on the "<activity>" Activity page logged in as student1
-    Then ".local-vektradiscuss-panel" "css_element" should not exist
+    Then I wait until "[data-region='local_vektradiscuss'][data-state='not_enabled']" "css_element" exists
+    And ".local-vektradiscuss-panel" "css_element" should not exist
     And the Vektra assess stub received 1 request to "/api/v1/assess/state"
 
     Examples:
