@@ -301,9 +301,15 @@ final class state_dto {
             return null;
         }
         try {
-            return (new \DateTimeImmutable($value))->getTimestamp();
+            $date = new \DateTimeImmutable($value);
         } catch (\Exception $e) {
             return null;
         }
+        // A calendar overflow (2026-02-30) parses with a warning and rolls over: never show a date Vektra did not send.
+        $errors = \DateTimeImmutable::getLastErrors();
+        if ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0)) {
+            return null;
+        }
+        return $date->getTimestamp();
     }
 }

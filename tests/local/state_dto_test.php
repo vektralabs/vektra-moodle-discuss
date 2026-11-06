@@ -66,6 +66,9 @@ final class state_dto_test extends \advanced_testcase {
         $dto = state_dto::from_vektra(['state' => 'not_open', 'opens_at' => '2026-12-01T10:00:00+00:00']);
         $this->assertSame(gmmktime(10, 0, 0, 12, 1, 2026), $dto['opens_at']);
         $this->assertArrayNotHasKey('opens_at', state_dto::from_vektra(['state' => 'not_open', 'opens_at' => 'tomorrow']));
+        // A calendar overflow would roll into March: refused, not normalised.
+        $overflow = state_dto::from_vektra(['state' => 'not_open', 'opens_at' => '2026-02-30T10:00:00Z']);
+        $this->assertArrayNotHasKey('opens_at', $overflow);
         $eligible = state_dto::from_vektra(['state' => 'eligible', 'opens_at' => '2026-12-01T10:00:00Z']);
         $this->assertArrayNotHasKey('opens_at', $eligible);
     }
