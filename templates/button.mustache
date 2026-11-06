@@ -1,0 +1,75 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_vektradiscuss/button
+
+    The student entry point on the results page: status sentence and button (REQ-068).
+
+    A disabled button stays focusable (aria-disabled, not disabled) and exposes its reason through
+    aria-describedby. State 1 (not enabled) renders nothing.
+
+    Context variables required for this template:
+    * visible - whether anything is rendered
+    * uniqid - unique id prefix
+    * state - render state code
+    * statenumber - REQ-068 state number
+    * heading - section heading
+    * message - status sentence
+    * enabled - whether the button acts
+    * canstart - the button opens the pre-session screen
+    * canresume - the button resumes the open session
+    * buttonlabel - button text
+    * suggestcopy - show the "download a copy" suggestion (state 6)
+
+    Example context (json):
+    {
+        "visible": true,
+        "uniqid": "local-vektradiscuss-12",
+        "state": "eligible",
+        "statenumber": 4,
+        "heading": "Assessment discussion",
+        "message": "You can discuss this assessment with the assistant.",
+        "enabled": true,
+        "canstart": true,
+        "canresume": false,
+        "buttonlabel": "Discuss this assessment",
+        "suggestcopy": false
+    }
+}}
+{{#visible}}
+<section class="local-vektradiscuss-panel card my-3" aria-labelledby="{{uniqid}}-heading" data-state="{{state}}" data-statenumber="{{statenumber}}">
+    <div class="card-body">
+        <h3 class="h5 card-title" id="{{uniqid}}-heading">{{heading}}</h3>
+        <p class="mb-2" id="{{uniqid}}-message">{{message}}</p>
+        {{#suggestcopy}}
+            <p class="mb-2">{{#str}}state_closed_copy, local_vektradiscuss{{/str}}</p>
+        {{/suggestcopy}}
+        {{#canstart}}
+            <button type="button" class="btn btn-primary" data-action="local_vektradiscuss-start" aria-describedby="{{uniqid}}-message">{{buttonlabel}}</button>
+        {{/canstart}}
+        {{#canresume}}
+            <button type="button" class="btn btn-primary" data-action="local_vektradiscuss-resume" aria-describedby="{{uniqid}}-message">{{buttonlabel}}</button>
+        {{/canresume}}
+        {{^enabled}}
+            {{^suggestcopy}}
+                <button type="button" class="btn btn-secondary" aria-disabled="true" aria-describedby="{{uniqid}}-message">{{buttonlabel}}</button>
+            {{/suggestcopy}}
+        {{/enabled}}
+        <div class="local-vektradiscuss-frame mt-3" data-region="local_vektradiscuss-frame"></div>
+    </div>
+</section>
+{{/visible}}

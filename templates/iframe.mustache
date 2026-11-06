@@ -1,0 +1,34 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_vektradiscuss/iframe
+
+    The Vektra-origin discussion UI (ARCH-076). The URL carries no token: the token is handed over by
+    postMessage after the iframe announces itself. allow-same-origin is safe only because the UI
+    origin differs from the Moodle origin (checked server-side). No top navigation, no popups.
+
+    Context variables required for this template:
+    * src - UI URL on the Vektra UI origin
+    * title - accessible title
+
+    Example context (json):
+    {
+        "src": "https://ui.example.test/api/v1/assess/ui?cmid=12",
+        "title": "Assessment discussion"
+    }
+}}
+<iframe class="local-vektradiscuss-iframe w-100 border-0" src="{{src}}" title="{{title}}" sandbox="allow-scripts allow-same-origin allow-forms allow-downloads" referrerpolicy="no-referrer" allow="" style="min-height: 480px;"></iframe>
