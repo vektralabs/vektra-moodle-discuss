@@ -45,6 +45,12 @@ const MAX_HEIGHT = 4000;
  * @param {Function} onClosed Called when the UI reports the session closed.
  */
 export const open = async(container, config, onClosed) => {
+    // One discussion per panel: start and resume stay clickable, so a second click must not replace the live
+    // iframe (and leave its listener behind).
+    if (container.dataset.frameState) {
+        return;
+    }
+    container.dataset.frameState = 'opening';
     const origin = String(config.uiorigin);
     const src = origin + '/api/v1/assess/ui?cmid=' + encodeURIComponent(Number(config.cmid));
     const {html} = await Templates.renderForPromise('local_vektradiscuss/iframe', {
@@ -75,6 +81,7 @@ export const open = async(container, config, onClosed) => {
             }
             case 'vektra-assess-closed':
                 window.removeEventListener('message', onMessage);
+                delete container.dataset.frameState;
                 onClosed();
                 break;
             default:
@@ -82,6 +89,7 @@ export const open = async(container, config, onClosed) => {
         }
     };
     window.addEventListener('message', onMessage);
+    container.dataset.frameState = 'open';
 };
 
 /**
