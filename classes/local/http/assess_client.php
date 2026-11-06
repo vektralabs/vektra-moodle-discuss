@@ -75,7 +75,26 @@ class assess_client {
      */
     public function __construct(?config $config = null, ?transport $transport = null) {
         $this->config = $config ?? new config();
-        $this->transport = $transport ?? new curl_transport();
+        $this->transport = $transport ?? self::default_transport();
+    }
+
+    /**
+     * The network transport, or the in-site Vektra stub on a Behat site that turned it on.
+     *
+     * The stub is loaded only when BEHAT_SITE_RUNNING is defined (a Behat site, never production) and
+     * its setting is on; it replaces an HTTP stub because the CI web server would have to call itself.
+     *
+     * @return transport
+     */
+    private static function default_transport(): transport {
+        $stub = __DIR__ . '/../../../tests/fixtures/behat_stub_transport.php';
+        if (defined('BEHAT_SITE_RUNNING') && BEHAT_SITE_RUNNING && file_exists($stub)) {
+            require_once($stub);
+            if (\local_vektradiscuss\tests\behat_stub_transport::active()) {
+                return new \local_vektradiscuss\tests\behat_stub_transport();
+            }
+        }
+        return new curl_transport();
     }
 
     /**
