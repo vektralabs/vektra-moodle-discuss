@@ -100,6 +100,9 @@ final class injector_test extends \advanced_testcase {
         set_config('uiurl', 'https://moodle.example.test', 'local_vektradiscuss');
         $this->assertSame('', injector::inject($this->page('quiz', 'mod-quiz-view')));
         $this->assertSame('', injector::usable_ui_origin(new config()));
+        // The same origin written with its default port is still the same origin.
+        set_config('uiurl', 'https://moodle.example.test:443', 'local_vektradiscuss');
+        $this->assertSame('', injector::usable_ui_origin(new config()));
     }
 
     /**
