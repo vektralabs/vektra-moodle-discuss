@@ -242,7 +242,8 @@ class behat_local_vektradiscuss extends behat_base {
             . rawurlencode((string) get_config('local_vektradiscuss', 'siteid'));
         $checks = [
             'src' => [$iframe->getAttribute('src'), $expected],
-            'sandbox' => [$iframe->getAttribute('sandbox'), 'allow-scripts allow-same-origin allow-forms allow-downloads'],
+            'sandbox' => [$iframe->getAttribute('sandbox'), 'allow-scripts allow-same-origin allow-downloads'],
+            'allow' => [$iframe->getAttribute('allow'), 'clipboard-write'],
             'referrerpolicy' => [$iframe->getAttribute('referrerpolicy'), 'no-referrer'],
         ];
         foreach ($checks as $name => [$actual, $want]) {
