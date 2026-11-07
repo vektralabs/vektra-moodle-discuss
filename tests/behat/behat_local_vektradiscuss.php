@@ -200,22 +200,58 @@ class behat_local_vektradiscuss extends behat_base {
      */
     public function i_tab_to_the_button(string $label): void {
         $this->find_button_by_label($label);
-        $this->evaluate_script('document.activeElement && document.activeElement.blur(); window.scrollTo(0, 0);');
         $check = 'return (function(label) {'
             . ' var e = document.activeElement;'
             . ' return !!(e && e.tagName === "BUTTON" && e.closest(".local-vektradiscuss-panel")'
             . ' && e.textContent.trim() === label);'
             . '})(' . json_encode($label) . ');';
+        $this->tab_until($check, "\"{$label}\"");
+    }
+
+    /**
+     * Reach the discussion iframe with the Tab key only, from the top of the page.
+     *
+     * @When /^I tab to the Vektra discussion iframe$/
+     */
+    public function i_tab_to_the_iframe(): void {
+        $this->find('css', 'iframe.local-vektradiscuss-iframe');
+        $check = 'return !!(document.activeElement && document.activeElement.matches("iframe.local-vektradiscuss-iframe"));';
+        $this->tab_until($check, 'The discussion iframe');
+    }
+
+    /**
+     * The discussion iframe has a non-empty title equal to the expected name (axe rule frame-title).
+     *
+     * @Then /^the Vektra discussion iframe should have the accessible name "(?P<name>[^"]+)"$/
+     * @param string $name
+     */
+    public function the_iframe_should_have_the_name(string $name): void {
+        $iframe = $this->find('css', 'iframe.local-vektradiscuss-iframe');
+        $title = trim((string) $iframe->getAttribute('title'));
+        if ($title !== $name) {
+            throw new ExpectationException("The discussion iframe title is \"{$title}\", not \"{$name}\"", $this->getSession());
+        }
+        if ($iframe->getAttribute('tabindex') === '-1' || $iframe->getAttribute('aria-hidden') === 'true') {
+            throw new ExpectationException('The discussion iframe is hidden from keyboard or assistive technology',
+                $this->getSession());
+        }
+    }
+
+    /**
+     * Press Tab from the top of the page until a script returns true.
+     *
+     * @param string $check Script returning a boolean.
+     * @param string $what Name of the target for the failure message.
+     */
+    private function tab_until(string $check, string $what): void {
+        $this->evaluate_script('document.activeElement && document.activeElement.blur(); window.scrollTo(0, 0);');
         for ($i = 0; $i < self::MAX_TABS; $i++) {
             $this->execute('behat_general::i_press_named_key', ['', 'tab']);
             if ($this->evaluate_script($check)) {
                 return;
             }
         }
-        throw new ExpectationException(
-            "\"{$label}\" was not reached with " . self::MAX_TABS . ' Tab presses',
-            $this->getSession()
-        );
+        throw new ExpectationException("{$what} was not reached with " . self::MAX_TABS . ' Tab presses', $this->getSession());
     }
 
     /**
