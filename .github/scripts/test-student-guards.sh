@@ -27,7 +27,10 @@ expect() {
 expect wildcard-simple 1 amd/src/a.js "w.postMessage({a: 1}, '*');"
 expect wildcard-nested-payload 1 amd/src/a.js "w.postMessage(buildPayload(f(x)), '*');"
 expect wildcard-next-line 1 amd/src/a.js $'w.postMessage(\n    {type: "t", token: t},\n    "*"\n);'
+expect wildcard-backtick 1 amd/src/a.js 'w.postMessage({a: 1}, `*`);'
 expect no-target 1 amd/src/a.js "w.postMessage({a: 1});"
+expect no-target-trailing-comma 1 amd/src/a.js "w.postMessage({a: 1},);"
+expect wildcard-nested-dir 1 amd/src/sub/deep/a.js "w.postMessage({a: 1}, '*');"
 expect star-in-payload-only 0 amd/src/a.js "w.postMessage({glob: '*'}, origin);"
 expect star-in-comment-only 0 amd/src/a.js "// w.postMessage(x, '*');
 w.postMessage(x, origin);"
