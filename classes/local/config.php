@@ -175,8 +175,11 @@ class config {
         if (!is_array($parts) || empty($parts['scheme']) || empty($parts['host'])) {
             return '';
         }
-        $origin = strtolower($parts['scheme']) . '://' . strtolower($parts['host']);
-        if (!empty($parts['port'])) {
+        $scheme = strtolower($parts['scheme']);
+        $origin = $scheme . '://' . strtolower($parts['host']);
+        // The default port is omitted, as browsers do in event.origin: https://a.test:443 is https://a.test.
+        $defaults = ['https' => 443, 'http' => 80];
+        if (!empty($parts['port']) && (int) $parts['port'] !== ($defaults[$scheme] ?? 0)) {
             $origin .= ':' . $parts['port'];
         }
         return $origin;

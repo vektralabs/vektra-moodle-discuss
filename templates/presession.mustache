@@ -1,0 +1,76 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_vektradiscuss/presession
+
+    Body of the pre-session modal (REQ-068, REQ-093(a)). Dismissing it sends nothing.
+
+    Context variables required for this template:
+    * items - statements, each with text
+    * hasrecipients, recipients - transcript recipients (role, name)
+    * hasfiles, files - submitted files (name, status)
+    * privacysummary, privacyurl, privacyversion - privacy summary and notice link
+    * startlabel, cancellabel - action labels
+
+    Example context (json):
+    {
+        "items": [{"text": "Duration: 30 minutes."}, {"text": "The discussion does not change your grade."}],
+        "hasrecipients": true,
+        "recipients": [{"role": "Teacher", "name": "Mario Rossi"}],
+        "hasfiles": true,
+        "files": [{"name": "report.pdf", "status": "readable"}],
+        "privacysummary": "The conversation is processed by the Vektra assessment service.",
+        "privacyurl": "https://vektra.example.test/privacy",
+        "privacyversion": "2026-11",
+        "startlabel": "Start",
+        "cancellabel": "Not now"
+    }
+}}
+<div class="local-vektradiscuss-presession">
+    <ul>
+        {{#items}}
+            <li>{{text}}</li>
+        {{/items}}
+    </ul>
+    {{#hasrecipients}}
+        <p class="mb-1">{{#str}}pre_recipients, local_vektradiscuss{{/str}}</p>
+        <ul>
+            {{#recipients}}
+                <li>{{name}} ({{role}})</li>
+            {{/recipients}}
+        </ul>
+    {{/hasrecipients}}
+    {{#hasfiles}}
+        <h4 class="h6">{{#str}}pre_files_heading, local_vektradiscuss{{/str}}</h4>
+        <ul>
+            {{#files}}
+                <li>{{name}}: {{status}}</li>
+            {{/files}}
+        </ul>
+        <p>{{#str}}pre_files_note, local_vektradiscuss{{/str}}</p>
+    {{/hasfiles}}
+    <p>
+        {{privacysummary}}
+        {{#privacyurl}}
+            <a href="{{privacyurl}}" target="_blank" rel="noopener noreferrer">{{#str}}pre_privacy_link, local_vektradiscuss{{/str}}</a>{{#privacyversion}} ({{#str}}pre_privacy_version, local_vektradiscuss, {{privacyversion}}{{/str}}){{/privacyversion}}
+        {{/privacyurl}}
+    </p>
+    <div class="d-flex justify-content-end">
+        <button type="button" class="btn btn-secondary me-2 mr-2" data-action="local_vektradiscuss-cancel">{{cancellabel}}</button>
+        <button type="button" class="btn btn-primary" data-action="local_vektradiscuss-confirm">{{startlabel}}</button>
+    </div>
+</div>

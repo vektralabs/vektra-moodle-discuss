@@ -41,6 +41,22 @@ jobs:
             --report=checkstyle \
             . | cs2pr
 
+  student-guards:
+    name: Student path guards (no '*' postMessage, no storage, no server state)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Self-test the guards
+        run: bash ./.github/scripts/test-student-guards.sh
+
+      - name: Run the guards
+        run: bash ./.github/scripts/assert-student-guards.sh
+
   release-zip:
     name: Validate release zip structure
     needs: lint

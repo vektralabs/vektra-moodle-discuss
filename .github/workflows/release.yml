@@ -22,6 +22,10 @@ jobs:
       - name: Assert the tag matches version.php
         run: bash ./.github/scripts/assert-release-tag.sh "$GITHUB_REF_NAME" version.php
 
+      # The same source guards as ci.yml: a tag on a commit that fails them publishes nothing.
+      - name: Student path guards
+        run: bash ./.github/scripts/assert-student-guards.sh
+
       - name: Build Moodle plugin zip
         run: git archive --format=zip --prefix=vektradiscuss/ -o "$RUNNER_TEMP/vektradiscuss.zip" HEAD
 

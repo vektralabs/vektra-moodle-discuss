@@ -99,6 +99,10 @@ final class config_test extends \advanced_testcase {
         $this->assertSame('', config::origin_of('a.test'));
         $this->assertSame('', config::origin_of('/path'));
         $this->assertSame('', config::origin_of(''));
+        // Default ports are omitted, as browsers do in event.origin.
+        $this->assertSame('https://a.test', config::origin_of('https://a.test:443/x'));
+        $this->assertSame('http://a.test', config::origin_of('http://a.test:80'));
+        $this->assertSame('https://a.test:80', config::origin_of('https://a.test:80'));
     }
 
     /**
