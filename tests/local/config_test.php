@@ -79,15 +79,16 @@ final class config_test extends \advanced_testcase {
     }
 
     /**
-     * The UI origin: own setting wins; otherwise the origin of the block public URL.
+     * The UI origin comes from the plugin setting only: the block's public URL (the API host) is never used.
      */
-    public function test_ui_origin_fallback(): void {
+    public function test_ui_origin_no_fallback(): void {
+        set_config('apiurl', 'https://vektra.example.test', 'block_vektra');
         set_config('publicurl', 'https://Public.Example.test:8443/some/path', 'block_vektra');
         $config = new config();
-        $this->assertSame('https://public.example.test:8443', $config->ui_origin());
+        $this->assertSame('', $config->ui_origin());
 
-        set_config('uiurl', 'https://ui.example.test', 'local_vektradiscuss');
-        $this->assertSame('https://ui.example.test', $config->ui_origin());
+        set_config('uiurl', 'https://UI.Example.test:8443', 'local_vektradiscuss');
+        $this->assertSame('https://ui.example.test:8443', $config->ui_origin());
     }
 
     /**
@@ -183,18 +184,14 @@ final class config_test extends \advanced_testcase {
     }
 
     /**
-     * The UI origin is https only: an http value (saved earlier, or inherited from the block public URL)
-     * yields an empty origin, whatever $CFG->debugdeveloper says; only the explicit override allows it.
+     * The UI origin is https only: an http value (saved earlier) yields an empty origin, whatever
+     * $CFG->debugdeveloper says; only the explicit override allows it.
      */
     public function test_ui_origin_requires_https(): void {
         global $CFG;
         $CFG->debugdeveloper = true;
 
         set_config('uiurl', 'http://ui.example.test', 'local_vektradiscuss');
-        $this->assertSame('', (new config())->ui_origin());
-
-        set_config('uiurl', '', 'local_vektradiscuss');
-        set_config('publicurl', 'http://public.example.test:8080/x', 'block_vektra');
         $this->assertSame('', (new config())->ui_origin());
 
         set_config('uiurl', 'https://ui.example.test', 'local_vektradiscuss');
