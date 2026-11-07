@@ -124,9 +124,14 @@ const handToken = async(iframe, origin, config) => {
     } catch (e) {
         minted = null;
     }
-    if (!minted || minted.state !== 'ready' || minted.uiorigin !== origin || typeof minted.token !== 'string') {
-        iframe.contentWindow.postMessage({type: 'vektra-assess-unavailable'}, origin);
+    const target = iframe.contentWindow;
+    if (!target) {
+        // The panel refreshed while the mint was pending, so the iframe is no longer in the page.
         return;
     }
-    iframe.contentWindow.postMessage({type: 'vektra-assess-token', token: minted.token}, origin);
+    if (!minted || minted.state !== 'ready' || minted.uiorigin !== origin || typeof minted.token !== 'string') {
+        target.postMessage({type: 'vektra-assess-unavailable'}, origin);
+        return;
+    }
+    target.postMessage({type: 'vektra-assess-token', token: minted.token}, origin);
 };
