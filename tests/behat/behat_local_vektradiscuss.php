@@ -68,6 +68,7 @@ class behat_local_vektradiscuss extends behat_base {
         set_config('mintkey', 'behat-mint-key', 'local_vektradiscuss');
         set_config('teacherkey', 'behat-teacher-key', 'local_vektradiscuss');
         set_config('uiurl', 'https://ui-stub.invalid', 'local_vektradiscuss');
+        set_config('siteid', '00000000-0000-4000-8000-00000000be4a', 'local_vektradiscuss');
         set_config('enabled', 1, 'local_vektradiscuss');
         set_config('behatstub', 1, 'local_vektradiscuss');
         set_config(self::STUB_LOG, '[]', 'local_vektradiscuss');
@@ -226,6 +227,56 @@ class behat_local_vektradiscuss extends behat_base {
                 'The discussion iframe is hidden from keyboard or assistive technology',
                 $this->getSession()
             );
+        }
+    }
+
+    /**
+     * The discussion iframe loads the UI page of the configured site on the UI origin, sandboxed and without
+     * referrer, and carries no token in its URL (postMessage contract v1).
+     *
+     * @Then /^the Vektra discussion iframe should load the UI page of the configured site$/
+     */
+    public function the_iframe_should_load_the_ui_page(): void {
+        $iframe = $this->find('css', 'iframe.local-vektradiscuss-iframe');
+        $expected = 'https://ui-stub.invalid/api/v1/assess/ui?site='
+            . rawurlencode((string) get_config('local_vektradiscuss', 'siteid'));
+        $checks = [
+            'src' => [$iframe->getAttribute('src'), $expected],
+            'sandbox' => [$iframe->getAttribute('sandbox'), 'allow-scripts allow-same-origin allow-forms allow-downloads'],
+            'referrerpolicy' => [$iframe->getAttribute('referrerpolicy'), 'no-referrer'],
+        ];
+        foreach ($checks as $name => [$actual, $want]) {
+            if ($actual !== $want) {
+                throw new ExpectationException(
+                    "The discussion iframe {$name} is \"{$actual}\", not \"{$want}\"",
+                    $this->getSession()
+                );
+            }
+        }
+    }
+
+    /**
+     * Count the discussion iframes in the page.
+     *
+     * @Then /^there should be exactly (?P<count>\d+) Vektra discussion iframes?$/
+     * @param int $count
+     */
+    public function there_should_be_iframes(int $count): void {
+        $found = count($this->getSession()->getPage()->findAll('css', 'iframe.local-vektradiscuss-iframe'));
+        if ($found !== $count) {
+            throw new ExpectationException("{$found} discussion iframes, expected {$count}", $this->getSession());
+        }
+    }
+
+    /**
+     * No token minted by the stub appears anywhere in the page (HTML, attributes, inline scripts).
+     *
+     * @Then /^no Vektra assess stub token should appear in the page$/
+     */
+    public function no_stub_token_in_the_page(): void {
+        $html = $this->getSession()->getPage()->getContent();
+        if (preg_match('/stub\.\d+\.[0-9a-f]{24}/', $html, $m)) {
+            throw new ExpectationException("A stub token appears in the page: {$m[0]}", $this->getSession());
         }
     }
 
