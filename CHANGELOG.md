@@ -43,3 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Log redaction is structural (any depth, any value type) and cannot fail on very long values; a body that
   cannot be JSON-encoded is refused instead of being sent empty.
 - `viewtranscripts` carries `RISK_PERSONAL` and `setupcheck` carries `RISK_CONFIG`.
+- The discussion UI origin comes only from the plugin's own setting, never from the block's public URL
+  (the Vektra API host, where the UI page does not answer). The iframe sandbox is exactly the one the UI is
+  tested with (`allow-scripts allow-same-origin allow-downloads`, no `allow-forms`), with only
+  `clipboard-write` allowed.
