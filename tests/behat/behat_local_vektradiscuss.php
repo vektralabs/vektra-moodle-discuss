@@ -209,18 +209,8 @@ class behat_local_vektradiscuss extends behat_base {
     }
 
     /**
-     * Reach the discussion iframe with the Tab key only, from the top of the page.
-     *
-     * @When /^I tab to the Vektra discussion iframe$/
-     */
-    public function i_tab_to_the_iframe(): void {
-        $this->find('css', 'iframe.local-vektradiscuss-iframe');
-        $check = 'return !!(document.activeElement && document.activeElement.matches("iframe.local-vektradiscuss-iframe"));';
-        $this->tab_until($check, 'The discussion iframe');
-    }
-
-    /**
-     * The discussion iframe has a non-empty title equal to the expected name (axe rule frame-title).
+     * The discussion iframe has the expected title (axe rule frame-title) and is not removed from the tab
+     * order or the accessibility tree.
      *
      * @Then /^the Vektra discussion iframe should have the accessible name "(?P<name>[^"]+)"$/
      * @param string $name
@@ -232,8 +222,10 @@ class behat_local_vektradiscuss extends behat_base {
             throw new ExpectationException("The discussion iframe title is \"{$title}\", not \"{$name}\"", $this->getSession());
         }
         if ($iframe->getAttribute('tabindex') === '-1' || $iframe->getAttribute('aria-hidden') === 'true') {
-            throw new ExpectationException('The discussion iframe is hidden from keyboard or assistive technology',
-                $this->getSession());
+            throw new ExpectationException(
+                'The discussion iframe is hidden from keyboard or assistive technology',
+                $this->getSession()
+            );
         }
     }
 

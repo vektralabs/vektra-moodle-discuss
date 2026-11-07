@@ -54,16 +54,16 @@ Feature: Accessibility of the student entry point
       | unavailable | The discussion is temporarily unavailable. |
 
   # axe cannot scan the cross-origin iframe here (the stub UI host does not resolve, so the run returns no
-  # data); the iframe content is the Vektra UI's own accessibility scope. The container is checked for what
-  # this plugin owns: the frame's accessible name (axe rule frame-title) and its place in the tab order.
-  Scenario: The discussion iframe has an accessible name and is reached with Tab
+  # data), and Tab skips a frame whose document has nothing focusable; the iframe content is the Vektra UI's own
+  # accessibility scope. The container is checked for what this plugin owns: the frame's accessible name (axe
+  # rule frame-title) and that it is not removed from the tab order or the accessibility tree.
+  Scenario: The discussion iframe has an accessible name
     Given the Vektra assess stub returns state "eligible" for "quiz1"
     And I am on the "quiz1" Activity page logged in as student1
     And I click on "Discuss this assessment" "button" in the ".local-vektradiscuss-panel" "css_element"
     And I click on "Start" "button" in the ".modal-dialog" "css_element"
     When I wait until "iframe.local-vektradiscuss-iframe" "css_element" exists
     Then the Vektra discussion iframe should have the accessible name "Assessment discussion"
-    And I tab to the Vektra discussion iframe
 
   Scenario Outline: The panel and the pre-session screen reflow at 320 CSS pixels (200% and 400% zoom)
     Given I change viewport size to "320x640"
