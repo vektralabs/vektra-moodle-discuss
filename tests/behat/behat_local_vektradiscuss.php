@@ -38,6 +38,9 @@ class behat_local_vektradiscuss extends behat_base {
     /** @var string Config name prefix of a state fixture (same as self::STUB_STATE). */
     private const STUB_STATE = 'behatstubstate_';
 
+    /** @var int Tab presses allowed to reach the discussion button from the top of the page. */
+    private const MAX_TABS = 150;
+
     /**
      * The requests recorded by the stub.
      *
@@ -65,6 +68,7 @@ class behat_local_vektradiscuss extends behat_base {
         set_config('mintkey', 'behat-mint-key', 'local_vektradiscuss');
         set_config('teacherkey', 'behat-teacher-key', 'local_vektradiscuss');
         set_config('uiurl', 'https://ui-stub.invalid', 'local_vektradiscuss');
+        set_config('siteid', '00000000-0000-4000-8000-00000000be4a', 'local_vektradiscuss');
         set_config('enabled', 1, 'local_vektradiscuss');
         set_config('behatstub', 1, 'local_vektradiscuss');
         set_config(self::STUB_LOG, '[]', 'local_vektradiscuss');
@@ -187,6 +191,137 @@ class behat_local_vektradiscuss extends behat_base {
             throw new ExpectationException("\"{$label}\" is disabled", $this->getSession());
         }
         $this->assert_described($button, $label);
+    }
+
+    /**
+     * Reach a discussion button with the Tab key only, from the top of the page (NFR-016 keyboard path).
+     *
+     * @When /^I tab to the Vektra discussion button "(?P<label>[^"]+)"$/
+     * @param string $label
+     */
+    public function i_tab_to_the_button(string $label): void {
+        $this->find_button_by_label($label);
+        $check = 'return (function(label) {'
+            . ' var e = document.activeElement;'
+            . ' return !!(e && e.tagName === "BUTTON" && e.closest(".local-vektradiscuss-panel")'
+            . ' && e.textContent.trim() === label);'
+            . '})(' . json_encode($label) . ');';
+        $this->tab_until($check, "\"{$label}\"");
+    }
+
+    /**
+     * The discussion iframe has the expected title (axe rule frame-title) and is not removed from the tab
+     * order or the accessibility tree.
+     *
+     * @Then /^the Vektra discussion iframe should have the accessible name "(?P<name>[^"]+)"$/
+     * @param string $name
+     */
+    public function the_iframe_should_have_the_name(string $name): void {
+        $iframe = $this->find('css', 'iframe.local-vektradiscuss-iframe');
+        $title = trim((string) $iframe->getAttribute('title'));
+        if ($title !== $name) {
+            throw new ExpectationException("The discussion iframe title is \"{$title}\", not \"{$name}\"", $this->getSession());
+        }
+        if ($iframe->getAttribute('tabindex') === '-1' || $iframe->getAttribute('aria-hidden') === 'true') {
+            throw new ExpectationException(
+                'The discussion iframe is hidden from keyboard or assistive technology',
+                $this->getSession()
+            );
+        }
+    }
+
+    /**
+     * The discussion iframe loads the UI page of the configured site on the UI origin, sandboxed and without
+     * referrer, and carries no token in its URL (postMessage contract v1).
+     *
+     * @Then /^the Vektra discussion iframe should load the UI page of the configured site$/
+     */
+    public function the_iframe_should_load_the_ui_page(): void {
+        $iframe = $this->find('css', 'iframe.local-vektradiscuss-iframe');
+        $expected = 'https://ui-stub.invalid/api/v1/assess/ui?site='
+            . rawurlencode((string) get_config('local_vektradiscuss', 'siteid'));
+        $checks = [
+            'src' => [$iframe->getAttribute('src'), $expected],
+            'sandbox' => [$iframe->getAttribute('sandbox'), 'allow-scripts allow-same-origin allow-downloads'],
+            'allow' => [$iframe->getAttribute('allow'), 'clipboard-write'],
+            'referrerpolicy' => [$iframe->getAttribute('referrerpolicy'), 'no-referrer'],
+        ];
+        foreach ($checks as $name => [$actual, $want]) {
+            if ($actual !== $want) {
+                throw new ExpectationException(
+                    "The discussion iframe {$name} is \"{$actual}\", not \"{$want}\"",
+                    $this->getSession()
+                );
+            }
+        }
+    }
+
+    /**
+     * Count the discussion iframes in the page.
+     *
+     * @Then /^there should be exactly (?P<count>\d+) Vektra discussion iframes?$/
+     * @param int $count
+     */
+    public function there_should_be_iframes(int $count): void {
+        $found = count($this->getSession()->getPage()->findAll('css', 'iframe.local-vektradiscuss-iframe'));
+        if ($found !== $count) {
+            throw new ExpectationException("{$found} discussion iframes, expected {$count}", $this->getSession());
+        }
+    }
+
+    /**
+     * No token minted by the stub appears anywhere in the page (HTML, attributes, inline scripts).
+     *
+     * @Then /^no Vektra assess stub token should appear in the page$/
+     */
+    public function no_stub_token_in_the_page(): void {
+        $html = $this->getSession()->getPage()->getContent();
+        if (preg_match('/stub\.\d+\.[0-9a-f]{24}/', $html, $m)) {
+            throw new ExpectationException("A stub token appears in the page: {$m[0]}", $this->getSession());
+        }
+    }
+
+    /**
+     * Press Tab from the top of the page until a script returns true.
+     *
+     * @param string $check Script returning a boolean.
+     * @param string $what Name of the target for the failure message.
+     */
+    private function tab_until(string $check, string $what): void {
+        $this->evaluate_script('document.activeElement && document.activeElement.blur(); window.scrollTo(0, 0);');
+        for ($i = 0; $i < self::MAX_TABS; $i++) {
+            $this->execute('behat_general::i_press_named_key', ['', 'tab']);
+            if ($this->evaluate_script($check)) {
+                return;
+            }
+        }
+        throw new ExpectationException("{$what} was not reached with " . self::MAX_TABS . ' Tab presses', $this->getSession());
+    }
+
+    /**
+     * Every element of the region lies within the viewport width and the region does not scroll sideways
+     * (WCAG 1.4.10 reflow, checked at a 320 CSS px viewport).
+     *
+     * @Then /^the "(?P<selector>[^"]+)" region should reflow without horizontal scrolling$/
+     * @param string $selector CSS selector of the region.
+     */
+    public function the_region_should_reflow(string $selector): void {
+        $this->find('css', $selector);
+        $script = 'return (function(sel) {'
+            . ' var root = document.querySelector(sel), w = document.documentElement.clientWidth, bad = [];'
+            . ' if (root.scrollWidth > root.clientWidth + 1) { bad.push(sel + " scrolls: " + root.scrollWidth'
+            . ' + " > " + root.clientWidth); }'
+            . ' [root].concat(Array.prototype.slice.call(root.querySelectorAll("*"))).forEach(function(e) {'
+            . ' var r = e.getBoundingClientRect();'
+            . ' if (r.width > 0 && (r.left < -1 || r.right > w + 1)) { bad.push(e.tagName + "." + e.className'
+            . ' + " [" + Math.round(r.left) + ", " + Math.round(r.right) + "] of " + w); }'
+            . ' });'
+            . ' return bad.slice(0, 5).join("; ");'
+            . '})(' . json_encode($selector) . ');';
+        $bad = $this->evaluate_script($script);
+        if ($bad !== '' && $bad !== null) {
+            throw new ExpectationException("\"{$selector}\" does not reflow: {$bad}", $this->getSession());
+        }
     }
 
     /**

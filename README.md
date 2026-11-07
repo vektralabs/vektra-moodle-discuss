@@ -21,7 +21,8 @@ The plugin holds **no** session state and re-resolves every identifier server-si
 ## Status
 
 Alpha (`0.1.0`). The foundation is in place (scaffold, capabilities, settings, assess HTTP
-client, CI, release packaging); the student and teacher features follow. The plugin is
+client, CI, release packaging), and so is the student entry point (state panel, pre-session
+screen, discussion iframe). Transcript download and the teacher features follow. The plugin is
 disabled by default and sends nothing to Vektra until an administrator enables it.
 
 Requirements, architecture and the implementation plans are tracked via Spec2Ship: the
@@ -44,6 +45,30 @@ Copy the plugin directory to `local/vektradiscuss` (`public/local/vektradiscuss`
 *Site administration > Plugins > Local plugins > Vektra assessment discussion*.
 
 Released zips contain the plugin only (`vektradiscuss/`).
+
+### Vektra-side configuration
+
+The discussion runs in an iframe served by the Vektra discussion UI, and the student's browser loads
+it directly. Before enabling the plugin, check with the Vektra operator that:
+
+1. **The UI origin is reachable over TLS from student browsers.** The origin is the
+   *Discussion UI origin* setting, and only that: the UI page answers on its own host, never on the
+   Vektra API host, so the block's public URL is not used and an empty setting shows no entry point.
+   It must be `https://` with its own certificate that the browsers trust. The plugin uses no other
+   origin: an `http://` origin is ignored, and so is an origin equal to the Moodle site's own origin.
+   In both cases no entry point is shown. Write the port only when it is not the default one
+   (`https://vektra.example.org`, not `https://vektra.example.org:443`).
+2. **The UI allows Moodle to frame it.** The `Content-Security-Policy` of the UI pages must list the
+   Moodle origin in `frame-ancestors`, for example `frame-ancestors https://moodle.example.org`.
+   Without it the browser blocks the iframe and the student sees an empty frame.
+3. **The site identifier and the keys match this Moodle.** Every token is minted for the configured
+   site identifier, so a key issued for another site fails the mint and the student sees the
+   generic "unavailable" text.
+
+The iframe is sandboxed (`allow-scripts allow-same-origin allow-downloads`, with only `clipboard-write`
+allowed), sends no
+referrer, and receives the discussion token only by `postMessage` to the UI origin. The token never
+appears in a URL or in the page.
 
 ## Continuous integration
 

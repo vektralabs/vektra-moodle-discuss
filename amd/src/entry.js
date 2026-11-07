@@ -70,7 +70,7 @@ const announce = (region, text) => {
  * Fetch the state and render the panel.
  *
  * @param {HTMLElement} region
- * @param {Object} config {cmid, attemptid, uiorigin}
+ * @param {Object} config {cmid, attemptid, uiorigin, siteid}
  */
 const refresh = async(region, config) => {
     let context;
@@ -87,18 +87,18 @@ const refresh = async(region, config) => {
     region.dataset.state = context.state;
 
     const frameRegion = () => region.querySelector('[data-region="local_vektradiscuss-frame"]');
-    const start = async() => {
+    const open = async(mode) => {
         announce(region, await getString('preparing', 'local_vektradiscuss'));
-        await openFrame(frameRegion(), config, () => refresh(region, config));
+        await openFrame(frameRegion(), config, () => refresh(region, config), mode);
     };
 
     const resume = region.querySelector('[data-action="local_vektradiscuss-resume"]');
     if (resume) {
-        resume.addEventListener('click', start);
+        resume.addEventListener('click', () => open('resume'));
     }
     const startButton = region.querySelector('[data-action="local_vektradiscuss-start"]');
     if (startButton && context.presession) {
-        startButton.addEventListener('click', () => showPresession(context, start));
+        startButton.addEventListener('click', () => showPresession(context, () => open('start')));
     }
 };
 
@@ -134,7 +134,7 @@ const showPresession = async(context, start) => {
 /**
  * Initialise the panel of one activity.
  *
- * @param {Object} config {cmid, attemptid, uiorigin}
+ * @param {Object} config {cmid, attemptid, uiorigin, siteid}
  */
 export const init = (config) => {
     const region = document.querySelector('[data-region="local_vektradiscuss"][data-cmid="' + Number(config.cmid) + '"]');
