@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   with the positive login-as assertion and the plugin version in the mint body.
 - Discussion iframe on the Vektra UI origin with an origin- and source-checked postMessage handshake
   (`local_vektradiscuss/frame`; message names to be aligned with the Vektra discussion UI).
+- README: the Vektra-side configuration needed before enabling the plugin (TLS UI origin reachable
+  from student browsers, `frame-ancestors` listing the Moodle origin, matching site identifier and keys).
 
 ### Security
 
