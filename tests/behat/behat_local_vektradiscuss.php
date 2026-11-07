@@ -38,6 +38,9 @@ class behat_local_vektradiscuss extends behat_base {
     /** @var string Config name prefix of a state fixture (same as self::STUB_STATE). */
     private const STUB_STATE = 'behatstubstate_';
 
+    /** @var int Tab presses allowed to reach the discussion button from the top of the page. */
+    private const MAX_TABS = 150;
+
     /**
      * The requests recorded by the stub.
      *
@@ -187,6 +190,58 @@ class behat_local_vektradiscuss extends behat_base {
             throw new ExpectationException("\"{$label}\" is disabled", $this->getSession());
         }
         $this->assert_described($button, $label);
+    }
+
+    /**
+     * Reach a discussion button with the Tab key only, from the top of the page (NFR-016 keyboard path).
+     *
+     * @When /^I tab to the Vektra discussion button "(?P<label>[^"]+)"$/
+     * @param string $label
+     */
+    public function i_tab_to_the_button(string $label): void {
+        $this->find_button_by_label($label);
+        $this->evaluate_script('document.activeElement && document.activeElement.blur(); window.scrollTo(0, 0);');
+        $check = 'return (function(label) {'
+            . ' var e = document.activeElement;'
+            . ' return !!(e && e.tagName === "BUTTON" && e.closest(".local-vektradiscuss-panel")'
+            . ' && e.textContent.trim() === label);'
+            . '})(' . json_encode($label) . ');';
+        for ($i = 0; $i < self::MAX_TABS; $i++) {
+            $this->execute('behat_general::i_press_named_key', ['', 'tab']);
+            if ($this->evaluate_script($check)) {
+                return;
+            }
+        }
+        throw new ExpectationException(
+            "\"{$label}\" was not reached with " . self::MAX_TABS . ' Tab presses',
+            $this->getSession()
+        );
+    }
+
+    /**
+     * Every element of the region lies within the viewport width and the region does not scroll sideways
+     * (WCAG 1.4.10 reflow, checked at a 320 CSS px viewport).
+     *
+     * @Then /^the "(?P<selector>[^"]+)" region should reflow without horizontal scrolling$/
+     * @param string $selector CSS selector of the region.
+     */
+    public function the_region_should_reflow(string $selector): void {
+        $this->find('css', $selector);
+        $script = 'return (function(sel) {'
+            . ' var root = document.querySelector(sel), w = document.documentElement.clientWidth, bad = [];'
+            . ' if (root.scrollWidth > root.clientWidth + 1) { bad.push(sel + " scrolls: " + root.scrollWidth'
+            . ' + " > " + root.clientWidth); }'
+            . ' [root].concat(Array.prototype.slice.call(root.querySelectorAll("*"))).forEach(function(e) {'
+            . ' var r = e.getBoundingClientRect();'
+            . ' if (r.width > 0 && (r.left < -1 || r.right > w + 1)) { bad.push(e.tagName + "." + e.className'
+            . ' + " [" + Math.round(r.left) + ", " + Math.round(r.right) + "] of " + w); }'
+            . ' });'
+            . ' return bad.slice(0, 5).join("; ");'
+            . '})(' . json_encode($selector) . ');';
+        $bad = $this->evaluate_script($script);
+        if ($bad !== '' && $bad !== null) {
+            throw new ExpectationException("\"{$selector}\" does not reflow: {$bad}", $this->getSession());
+        }
     }
 
     /**
