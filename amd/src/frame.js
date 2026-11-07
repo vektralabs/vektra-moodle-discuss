@@ -42,7 +42,7 @@ const MAX_HEIGHT = 4000;
  *
  * @param {HTMLElement} container
  * @param {Object} config {cmid, uiorigin}
- * @param {Function} onClosed Called when the UI reports the session closed.
+ * @param {Function} onClosed Called when the UI reports the session closed; may return a promise (the panel refresh).
  */
 export const open = async(container, config, onClosed) => {
     // One discussion per panel: start and resume stay clickable, so a second click must not replace the live
@@ -53,12 +53,22 @@ export const open = async(container, config, onClosed) => {
     container.dataset.frameState = 'opening';
     const origin = String(config.uiorigin);
     const src = origin + '/api/v1/assess/ui?cmid=' + encodeURIComponent(Number(config.cmid));
-    const {html} = await Templates.renderForPromise('local_vektradiscuss/iframe', {
-        src,
-        title: await getString('iframe_title', 'local_vektradiscuss'),
-    });
-    Templates.replaceNodeContents(container, html, '');
-    const iframe = container.querySelector('iframe');
+    let iframe;
+    try {
+        const {html} = await Templates.renderForPromise('local_vektradiscuss/iframe', {
+            src,
+            title: await getString('iframe_title', 'local_vektradiscuss'),
+        });
+        Templates.replaceNodeContents(container, html, '');
+        iframe = container.querySelector('iframe');
+    } catch (e) {
+        iframe = null;
+    }
+    if (!iframe) {
+        // Leave the panel usable: a later click may try again.
+        delete container.dataset.frameState;
+        return;
+    }
 
     const onMessage = async(event) => {
         if (event.origin !== origin || event.source !== iframe.contentWindow) {
@@ -80,9 +90,17 @@ export const open = async(container, config, onClosed) => {
                 break;
             }
             case 'vektra-assess-closed':
+                // The guard stays set while the panel refreshes, so a click on the old panel cannot open
+                // a second iframe that the refresh would then remove; it is released whatever the outcome.
                 window.removeEventListener('message', onMessage);
-                delete container.dataset.frameState;
-                onClosed();
+                container.dataset.frameState = 'closing';
+                try {
+                    await onClosed();
+                } catch (e) {
+                    // The panel keeps its previous content; the guard is released below.
+                } finally {
+                    delete container.dataset.frameState;
+                }
                 break;
             default:
                 // Anything else is ignored.
