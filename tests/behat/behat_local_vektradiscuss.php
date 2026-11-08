@@ -26,6 +26,7 @@
 
 require_once(__DIR__ . '/../../../../lib/behat/behat_base.php');
 
+use Behat\Gherkin\Node\TableNode;
 use Behat\Mink\Exception\ExpectationException;
 
 /**
@@ -37,6 +38,9 @@ class behat_local_vektradiscuss extends behat_base {
 
     /** @var string Config name prefix of a state fixture (same as self::STUB_STATE). */
     private const STUB_STATE = 'behatstubstate_';
+
+    /** @var string Config name prefix of a transcript fixture (same as behat_stub_transport::TRANSCRIPT). */
+    private const STUB_TRANSCRIPT = 'behatstubtranscript_';
 
     /** @var int Tab presses allowed to reach the discussion button from the top of the page. */
     private const MAX_TABS = 150;
@@ -82,6 +86,194 @@ class behat_local_vektradiscuss extends behat_base {
      * @param string $idnumber Activity idnumber.
      */
     public function the_stub_returns_state(string $state, string $idnumber): void {
+        $this->set_fixture($idnumber, ['status' => 200, 'body' => $this->state_body($state)]);
+    }
+
+    /**
+     * Fix the state of an activity with the student's transcripts (columns: session, available, purged).
+     *
+     * @Given /^the Vektra assess stub returns state "(?P<state>[a-z_]+)" for "(?P<idnumber>[^"]+)" with transcripts:$/
+     * @param string $state
+     * @param string $idnumber
+     * @param TableNode $table
+     */
+    public function the_stub_returns_state_with_transcripts(string $state, string $idnumber, TableNode $table): void {
+        $cm = $this->cm($idnumber);
+        $body = $this->state_body($state);
+        $body['transcripts'] = [];
+        foreach ($table->getHash() as $row) {
+            $body['transcripts'][] = [
+                'tid' => self::tid((int) $cm->id, (int) $row['session']),
+                'n' => (int) $row['session'],
+                'available' => $row['available'] === 'yes',
+                'purged' => $row['purged'] === 'yes',
+            ];
+        }
+        $this->set_fixture($idnumber, ['status' => 200, 'body' => $body]);
+    }
+
+    /**
+     * Let the stub serve a generated transcript, downloadable by its owner only.
+     *
+     * @Given /^the Vektra assess stub has the transcript of session (\d+) of "([^"]+)" for "([^"]+)" named "([^"]*)"$/
+     * @param int $n
+     * @param string $idnumber
+     * @param string $username The owner.
+     * @param string $filename The name in Vektra's Content-Disposition.
+     */
+    public function the_stub_has_a_transcript(int $n, string $idnumber, string $username, string $filename): void {
+        global $DB;
+        $cm = $this->cm($idnumber);
+        $owner = (int) $DB->get_field('user', 'id', ['username' => $username], MUST_EXIST);
+        set_config(self::STUB_TRANSCRIPT . self::tid((int) $cm->id, $n), json_encode([
+            'owner' => $owner,
+            'filename' => $filename,
+            'body' => self::transcript_body($n),
+        ]), 'local_vektradiscuss');
+    }
+
+    /**
+     * Download the linked transcript with the browser's session and compare bytes and headers.
+     *
+     * The browser would save the file where the test cannot read it, so the link is fetched with the
+     * same session cookie, as core's "following ... should download" step does.
+     *
+     * @Then /^the transcript link of session (?P<n>\d+) should download the stub transcript as "(?P<filename>[^"]+)"$/
+     * @param int $n
+     * @param string $filename
+     */
+    public function the_transcript_link_should_download(int $n, string $filename): void {
+        $response = $this->fetch_transcript_link($n);
+        $headers = strtolower(implode("\n", (array) $response->headers));
+        $checks = [
+            'status 200' => (int) $response->status === 200,
+            'same bytes' => hash('sha256', (string) $response->results) === hash('sha256', self::transcript_body($n)),
+            'content-type' => str_contains($headers, 'content-type: text/html; charset=utf-8'),
+            'attachment' => str_contains($headers, strtolower('content-disposition: attachment; filename="' . $filename . '"')),
+            'nosniff' => str_contains($headers, 'x-content-type-options: nosniff'),
+            'csp sandbox' => str_contains($headers, "content-security-policy: sandbox; default-src 'none'"),
+            'no-store' => (bool) preg_match('/^cache-control: [^\n]*no-store/m', $headers),
+            'no referrer' => str_contains($headers, 'referrer-policy: no-referrer'),
+        ];
+        $failed = array_keys(array_filter($checks, fn(bool $ok): bool => !$ok));
+        if ($failed) {
+            throw new ExpectationException(
+                'The transcript download fails: ' . implode(', ', $failed),
+                $this->getSession()
+            );
+        }
+    }
+
+    /**
+     * Download the linked transcript and expect Moodle's error page with a text: no attachment, no transcript byte.
+     *
+     * @Then /^the transcript link of session (?P<n>\d+) should fail with "(?P<text>[^"]+)"$/
+     * @param int $n
+     * @param string $text
+     */
+    public function the_transcript_link_should_fail(int $n, string $text): void {
+        $response = $this->fetch_transcript_link($n);
+        $headers = strtolower(implode("\n", (array) $response->headers));
+        $body = (string) $response->results;
+        if (
+            str_contains($headers, 'content-disposition: attachment') || str_contains($body, self::transcript_body($n))
+                || !str_contains($body, $text)
+        ) {
+            throw new ExpectationException(
+                "The transcript download of session {$n} did not fail with \"{$text}\"",
+                $this->getSession()
+            );
+        }
+    }
+
+    /**
+     * Count the stub's download-token mints or transcript downloads of one session.
+     *
+     * @Then /^the Vektra assess stub received (\d+) (download-token|transcript) requests? for session (\d+) of "([^"]+)"$/
+     * @param int $count
+     * @param string $kind
+     * @param int $n
+     * @param string $idnumber
+     */
+    public function the_stub_received_transcript_requests(int $count, string $kind, int $n, string $idnumber): void {
+        $path = '/api/v1/assess/transcripts/' . self::tid((int) $this->cm($idnumber)->id, $n)
+            . ($kind === 'download-token' ? '/download-token' : '');
+        $this->the_stub_received_requests_to($count, $path);
+    }
+
+    /**
+     * Open transcript.php for a session directly, with the page's session key (no link needed).
+     *
+     * @When /^I open the transcript download of session (?P<n>\d+) of "(?P<idnumber>[^"]+)"$/
+     * @param int $n
+     * @param string $idnumber
+     */
+    public function i_open_the_transcript_download(int $n, string $idnumber): void {
+        $cm = $this->cm($idnumber);
+        $sesskey = (string) $this->evaluate_script('return M.cfg.sesskey;');
+        $url = new moodle_url('/local/vektradiscuss/transcript.php', [
+            'cmid' => $cm->id, 'tid' => self::tid((int) $cm->id, $n), 'n' => $n, 'sesskey' => $sesskey,
+        ]);
+        $this->getSession()->visit($this->locate_path($url->out_as_local_url(false)));
+    }
+
+    /**
+     * The panel shows a transcript entry as text, without a link.
+     *
+     * @Then /^the transcript of session (?P<n>\d+) should not be downloadable$/
+     * @param int $n
+     */
+    public function the_transcript_should_not_be_downloadable(int $n): void {
+        $entry = $this->find('css', '[data-region="local_vektradiscuss-transcript"][data-n="' . $n . '"]');
+        if (strtolower($entry->getTagName()) === 'a' || $entry->getAttribute('href') !== null) {
+            throw new ExpectationException("The transcript of session {$n} has a download link", $this->getSession());
+        }
+    }
+
+    /**
+     * Fetch a transcript link with the browser's Moodle session.
+     *
+     * @param int $n
+     * @return \stdClass download_file_content() full response.
+     */
+    private function fetch_transcript_link(int $n): \stdClass {
+        global $CFG;
+        require_once($CFG->libdir . '/filelib.php');
+        $link = $this->find('css', 'a[data-region="local_vektradiscuss-transcript"][data-n="' . $n . '"]');
+        $url = (string) $link->getAttribute('href');
+        $cookie = $this->getSession()->getCookie('MoodleSession' . $CFG->sessioncookie);
+        return download_file_content($url, ['Cookie' => 'MoodleSession' . $CFG->sessioncookie . '=' . $cookie], null, true);
+    }
+
+    /**
+     * A stable transcript id for an activity and a session number (UUID-shaped, like Vektra's session ids).
+     *
+     * @param int $cmid
+     * @param int $n
+     * @return string
+     */
+    private static function tid(int $cmid, int $n): string {
+        return sprintf('00000000-0000-4000-8000-%06d%06d', $cmid, $n);
+    }
+
+    /**
+     * The stub transcript bytes of a session: inert HTML with a marker.
+     *
+     * @param int $n
+     * @return string
+     */
+    private static function transcript_body(int $n): string {
+        return "<!DOCTYPE html>\n<html lang=\"it\"><head><meta charset=\"utf-8\"><title>Trascrizione</title></head>"
+            . "<body><h1>Trascrizione, sessione {$n}</h1><p>stub-transcript-marker-{$n}</p></body></html>\n";
+    }
+
+    /**
+     * The state body the stub answers, with the fields the plugin can render.
+     *
+     * @param string $state
+     * @return array
+     */
+    private function state_body(string $state): array {
         $body = ['state' => $state, 'reason' => 'ok'];
         if ($state === 'eligible' || $state === 'reset_granted') {
             $body['pre_session'] = [
@@ -99,7 +291,7 @@ class behat_local_vektradiscuss extends behat_base {
         if ($state === 'active') {
             $body['active'] = ['session_no' => 1, 'minutes_left' => 37];
         }
-        $this->set_fixture($idnumber, ['status' => 200, 'body' => $body]);
+        return $body;
     }
 
     /**
@@ -331,11 +523,21 @@ class behat_local_vektradiscuss extends behat_base {
      * @param array $fixture
      */
     private function set_fixture(string $idnumber, array $fixture): void {
+        set_config(self::STUB_STATE . $this->cm($idnumber)->id, json_encode($fixture), 'local_vektradiscuss');
+    }
+
+    /**
+     * The course module of an activity idnumber.
+     *
+     * @param string $idnumber
+     * @return \stdClass
+     */
+    private function cm(string $idnumber): \stdClass {
         $cm = $this->get_course_module_for_identifier($idnumber);
         if (!$cm) {
             throw new ExpectationException("No activity with idnumber {$idnumber}", $this->getSession());
         }
-        set_config(self::STUB_STATE . $cm->id, json_encode($fixture), 'local_vektradiscuss');
+        return $cm;
     }
 
     /**
