@@ -45,13 +45,31 @@ $PAGE->set_url(new moodle_url('/local/vektradiscuss/transcript.php', ['cmid' => 
 $PAGE->set_context($context);
 $back = new moodle_url('/mod/' . $cm->modname . '/view.php', ['id' => $cm->id]);
 
+/**
+ * End with a page that says why there is no file: an expected outcome, not an error, so no exception.
+ *
+ * @param string $identifier Language string of this plugin.
+ * @param moodle_url $back The activity page.
+ */
+function local_vektradiscuss_transcript_refused(string $identifier, moodle_url $back): void {
+    global $OUTPUT, $PAGE;
+    $PAGE->set_title(get_string('transcripts_heading', 'local_vektradiscuss'));
+    $PAGE->set_heading(get_string('transcripts_heading', 'local_vektradiscuss'));
+    header('Cache-Control: no-store');
+    echo $OUTPUT->header();
+    echo $OUTPUT->notification(get_string($identifier, 'local_vektradiscuss'), 'warning', false);
+    echo $OUTPUT->continue_button($back);
+    echo $OUTPUT->footer();
+    die();
+}
+
 // REQ-084: a "log in as" session never reaches Vektra.
 if (student_endpoint::is_loginas()) {
-    throw new moodle_exception('state_loginas', 'local_vektradiscuss', $back);
+    local_vektradiscuss_transcript_refused('state_loginas', $back);
 }
 $config = new config();
 if (!$config->is_enabled() || !in_array($cm->modname, student_endpoint::MODULES, true) || !transcript_proxy::valid_tid($tid)) {
-    throw new moodle_exception('transcript_unavailable', 'local_vektradiscuss', $back);
+    local_vektradiscuss_transcript_refused('transcript_unavailable', $back);
 }
 
 // Release the session lock: the transfer may take a while and must not block the student's other tabs.
@@ -76,8 +94,7 @@ if ($result === transcript_proxy::OK) {
 if ($result === transcript_proxy::OK || $result === transcript_proxy::TRUNCATED) {
     die();
 }
-throw new moodle_exception(
+local_vektradiscuss_transcript_refused(
     $result === transcript_proxy::NOT_READY ? 'transcript_not_ready' : 'transcript_unavailable',
-    'local_vektradiscuss',
     $back
 );
