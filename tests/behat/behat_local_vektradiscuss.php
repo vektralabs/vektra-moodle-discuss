@@ -530,9 +530,9 @@ class behat_local_vektradiscuss extends behat_base {
      * The course module of an activity idnumber.
      *
      * @param string $idnumber
-     * @return \stdClass
+     * @return object A cm_info or a course_modules record, depending on the Moodle release.
      */
-    private function cm(string $idnumber): \stdClass {
+    private function cm(string $idnumber): object {
         $cm = $this->get_course_module_for_identifier($idnumber);
         if (!$cm) {
             throw new ExpectationException("No activity with idnumber {$idnumber}", $this->getSession());
