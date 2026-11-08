@@ -137,6 +137,38 @@ final class state_dto_test extends \advanced_testcase {
             ['tid' => '../x', 'n' => 2],
         ]]);
         $this->assertSame([['tid' => 't-1', 'n' => 1, 'available' => true, 'purged' => false]], $closed['transcripts']);
+
+        // Any state carries the links of earlier sessions (plan 10 contract), e.g. a granted reset.
+        $reset = state_dto::from_vektra(['state' => 'eligible', 'transcripts' => [
+            ['tid' => '0f8e7d6c-5b4a-4321-8fed-cba987654321', 'n' => 1, 'available' => false, 'purged' => false],
+        ]]);
+        $this->assertSame(1, $reset['transcripts'][0]['n']);
+        $this->assertFalse($reset['transcripts'][0]['available']);
+    }
+
+    /**
+     * Transcript links: a sesskey-protected download link when available, a sentence otherwise (REQ-088).
+     */
+    public function test_transcript_links(): void {
+        $this->resetAfterTest();
+        $this->setUser($this->getDataGenerator()->create_user());
+        $ctx = state_view::context(state_dto::from_vektra(['state' => 'closed', 'transcripts' => [
+            ['tid' => 't-1', 'n' => 1, 'available' => true, 'purged' => false],
+            ['tid' => 't-2', 'n' => 2, 'available' => false, 'purged' => false],
+            ['tid' => 't-3', 'n' => 3, 'available' => false, 'purged' => true],
+        ]]), 7);
+        $this->assertTrue($ctx['hastranscripts']);
+        [$one, $two, $three] = $ctx['transcripts'];
+        $url = new \moodle_url($one['url']);
+        $this->assertStringEndsWith('/local/vektradiscuss/transcript.php', $url->get_path(false));
+        $this->assertSame(['cmid' => '7', 'tid' => 't-1', 'n' => '1', 'sesskey' => sesskey()], $url->params());
+        $this->assertSame(get_string('transcript_link', 'local_vektradiscuss', 1), $one['text']);
+        $this->assertNull($two['url']);
+        $this->assertSame(get_string('transcript_pending', 'local_vektradiscuss', 2), $two['text']);
+        $this->assertNull($three['url']);
+        $this->assertSame(get_string('transcript_purged', 'local_vektradiscuss', 3), $three['text']);
+
+        $this->assertFalse(state_view::context(['state' => 'closed', 'reason' => null], 7)['hastranscripts']);
     }
 
     /**

@@ -34,6 +34,10 @@
     * canresume - the button resumes the open session
     * buttonlabel - button text
     * suggestcopy - show the "download a copy" suggestion (state 6)
+    * hastranscripts, transcriptsheading, transcripts - the student's transcripts (see transcript_links)
+
+    The status part (data-region local_vektradiscuss-status) is re-rendered on its own when the discussion
+    closes, so the open iframe, with its closing screen, stays in place.
 
     Example context (json):
     {
@@ -47,28 +51,36 @@
         "canstart": true,
         "canresume": false,
         "buttonlabel": "Discuss this assessment",
-        "suggestcopy": false
+        "suggestcopy": false,
+        "hastranscripts": false,
+        "transcriptsheading": "Your transcripts",
+        "transcripts": []
     }
 }}
 {{#visible}}
 <section class="local-vektradiscuss-panel card my-3" aria-labelledby="{{uniqid}}-heading" data-state="{{state}}" data-statenumber="{{statenumber}}">
     <div class="card-body">
         <h3 class="h5 card-title" id="{{uniqid}}-heading">{{heading}}</h3>
-        <p class="mb-2" id="{{uniqid}}-message">{{message}}</p>
-        {{#suggestcopy}}
-            <p class="mb-2">{{#str}}state_closed_copy, local_vektradiscuss{{/str}}</p>
-        {{/suggestcopy}}
-        {{#canstart}}
-            <button type="button" class="btn btn-primary" data-action="local_vektradiscuss-start" aria-describedby="{{uniqid}}-message">{{buttonlabel}}</button>
-        {{/canstart}}
-        {{#canresume}}
-            <button type="button" class="btn btn-primary" data-action="local_vektradiscuss-resume" aria-describedby="{{uniqid}}-message">{{buttonlabel}}</button>
-        {{/canresume}}
-        {{^enabled}}
-            {{^suggestcopy}}
-                <button type="button" class="btn btn-secondary" aria-disabled="true" aria-describedby="{{uniqid}}-message">{{buttonlabel}}</button>
+        <div data-region="local_vektradiscuss-status">
+            <p class="mb-2" id="{{uniqid}}-message">{{message}}</p>
+            {{#suggestcopy}}
+                <p class="mb-2">{{#str}}state_closed_copy, local_vektradiscuss{{/str}}</p>
             {{/suggestcopy}}
-        {{/enabled}}
+            {{#canstart}}
+                <button type="button" class="btn btn-primary" data-action="local_vektradiscuss-start" aria-describedby="{{uniqid}}-message">{{buttonlabel}}</button>
+            {{/canstart}}
+            {{#canresume}}
+                <button type="button" class="btn btn-primary" data-action="local_vektradiscuss-resume" aria-describedby="{{uniqid}}-message">{{buttonlabel}}</button>
+            {{/canresume}}
+            {{^enabled}}
+                {{^suggestcopy}}
+                    <button type="button" class="btn btn-secondary" aria-disabled="true" aria-describedby="{{uniqid}}-message">{{buttonlabel}}</button>
+                {{/suggestcopy}}
+            {{/enabled}}
+            {{#hastranscripts}}
+                {{> local_vektradiscuss/transcript_links }}
+            {{/hastranscripts}}
+        </div>
         <div class="local-vektradiscuss-frame mt-3" data-region="local_vektradiscuss-frame"></div>
     </div>
 </section>

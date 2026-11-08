@@ -23,8 +23,12 @@
  * The UI page (/api/v1/assess/ui?site=<site id>) announces itself with vektra-assess-ready. Each ready
  * message triggers a fresh server-side mint, and the token is posted to the UI origin only (never "*"),
  * with the mode (start or resume); no session id is sent, the UI reads it from /state. The token is kept
- * in no variable that outlives the call, no URL, no DOM attribute and no storage. The download-token
- * messages come with the transcript proxy and are ignored until then.
+ * in no variable that outlives the call, no URL, no DOM attribute and no storage.
+ *
+ * After vektra-assess-closed the iframe stays, showing the UI's closing screen, and the listener keeps
+ * answering vektra-assess-download-token-request: a single-use download token for the student's own
+ * transcript, minted server-side on each request and posted to the UI origin only. On any failure nothing
+ * is posted and the UI shows its own generic text after its timeout.
  *
  * @module     local_vektradiscuss/frame
  * @copyright  2026 VektraLabs
@@ -42,6 +46,12 @@ const MAX_HEIGHT = 4000;
 /** @var {Number} postMessage contract version. */
 const VERSION = 1;
 
+/** @var {RegExp} Transcript id (the session id). */
+const TID = /^[A-Za-z0-9-]{1,64}$/;
+
+/** @var {WeakMap} Container => removal of its message listener, for a closed discussion replaced by a new one. */
+const listeners = new WeakMap();
+
 /**
  * Open the discussion in a container.
  *
@@ -52,9 +62,14 @@ const VERSION = 1;
  */
 export const open = async(container, config, onClosed, mode) => {
     // One discussion per panel: start and resume stay clickable, so a second click must not replace the live
-    // iframe (and leave its listener behind).
-    if (container.dataset.frameState) {
+    // iframe (and leave its listener behind). A closed discussion may be replaced by a new one (a granted reset).
+    if (container.dataset.frameState && container.dataset.frameState !== 'closed') {
         return;
+    }
+    const previous = listeners.get(container);
+    if (previous) {
+        previous();
+        listeners.delete(container);
     }
     container.dataset.frameState = 'opening';
     const origin = String(config.uiorigin);
@@ -96,24 +111,32 @@ export const open = async(container, config, onClosed, mode) => {
                 }
                 break;
             }
+            case 'vektra-assess-download-token-request':
+                if (typeof data.tid === 'string' && TID.test(data.tid)) {
+                    await handDownloadToken(iframe, origin, config, data.tid);
+                }
+                break;
             case 'vektra-assess-closed':
-                // The guard stays set while the panel refreshes, so a click on the old panel cannot open
-                // a second iframe that the refresh would then remove; it is released whatever the outcome.
-                window.removeEventListener('message', onMessage);
+                // The iframe stays with its closing screen; only the status part of the panel is refreshed.
+                // The guard stays set while it refreshes, so a click cannot open a second iframe meanwhile.
+                if (container.dataset.frameState === 'closing' || container.dataset.frameState === 'closed') {
+                    break;
+                }
                 container.dataset.frameState = 'closing';
                 try {
                     await onClosed();
                 } catch (e) {
-                    // The panel keeps its previous content; the guard is released below.
+                    // The panel keeps its previous status.
                 } finally {
-                    delete container.dataset.frameState;
+                    container.dataset.frameState = 'closed';
                 }
                 break;
             default:
-                // Anything else is ignored, including the download-token request until the transcript proxy.
+                // Anything else is ignored.
         }
     };
     window.addEventListener('message', onMessage);
+    listeners.set(container, () => window.removeEventListener('message', onMessage));
     container.dataset.frameState = 'open';
 };
 
@@ -142,4 +165,27 @@ const handToken = async(iframe, origin, config, mode) => {
         return;
     }
     target.postMessage({v: VERSION, type: 'vektra-assess-token', token: minted.token, mode}, origin);
+};
+
+/**
+ * Mint a transcript download token server-side and post it to the iframe that asked for it.
+ *
+ * @param {HTMLIFrameElement} iframe
+ * @param {String} origin
+ * @param {Object} config
+ * @param {String} tid
+ */
+const handDownloadToken = async(iframe, origin, config, tid) => {
+    let minted;
+    try {
+        minted = await post('download', {cmid: config.cmid, tid});
+    } catch (e) {
+        minted = null;
+    }
+    const target = iframe.contentWindow;
+    if (!target || !minted || minted.state !== 'ready' || minted.tid !== tid || typeof minted.token !== 'string') {
+        // No answer: the UI times out and shows its generic text.
+        return;
+    }
+    target.postMessage({v: VERSION, type: 'vektra-assess-download-token', tid, token: minted.token}, origin);
 };

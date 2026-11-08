@@ -61,6 +61,8 @@ final class state_view {
             'message' => self::message($dto),
             'presession' => null,
             'hastranscripts' => !empty($dto['transcripts']),
+            'transcriptsheading' => get_string('transcripts_heading', self::C),
+            'transcripts' => self::transcripts($dto['transcripts'] ?? [], $cmid),
             'suggestcopy' => $state === 'closed',
         ];
         $ctx['enabled'] = $ctx['canstart'] || $ctx['canresume'];
@@ -192,6 +194,35 @@ final class state_view {
             'cancellabel' => get_string('pre_cancel', self::C),
             'preparing' => get_string('preparing', self::C),
         ];
+    }
+
+    /**
+     * Transcript links: a download link when the transcript is available, a status sentence otherwise.
+     *
+     * The link carries the session key: transcript.php checks it, so a third-party page cannot make the
+     * browser fetch a transcript.
+     *
+     * @param array[] $transcripts From the DTO.
+     * @param int $cmid
+     * @return array[]
+     */
+    private static function transcripts(array $transcripts, int $cmid): array {
+        $out = [];
+        foreach ($transcripts as $t) {
+            $item = ['n' => $t['n'], 'url' => null, 'text' => null];
+            if ($t['purged']) {
+                $item['text'] = get_string('transcript_purged', self::C, $t['n']);
+            } else if ($t['available']) {
+                $item['url'] = (new \moodle_url('/local/vektradiscuss/transcript.php', [
+                    'cmid' => $cmid, 'tid' => $t['tid'], 'n' => $t['n'], 'sesskey' => sesskey(),
+                ]))->out(false);
+                $item['text'] = get_string('transcript_link', self::C, $t['n']);
+            } else {
+                $item['text'] = get_string('transcript_pending', self::C, $t['n']);
+            }
+            $out[] = $item;
+        }
+        return $out;
     }
 
     /**
