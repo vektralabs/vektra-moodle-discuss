@@ -26,6 +26,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   (`local_vektradiscuss/frame`) following the Vektra postMessage contract version 1: the UI page
   `/api/v1/assess/ui?site=<site id>`, every message `{v: 1, type: "vektra-assess-<name>"}`, the token sent
   with its mode (`start` or `resume`) and no session id. The entry point needs the site identifier.
+- A student's own transcripts (REQ-088): the panel lists one entry per closed session, in any state, and
+  `transcript.php` streams the file from Vektra with a single-use download token minted server-side. The
+  plugin sends its own headers: attachment with the BR-016 file name or a fallback, `nosniff`, a CSP
+  sandbox, `no-store` and `no-referrer`. Nothing is stored. The discussion iframe's download request
+  (`vektra-assess-download-token-request`) is answered the same way, and the iframe now stays with its
+  closing screen when the session closes.
 - README: the Vektra-side configuration needed before enabling the plugin (TLS UI origin reachable
   from student browsers, `frame-ancestors` listing the Moodle origin, matching site identifier and keys).
 
