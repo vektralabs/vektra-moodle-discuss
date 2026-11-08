@@ -15,7 +15,8 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Student AJAX endpoint: advisory state (action=state) and pre-session token (action=mint).
+ * Student AJAX endpoint: advisory state (action=state), pre-session token (action=mint) and transcript
+ * download token (action=download).
  *
  * POST only. Login, course access, sesskey and capabilities are checked by
  * \local_vektradiscuss\local\student_endpoint before any request to Vektra.
@@ -40,10 +41,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $action = required_param('action', PARAM_ALPHA);
 $cmid = required_param('cmid', PARAM_INT);
 $attemptid = optional_param('attemptid', 0, PARAM_INT);
+$tid = optional_param('tid', '', PARAM_ALPHANUMEXT);
 
 $PAGE->set_url('/local/vektradiscuss/ajax.php');
 
-$result = (new student_endpoint())->handle($action, $cmid, $attemptid);
+$result = (new student_endpoint())->handle($action, $cmid, $attemptid, $tid);
 if ($action === 'state') {
     $result = state_view::context($result, $cmid);
 }

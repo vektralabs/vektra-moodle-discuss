@@ -39,10 +39,14 @@ require_once(__DIR__ . '/../fixtures/scripted_transport.php');
  *
  * @covers \local_vektradiscuss\local\student_endpoint
  * @covers \local_vektradiscuss\local\state_dto
+ * @covers \local_vektradiscuss\local\transcript_proxy
  */
 final class student_endpoint_test extends \advanced_testcase {
     /** @var string Mint key used by the tests. */
     private const MINTKEY = 'test-mint-key-not-a-secret';
+
+    /** @var string A transcript id. */
+    private const TID = '0f8e7d6c-5b4a-4321-8fed-cba987654321';
 
     /** @var string A token-shaped value returned by the scripted mint. */
     private const TOKEN = 'pre.token-value_123';
@@ -93,12 +97,13 @@ final class student_endpoint_test extends \advanced_testcase {
      * @param string $action
      * @param int $cmid
      * @param int $attemptid
+     * @param string $tid
      * @return array
      */
-    private function handle(string $action, int $cmid, int $attemptid = 0): array {
+    private function handle(string $action, int $cmid, int $attemptid = 0, string $tid = ''): array {
         global $PAGE;
         $PAGE = new \moodle_page();
-        return $this->endpoint()->handle($action, $cmid, $attemptid);
+        return $this->endpoint()->handle($action, $cmid, $attemptid, $tid);
     }
 
     /**
@@ -239,8 +244,8 @@ final class student_endpoint_test extends \advanced_testcase {
         \core\session\manager::loginas($this->student->id, \context_course::instance($this->course->id));
         $_POST['sesskey'] = sesskey();
 
-        foreach (['state', 'mint'] as $action) {
-            $result = $this->handle($action, (int) $this->quiz->cmid);
+        foreach (['state', 'mint', 'download'] as $action) {
+            $result = $this->handle($action, (int) $this->quiz->cmid, 0, self::TID);
             $this->assertSame(['state' => 'loginas', 'reason' => null], $result);
         }
         $this->assert_no_vektra_call();
@@ -274,14 +279,54 @@ final class student_endpoint_test extends \advanced_testcase {
         role_assign($roleid, $this->student->id, $context->id);
         $this->as_student();
 
-        foreach (['state', 'mint'] as $action) {
+        foreach (['state', 'mint', 'download'] as $action) {
             try {
-                $this->handle($action, (int) $this->quiz->cmid);
+                $this->handle($action, (int) $this->quiz->cmid, 0, self::TID);
                 $this->fail('Refusal expected for ' . $action);
             } catch (\required_capability_exception $e) {
                 $this->assert_no_vektra_call();
             }
         }
+    }
+
+    /**
+     * Download (the iframe's closing screen): a download token for the student's own transcript, minted with
+     * the mint key and the student as sub, handed back with its tid; a refusal is the generic unavailable.
+     */
+    public function test_download_mints_for_the_owner(): void {
+        $this->as_student();
+        $this->transport->respond(201, ['token' => self::TOKEN, 'expires_in' => 120]);
+        $this->assertSame(
+            ['state' => 'ready', 'tid' => self::TID, 'token' => self::TOKEN],
+            $this->handle('download', (int) $this->quiz->cmid, 0, self::TID)
+        );
+        $path = '/api/v1/assess/transcripts/' . self::TID . '/download-token';
+        $this->assertStringEndsWith($path, $this->transport->calls[0]['url']);
+        $this->assertSame(['sub' => (int) $this->student->id], json_decode($this->transport->calls[0]['body'], true));
+
+        $this->transport->respond(403, ['error' => ['code' => 'ERR-AUTH-003', 'message' => 'not yours']]);
+        $refused = $this->handle('download', (int) $this->quiz->cmid, 0, self::TID);
+        $this->assertSame(['state' => 'unavailable', 'reason' => null], $refused);
+        $this->assertDebuggingCalledCount(2);
+
+        // A malformed tid never reaches Vektra.
+        $calls = count($this->transport->calls);
+        $this->assertSame(['state' => 'unavailable', 'reason' => null], $this->handle('download', (int) $this->quiz->cmid, 0, ''));
+        $this->assertCount($calls, $this->transport->calls);
+    }
+
+    /**
+     * Download needs only viewowntranscript: a student who lost the start capability keeps their copy.
+     */
+    public function test_download_needs_only_viewowntranscript(): void {
+        $roleid = $this->getDataGenerator()->create_role();
+        $context = \context_module::instance($this->quiz->cmid);
+        assign_capability('local/vektradiscuss:start', CAP_PROHIBIT, $roleid, $context->id);
+        role_assign($roleid, $this->student->id, $context->id);
+        $this->as_student();
+
+        $this->transport->respond(201, ['token' => self::TOKEN, 'expires_in' => 120]);
+        $this->assertSame('ready', $this->handle('download', (int) $this->quiz->cmid, 0, self::TID)['state']);
     }
 
     /**
