@@ -61,6 +61,7 @@ Feature: A student downloads their own transcript
     When I am on the "quiz1" Activity page logged in as student1
     Then the transcript link of session 1 should fail with "The transcript is not ready yet. Try again in a minute."
 
+  @accessibility
   Scenario: Unavailable and purged transcripts are listed without a link, also after a granted reset
     Given the Vektra assess stub returns state "reset_granted" for "quiz1" with transcripts:
       | session | available | purged |
