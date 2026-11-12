@@ -447,5 +447,13 @@ final class student_endpoint_test extends \advanced_testcase {
         $this->respond_mint();
         $this->transport->respond(200, $vektra);
         $this->assertSame('eligible', $this->handle('state', (int) $this->quiz->cmid, $second)['state']);
+
+        // The transcripts of earlier sessions stay on the pointer.
+        $transcripts = [['tid' => self::TID, 'n' => 1, 'available' => true, 'purged' => false]];
+        $this->respond_mint();
+        $this->transport->respond(200, $vektra + ['transcripts' => $transcripts]);
+        $result = $this->handle('state', (int) $this->quiz->cmid, $first);
+        $this->assertSame('not_selected', $result['state']);
+        $this->assertSame($transcripts, $result['transcripts']);
     }
 }

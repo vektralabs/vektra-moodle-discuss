@@ -196,6 +196,12 @@ final class state_dto_test extends \advanced_testcase {
         $this->assertSame(9, $notselected['statenumber']);
 
         $this->assertFalse(state_view::context(['state' => 'not_enabled', 'reason' => null], 7)['visible']);
+        // Not enabled with transcripts of earlier sessions: only the transcripts, no status and no button.
+        $withcopies = state_view::context(['state' => 'not_enabled', 'reason' => null,
+            'transcripts' => [['tid' => 't-1', 'n' => 1, 'available' => true, 'purged' => false]]], 7);
+        $this->assertTrue($withcopies['visible']);
+        $this->assertFalse($withcopies['showstatus']);
+        $this->assertTrue($withcopies['hastranscripts']);
         $this->assertSame(
             get_string('button_start_session', 'local_vektradiscuss', 3),
             state_view::context(['state' => 'reset_granted', 'reason' => null, 'session_no_next' => 3], 7)['buttonlabel']

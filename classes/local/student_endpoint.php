@@ -251,7 +251,12 @@ final class student_endpoint {
         if ($viewed === false || (int) $viewed === $dto['selected_attempt_no']) {
             return $dto;
         }
-        return ['state' => state_dto::NOT_SELECTED, 'reason' => null, 'selected_attempt_no' => $dto['selected_attempt_no']];
+        $local = ['state' => state_dto::NOT_SELECTED, 'reason' => null, 'selected_attempt_no' => $dto['selected_attempt_no']];
+        // The transcripts of earlier sessions stay reachable from any of the student's attempt pages.
+        if (!empty($dto['transcripts'])) {
+            $local['transcripts'] = $dto['transcripts'];
+        }
+        return $local;
     }
 
     /**

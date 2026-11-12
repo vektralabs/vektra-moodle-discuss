@@ -20,10 +20,12 @@
     The student entry point on the results page: status sentence and button (REQ-068).
 
     A disabled button stays focusable (aria-disabled, not disabled) and exposes its reason through
-    aria-describedby. State 1 (not enabled) renders nothing.
+    aria-describedby. State 1 (not enabled) renders nothing, or only the student's transcripts when there are
+    some from earlier sessions.
 
     Context variables required for this template:
     * visible - whether anything is rendered
+    * showstatus - whether the status sentence and the button are rendered (not in state 1)
     * uniqid - unique id prefix
     * state - render state code
     * statenumber - REQ-068 state number
@@ -42,6 +44,7 @@
     Example context (json):
     {
         "visible": true,
+        "showstatus": true,
         "uniqid": "local-vektradiscuss-12",
         "state": "eligible",
         "statenumber": 4,
@@ -62,6 +65,7 @@
     <div class="card-body">
         <h3 class="h5 card-title" id="{{uniqid}}-heading">{{heading}}</h3>
         <div data-region="local_vektradiscuss-status">
+            {{#showstatus}}
             <p class="mb-2" id="{{uniqid}}-message">{{message}}</p>
             {{#suggestcopy}}
                 <p class="mb-2">{{#str}}state_closed_copy, local_vektradiscuss{{/str}}</p>
@@ -77,6 +81,7 @@
                     <button type="button" class="btn btn-secondary" aria-disabled="true" aria-describedby="{{uniqid}}-message">{{buttonlabel}}</button>
                 {{/suggestcopy}}
             {{/enabled}}
+            {{/showstatus}}
             {{#hastranscripts}}
                 {{> local_vektradiscuss/transcript_links }}
             {{/hastranscripts}}

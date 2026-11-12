@@ -54,7 +54,10 @@ final class state_view {
             'state' => $state,
             'statenumber' => $number,
             'uniqid' => 'local-vektradiscuss-' . $cmid,
-            'visible' => $state !== 'not_enabled',
+            // Not enabled renders nothing, unless the student has transcripts of earlier sessions to download:
+            // then only those are shown (REQ-068 state 1 has no button).
+            'visible' => $state !== 'not_enabled' || !empty($dto['transcripts']),
+            'showstatus' => $state !== 'not_enabled',
             'heading' => get_string('student_heading', self::C),
             'canstart' => in_array($state, ['eligible', 'reset_granted'], true),
             'canresume' => $state === 'active',
