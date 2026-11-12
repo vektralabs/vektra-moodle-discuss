@@ -76,10 +76,15 @@ async def reports(pg, site) -> list[tuple[Any, ...]]:  # type: ignore[no-untyped
 
 
 async def queued_report(pg, site) -> uuid.UUID:  # type: ignore[no-untyped-def]
-    """As the API queues it (``POST /sites/{site}/setup-check``), as the API role."""
+    """The row the API queues on ``POST /sites/{site}/setup-check``, seeded as the superuser.
+
+    With row-level security on ``assess_*`` the API role writes only for the site set in
+    ``app.assess_site_id``; the API's own INSERT and its policy are the vertical's tests. A seed
+    here only has to exist, so it does not depend on how the harness sets the site.
+    """
     return (
         await pg.run(
-            "api",
+            "super",
             "INSERT INTO assess_setup_check_reports (site_id) VALUES (:s) RETURNING id",
             {"s": site},
         )

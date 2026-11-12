@@ -4,7 +4,7 @@
 **Status**: active
 **Branch**: feat/lms-provider
 **Created**: 2026-11-12T12:00:00Z
-**Updated**: 2026-11-12T12:00:00Z
+**Updated**: 2026-11-12T16:00:00Z
 **Approved**: 2026-11-12 (coordinator, formal phase 2b request)
 
 ## Traceability
@@ -39,7 +39,8 @@ run against fresh Moodle 4.3 and 5.2 sites, and is released as a wheel with its 
 - [x] 6. `provider-live.yml`: weekly and manual live run (`-m moodle`, four `VEKTRA_ASSESS_MOODLE*` variables) against the vektra-moodle dev environments, failing when this version's live tests were skipped.
 - [x] 7. `provider-release.yml`: tag `provider-v<version>` equal to the pyproject version, tests via `provider.yml`, wheel plus `.sha256` as a GitHub (pre-)release that is never marked latest, tested stack commit in the notes.
 - [x] 8. Plugin help text: nothing names `VEKTRA_ASSESS_MOODLE_*`, `VEKTRA_ASSESS_WS_*` or `VEKTRA_ASSESS_BREAKER_*` (checked in this repository and in vektra-moodle); the old names appear only in the provider's own refusal map and its tests.
-- [ ] 9. After merge, with the user's approval: tag `provider-v0.9.0.dev1`, publish the wheel, send version and sha256 to vektra-stack.
+- [x] 9. After merge, with the user's approval: tag `provider-v0.9.0.dev1`, publish the wheel, send version and sha256 to vektra-stack (published 2026-11-12, sha256 `b84bf253345197cce430ee6263be1dc44e93e93e3e8371b7370a3f78e067e6d3`; vektra-stack #210 pins it).
+- [ ] 10. Row-level security on `assess_*` (vektra-stack #209): the two setup-check suites seed their queued report as the superuser instead of the API role; pin moved to vektra-stack develop 5d27ff6f (after #210); version `0.9.0.dev2`; the release waits for the user's approval.
 
 ## Acceptance Criteria
 
@@ -56,3 +57,4 @@ run against fresh Moodle 4.3 and 5.2 sites, and is released as a wheel with its 
 - **Live suites need `VEKTRA_ENV=development`:** without it the setup-check item `ui_origin_distinct` is `MISSING lms_origin_not_https` against the plain-http dev sites (3 failures per version). vektra-stack's `assess-moodle-contract.yml` lacks it too, and has never run on schedule because it is not on vektra-stack's default branch. Reported to the coordinator.
 - **License:** the provider keeps Apache-2.0 (vektra-stack's license) in this GPL-3.0 repository; `provider/LICENSE` and the wheel metadata say so.
 - **Release is outward-facing:** tagging and publishing the wheel waits for the user's approval.
+- **RLS seed (decision):** under vektra-stack #209 the API role writes only for the site in `app.assess_site_id`, so the API-role seed of `assess_setup_check_reports` failed 10 tests. The seed moved to the superuser, which works with and without RLS; the API's own INSERT and its policy are covered by the vertical's tests. The optional `site=` argument #209 adds to `Pg.run` was not used, because the pinned-tag job of vektra-stack would then fail on a develop without it. Checked locally: 1398 passed on develop 5d27ff6f and on the #209 head 72de09f8; without the change, 10 failures on the #209 head.

@@ -7,7 +7,7 @@
 # Development and tests run inside a vektra-stack checkout (VEKTRA_STACK_ROOT): see README.md.
 [project]
 name = "vektra-lms-moodle"
-version = "0.9.0.dev1"
+version = "0.9.0.dev2"
 description = "Moodle LMS provider for the Vektra assessment vertical (LmsProvider, ADR-0033)"
 readme = "README.md"
 license = "Apache-2.0"
