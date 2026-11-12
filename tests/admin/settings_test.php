@@ -44,18 +44,31 @@ final class settings_test extends \advanced_testcase {
      * Build a key setting.
      *
      * @param string $name Setting name.
-     * @param string $otherrole Role of the other key.
      * @return setting_assess_key
      */
-    private function key_setting(string $name, string $otherrole): setting_assess_key {
-        return new setting_assess_key('local_vektradiscuss/' . $name, 'Key', 'Desc', $otherrole);
+    private function key_setting(string $name): setting_assess_key {
+        $role = array_search($name, \local_vektradiscuss\local\config::KEY_ROLES, true);
+        return new setting_assess_key('local_vektradiscuss/' . $name, 'Key', 'Desc', (string) $role);
+    }
+
+    /**
+     * Each of the four keys must differ from every other one, including the privacy keys.
+     */
+    public function test_privacy_keys_must_differ_from_every_key(): void {
+        set_config('mintkey', 'mint-value', 'local_vektradiscuss');
+        set_config('privacyexportkey', 'export-value', 'local_vektradiscuss');
+        $duplicate = get_string('error_key_duplicate', 'local_vektradiscuss');
+        $this->assertSame($duplicate, $this->key_setting('privacyerasekey')->write_setting('mint-value'));
+        $this->assertSame($duplicate, $this->key_setting('privacyerasekey')->write_setting('export-value'));
+        $this->assertSame($duplicate, $this->key_setting('teacherkey')->write_setting('export-value'));
+        $this->assertSame('', $this->key_setting('privacyerasekey')->write_setting('erase-value'));
     }
 
     /**
      * The block admin key is refused and nothing is stored.
      */
     public function test_admin_key_refused(): void {
-        $error = $this->key_setting('mintkey', 'teacher')->write_setting('adminkey-value');
+        $error = $this->key_setting('mintkey')->write_setting('adminkey-value');
 
         $this->assertSame(get_string('error_key_is_adminkey', 'local_vektradiscuss'), $error);
         $this->assertEmpty(get_config('local_vektradiscuss', 'mintkey'));
@@ -65,7 +78,7 @@ final class settings_test extends \advanced_testcase {
      * Surrounding whitespace does not hide the admin key.
      */
     public function test_admin_key_refused_with_whitespace(): void {
-        $error = $this->key_setting('teacherkey', 'mint')->write_setting("  adminkey-value\n");
+        $error = $this->key_setting('teacherkey')->write_setting("  adminkey-value\n");
         $this->assertNotSame('', $error);
         $this->assertEmpty(get_config('local_vektradiscuss', 'teacherkey'));
     }
@@ -76,7 +89,7 @@ final class settings_test extends \advanced_testcase {
     public function test_duplicate_key_refused(): void {
         set_config('teacherkey', 'shared-value', 'local_vektradiscuss');
 
-        $error = $this->key_setting('mintkey', 'teacher')->write_setting('shared-value');
+        $error = $this->key_setting('mintkey')->write_setting('shared-value');
 
         $this->assertSame(get_string('error_key_duplicate', 'local_vektradiscuss'), $error);
         $this->assertEmpty(get_config('local_vektradiscuss', 'mintkey'));
@@ -89,7 +102,7 @@ final class settings_test extends \advanced_testcase {
         set_config('teacherkey', 'old-teacher-value', 'local_vektradiscuss');
         $_POST['s_local_vektradiscuss_teacherkey'] = 'shared-value';
 
-        $error = $this->key_setting('mintkey', 'teacher')->write_setting('shared-value');
+        $error = $this->key_setting('mintkey')->write_setting('shared-value');
         unset($_POST['s_local_vektradiscuss_teacherkey']);
 
         $this->assertSame(get_string('error_key_duplicate', 'local_vektradiscuss'), $error);
@@ -99,7 +112,7 @@ final class settings_test extends \advanced_testcase {
      * A distinct key is stored; an empty value clears it.
      */
     public function test_valid_key_stored_and_cleared(): void {
-        $setting = $this->key_setting('mintkey', 'teacher');
+        $setting = $this->key_setting('mintkey');
 
         $this->assertSame('', $setting->write_setting('mint-value'));
         $this->assertSame('mint-value', get_config('local_vektradiscuss', 'mintkey'));

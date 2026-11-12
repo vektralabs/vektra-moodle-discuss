@@ -73,7 +73,7 @@ if ($hassiteconfig) {
             PARAM_ALPHANUMEXT
         ));
 
-        // Keys: two separate, narrow secrets; never the block admin key.
+        // Keys: four separate, narrow secrets; never the block admin key.
         $settings->add(new admin_setting_heading(
             'local_vektradiscuss/keys',
             get_string('settings_keys', 'local_vektradiscuss'),
@@ -84,14 +84,28 @@ if ($hassiteconfig) {
             'local_vektradiscuss/mintkey',
             get_string('settings_mintkey', 'local_vektradiscuss'),
             get_string('settings_mintkey_desc', 'local_vektradiscuss'),
-            'teacher'
+            'mint'
         ));
 
         $settings->add(new \local_vektradiscuss\admin\setting_assess_key(
             'local_vektradiscuss/teacherkey',
             get_string('settings_teacherkey', 'local_vektradiscuss'),
             get_string('settings_teacherkey_desc', 'local_vektradiscuss'),
-            'mint'
+            'teacher'
+        ));
+
+        $settings->add(new \local_vektradiscuss\admin\setting_assess_key(
+            'local_vektradiscuss/privacyexportkey',
+            get_string('settings_privacyexportkey', 'local_vektradiscuss'),
+            get_string('settings_privacyexportkey_desc', 'local_vektradiscuss'),
+            'privacy_export'
+        ));
+
+        $settings->add(new \local_vektradiscuss\admin\setting_assess_key(
+            'local_vektradiscuss/privacyerasekey',
+            get_string('settings_privacyerasekey', 'local_vektradiscuss'),
+            get_string('settings_privacyerasekey_desc', 'local_vektradiscuss'),
+            'privacy_erase'
         ));
     }
 }

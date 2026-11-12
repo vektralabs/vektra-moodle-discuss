@@ -38,6 +38,8 @@ class config {
     public const KEY_ROLES = [
         'mint' => 'mintkey',
         'teacher' => 'teacherkey',
+        'privacy_export' => 'privacyexportkey',
+        'privacy_erase' => 'privacyerasekey',
     ];
 
     /**
