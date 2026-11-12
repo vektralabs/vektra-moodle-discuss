@@ -2,9 +2,9 @@
 
 **ID**: 20261101-154950-discuss-teacher-privacy
 **Status**: active
-**Branch**: one per PR slice (see Tasks), first `feat/discuss-teacher-settings`
+**Branch**: `feat/discuss-teacher-settings` > `-page` > `-download` > `feat/discuss-privacy` > `feat/discuss-setupcheck` (stacked; one PR from the last)
 **Created**: 2026-11-01T14:49:50Z
-**Updated**: 2026-11-12T23:30:00Z
+**Updated**: 2026-11-13T00:30:00Z
 **Approved**: 2026-11-01 (coordinator)
 
 ## Traceability
@@ -234,34 +234,34 @@ version); P3-5 setup check page, docs, live E2E (C, E).
 
 ### A. Settings section in the activity form
 - [x] A1. Verify on 4.3 and 5.2 envs: the three `coursemodule_*` callbacks fire for quiz and assign, or which `\core_course\hook\*` replace them; whether `mod/quiz:viewoverrides` and `mod/assign:viewoverrides` exist on both. Record results in the plan Notes before coding A2.
-- [ ] A2. `lib.php` callbacks (+ `db/hooks.php` if A1 requires) delegating to `classes/local/form/settings_section.php`: GET config on render, frozen/unavailable rendering, create-form defaults, all fields from Design Notes, help strings incl. the pasted-rubric line and the D3 sentence (REQ-077 AC), computed opening condition, end date, "N sessioni attive" with a link to the terminate action, review-options warning from Vektra.
-- [ ] A3. `amd/src/charcounter.js`: live counter for solution and pasted rubric (20,000), announced politely at thresholds; built into `amd/build`.
-- [ ] A4. `settings_section::validate()` for `coursemodule_validation` (BR-013 mirror, messages naming ranges) and `settings_section::save()` for `edit_post_actions` (etag rule, PUT with If-Match, solution/rubric only when replaced, unset from `$data` afterwards, Vektra field errors -> notification naming fields).
-- [ ] A5. PHPUnit `tests/local/form/settings_section_test.php` with mocked curl: GET failure -> save sends 0 requests (mock queue untouched); unchanged fields -> 0 PUT; solution untouched -> PUT body has no `solution` key; replace -> present; remove -> `null`; RAG never true in any PUT body; 20,000 accepted / 20,001 refused locally; cap 4/121 refused, 5/120 accepted; Vektra 422 with field errors -> notification lists each field.
-- [ ] A6. Behat `tests/behat/teacher_settings.feature` (stub from P2 D1): new quiz shows defaults and frozen enable; edit form shows "impostata" without text in page source; outage -> frozen section and stub received 0 PUT; refused enable (stub returns BR-007 error) -> error notification, stub config unchanged.
+- [x] A2. `lib.php` callbacks (+ `db/hooks.php` if A1 requires) delegating to `classes/local/form/settings_section.php`: GET config on render, frozen/unavailable rendering, create-form defaults, all fields from Design Notes, help strings incl. the pasted-rubric line and the D3 sentence (REQ-077 AC), computed opening condition, end date, "N sessioni attive" with a link to the terminate action, review-options warning from Vektra.
+- [x] A3. `amd/src/charcounter.js`: live counter for solution and pasted rubric (20,000), announced politely at thresholds; built into `amd/build`.
+- [x] A4. `settings_section::validate()` for `coursemodule_validation` (BR-013 mirror, messages naming ranges) and `settings_section::save()` for `edit_post_actions` (etag rule, PUT with If-Match, solution/rubric only when replaced, unset from `$data` afterwards, Vektra field errors -> notification naming fields).
+- [x] A5. PHPUnit `tests/local/form/settings_section_test.php` with mocked curl: GET failure -> save sends 0 requests (mock queue untouched); unchanged fields -> 0 PUT; solution untouched -> PUT body has no `solution` key; replace -> present; remove -> `null`; RAG never true in any PUT body; 20,000 accepted / 20,001 refused locally; cap 4/121 refused, 5/120 accepted; Vektra 422 with field errors -> notification lists each field.
+- [x] A6. Behat `tests/behat/teacher_settings.feature` (stub from P2 D1): new quiz shows defaults and frozen enable; edit form shows "impostata" without text in page source; outage -> frozen section and stub received 0 PUT; refused enable (stub returns BR-007 error) -> error notification, stub config unchanged.
 
 ### B. Teacher page
-- [ ] B1. `local_vektradiscuss_extend_settings_navigation()` adding "Discussioni" to quiz/assign module settings for `:viewtranscripts`; `teacher.php?cmid=` with `classes/output/teacher_page.php` renderable + `templates/teacher_sessions.mustache`.
-- [ ] B2. Session list from `GET /activities/{cmid}/sessions`: per student sessions #1..#N, state and close reason (incl. access_revoked), delivery status incl. bounces and "studente non avvisato via email" (REQ-092), reset count and reasons, gate panel (effective opening, override holder name only with the override-view capability, C7 fallback reason), SHOULD hint for suspended/unenrolled holder when Vektra reports it.
-- [ ] B3. Actions as POST forms (sesskey, `:manage`): reset with mandatory reason and the continuity opt-in (default OFF, REQ-087(b)); terminate with confirmation stating N and mandatory reason (REQ-081); extra time in minutes or % with the 240-min total stated and >+100% confirmation (BR-013), shown only before start; opening date + attestation (REQ-091); resend (no recipient field exists in the form or request). Vektra refusals (reset on ACTIVE, after end date with pointer to the date field, extra time on ACTIVE/CLOSED, opening date moved earlier) shown as notifications with the localized reason.
-- [ ] B4. Grader download `teacher_transcript.php` via `transcript_proxy` with the teacher-key download token.
-- [ ] B5. PHPUnit `tests/local/teacher_actions_test.php`: each action's exact request body (actor present, no recipient parameter on resend, reason present); missing reason -> 0 requests; user without `:manage` -> exception and 0 requests; login-as -> refused, 0 requests; teacher of course B with cmid of course A -> `require_login` failure, 0 requests.
-- [ ] B6. Behat `tests/behat/teacher_page.feature`: list renders all columns from stub fixtures; reset reason visible in list; override holder name hidden for a non-editing teacher without the capability; terminate confirmation shows N.
+- [x] B1. `local_vektradiscuss_extend_settings_navigation()` adding "Discussioni" to quiz/assign module settings for `:viewtranscripts`; `teacher.php?cmid=` with `classes/output/teacher_page.php` renderable + `templates/teacher_sessions.mustache`.
+- [x] B2. Session list from `GET /activities/{cmid}/sessions`: per student sessions #1..#N, state and close reason (incl. access_revoked), delivery status incl. bounces and "studente non avvisato via email" (REQ-092), reset count and reasons, gate panel (effective opening, override holder name only with the override-view capability, C7 fallback reason), SHOULD hint for suspended/unenrolled holder when Vektra reports it.
+- [x] B3. Actions as POST forms (sesskey, `:manage`): reset with mandatory reason and the continuity opt-in (default OFF, REQ-087(b)); terminate with confirmation stating N and mandatory reason (REQ-081); extra time in minutes or % with the 240-min total stated and >+100% confirmation (BR-013), shown only before start; opening date + attestation (REQ-091); resend (no recipient field exists in the form or request). Vektra refusals (reset on ACTIVE, after end date with pointer to the date field, extra time on ACTIVE/CLOSED, opening date moved earlier) shown as notifications with the localized reason.
+- [x] B4. Grader download `teacher_transcript.php` via `transcript_proxy` with the teacher-key download token.
+- [x] B5. PHPUnit `tests/local/teacher_actions_test.php`: each action's exact request body (actor present, no recipient parameter on resend, reason present); missing reason -> 0 requests; user without `:manage` -> exception and 0 requests; login-as -> refused, 0 requests; teacher of course B with cmid of course A -> `require_login` failure, 0 requests.
+- [x] B6. Behat `tests/behat/teacher_page.feature`: list renders all columns from stub fixtures; reset reason visible in list; override holder name hidden for a non-editing teacher without the capability; terminate confirmation shows N.
 
 ### C. Setup check page
-- [ ] C1. `admin/setupcheck.php` + `settings.php` registration + template rendering REQ-079 items by name, privacy items, key-configured flags (never values).
-- [ ] C2. PHPUnit/Behat: stub returns one MISSING item -> that item named; transport failure -> generic error, no item shown as OK.
+- [x] C1. `admin/setupcheck.php` + `settings.php` registration + template rendering REQ-079 items by name, privacy items, key-configured flags (never values).
+- [x] C2. PHPUnit/Behat: stub returns one MISSING item -> that item named; transport failure -> generic error, no item shown as OK.
 
 ### D. Privacy provider
-- [ ] D1. Settings `privacyexportkey`, `privacyerasekey`; client roles `privacy_export`, `privacy_erase`; lang strings for metadata.
-- [ ] D2. Provider metadata + `get_contexts_for_userid` + `get_users_in_context` + `export_user_data` with hash verification per Design Notes.
-- [ ] D3. Delete methods with post-delete verification and throw-on-anything-else; dedicated exception strings for "key not configured", "Vektra refused", "verification found N remaining", "erasure exempt (DPO)".
-- [ ] D4. PHPUnit `tests/privacy/provider_test.php` (extends `\core_privacy\tests\provider_testcase`): metadata contains the external location; export writes bytes sha256-equal to the mock; hash mismatch throws; delete with missing key throws; delete with 200 but verification returning 1 transcript throws; delete success makes exactly 2 requests (DELETE + verification GET); exempt -> throws; cross-user: export for user B never includes A's records (mock asserts the requested userid).
+- [x] D1. Settings `privacyexportkey`, `privacyerasekey`; client roles `privacy_export`, `privacy_erase`; lang strings for metadata.
+- [x] D2. Provider metadata + `get_contexts_for_userid` + `get_users_in_context` + `export_user_data` with hash verification per Design Notes.
+- [x] D3. Delete methods with post-delete verification and throw-on-anything-else; dedicated exception strings for "key not configured", "Vektra refused", "verification found N remaining", "erasure exempt (DPO)".
+- [x] D4. PHPUnit `tests/privacy/provider_test.php` (extends `\core_privacy\tests\provider_testcase`): metadata contains the external location; export writes bytes sha256-equal to the mock; hash mismatch throws; delete with missing key throws; delete with 200 but verification returning 1 transcript throws; delete success makes exactly 2 requests (DELETE + verification GET); exempt -> throws; cross-user: export for user B never includes A's records (mock asserts the requested userid).
 - [ ] D5. Live (plan-4 env + real stack): create a discussion for a fixture student, unenrol them, run `admin/tool/dataprivacy` export -> zip contains transcripts #1..#N sha256-equal to the in-course copy (REQ-093(b)); run deletion -> Vektra row counts for that subject's sessions, snapshots, turns, transcripts = 0 (SQL counts recorded), export afterwards contains 0 transcripts.
 - [ ] D6. Live negative: revoke the erase key in Vektra, run a deletion request -> the provider throws an explicit exception, the site's DPOs receive Moodle's failure notification with its text, and Vektra's rows are unchanged (count before/after). Moodle completes the request anyway: `core_privacy\manager::handled_component_class_callback()` catches any Throwable from a provider, notifies the observer (tool_dataprivacy emails the DPOs) and returns null (privacy/classes/manager.php:609 on 4.3.11; same on 5.2). Decided by the coordinator 2026-11-13 (OQ-033): DPO notification on the Moodle side, operator alert on the Vektra side.
 
 ### E. Docs and wrap-up
-- [ ] E1. README: teacher guide (settings fields, write-only solution, RAG off), required keys and scopes table (mint, teacher, privacy-export, privacy-erase; admin key never), privacy section (what leaves Moodle, export/delete behaviour, DPO exemption path); CHANGELOG `[Unreleased]`; raise `maturity` to BETA only after D5/D6 pass.
+- [x] E1. README: teacher guide (settings fields, write-only solution, RAG off), required keys and scopes table (mint, teacher, privacy-export, privacy-erase; admin key never), privacy section (what leaves Moodle, export/delete behaviour, DPO exemption path); CHANGELOG `[Unreleased]`; raise `maturity` to BETA only after D5/D6 pass.
 - [ ] E2. Live teacher E2E on 4.3 and 5.2 (quiz + assign): enable, cap change, extra time +50% on 30 min -> Vektra deadline 45 min (REQ-078 AC, read from the session row), terminate with N=2 -> 2 CLOSED(terminated_by_teacher) rows and 2 transcripts, reset -> session #2 row, grader download sha256-equal to the student copy (P2 E3).
 
 ## State & Data Lifecycle
@@ -282,15 +282,15 @@ Discussion config, sessions, transcripts and audit live only in Vektra; the plug
 - [ ] Enable refused by Vektra (no close date / no cut-off / team submission / marking guide / empty pasted rubric / privacy unset) -> error naming the field; Vektra config unchanged (GET after shows enable OFF) (REQ-077, BR-013, REQ-089)
 - [ ] BR-013 boundaries 20,000/20,001, cap 4/5/120/121, total 240/241 min, +100%/+101% confirmation produce the expected accept/refuse on both layers (BR-013)
 - [ ] Solution text never appears in page source after save, in Moodle DB (grep of a DB dump for a canary string = 0), or in logs; status shows "impostata" (OQ-034)
-- [ ] Vektra unreachable while editing an activity -> 0 PUT requests on save (stub log) and config unchanged (dormant-capability guard)
-- [ ] No PUT body ever carries RAG ON (ARCH-072)
+- [x] Vektra unreachable while editing an activity -> 0 PUT requests on save (stub log) and config unchanged (dormant-capability guard)
+- [x] No PUT body ever carries RAG ON (ARCH-072)
 - [ ] Non-grader and other-course teacher get an authorization error and cause 0 Vektra requests; Vektra also refuses a forged actor (live) (REQ-076, NFR-014)
 - [ ] Reset reason visible in the list, absent from the transcript bytes (grep = 0) (REQ-076, REQ-087)
 - [ ] Terminate with N active sessions -> N CLOSED(terminated_by_teacher) rows and N transcripts (row counts) (REQ-081)
 - [ ] +50% on a 30-min cap -> 45-min server deadline (session row) (REQ-078)
 - [ ] Opening date earlier than the activity close -> field error; attestation required on every edit (REQ-091)
 - [ ] FAILED transcript downloadable by a grader; served with attachment, nosniff, CSP sandbox, no-store; 0 bytes on non-200 (REQ-076, BR-016)
-- [ ] Setup check against a misconfigured service account names the failing item (REQ-079)
+- [x] Setup check against a misconfigured service account names the failing item (REQ-079)
 - [ ] Unenrolled student's privacy export contains #1..#N, sha256-equal to the in-course copy (REQ-093)
 - [ ] Privacy deletion -> 0 rows for the subject in Vektra (SQL count); a deletion that fails or cannot be verified throws an explicit exception that Moodle sends to the DPOs (the request still completes, see D6), and Vektra alerts its operator (OQ-033)
 
@@ -352,3 +352,30 @@ tool_dataprivacy UI status alone.
 - Risk: activity duplication, backup/restore and deletion get a new or no cmid; Vektra config is not
   carried (duplicates start disabled: fail closed) and data of deleted activities waits for the
   retention purge. Consider a `pre_course_module_delete` notification later (BACKLOG).
+
+**Implementation notes (2026-11-13).**
+- One PR for the whole plan (the repository rule: one PR per plan), from the top of the stacked
+  branches; the commits stay sliced P3-1 to P3-5. CodeRabbit's free tier allows about one review an
+  hour, and the whole plan is 39 files.
+- Local review (`/code-review`) of each slice, all findings fixed or answered in the commits:
+  P3-1 10, P3-2 10, P3-3 10, P3-4 10.
+- B3 opening date: the teacher page does not repeat the opening-fallback form; when Vektra needs a
+  date it shows Vektra's reason and links to the activity settings, where the form is (A).
+- B3 extra time: offered only when Vektra accepts it (no session yet, or a granted reset not started);
+  a separate form covers students who have not started yet (REQ-078 accommodations).
+- B4 resend: offered only for a transcript delivered at least once (Vektra resends a round).
+- Grader download and resend check that the transcript belongs to the activity whose capability Moodle
+  checked, by finding it in Vektra's sessions list (the link carries its page). vektra-stack agreed to
+  accept the activity id in the download-token and resend bodies (separate vektra-stack PR); switch to
+  it when merged.
+- D: privacy calls work with the kill switch off; the user context is always listed; subject-wide
+  erasure only through the user context and only when no existing activity was left out; verification
+  through the activity's subjects and the person's activities (no file download). D6 decided by the
+  coordinator (OQ-033), see the task.
+- Pre-session privacy block rendered (state_dto/state_view/presession). Recording the shown
+  notice_version at Start waits for vektra-stack (`privacy_notice_version` in the mint body, its
+  own PR; the mint is strict, so the plugin must not send it before the merge). Then: send it, and
+  give vektra-stack the plugin version so it raises the minimum.
+- Pending live checks, waiting for F1 after vektra-stack #209 (F1's 4.3 WS token was missing on
+  2026-11-12: setup check `no_token`): D5, D6, E2, and the student plan's F1 and E3 (moved here when
+  #3 merged).
