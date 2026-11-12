@@ -126,7 +126,31 @@ final class state_dto_test extends \advanced_testcase {
         $http = $pre;
         $http['privacy']['notice_url'] = 'http://vektra.example.test/privacy';
         $insecure = state_dto::from_vektra(['state' => 'eligible', 'pre_session' => $http]);
-        $this->assertArrayNotHasKey('privacy', $insecure['pre_session']);
+        // An http notice URL is dropped; the other privacy fields stay.
+        $this->assertArrayNotHasKey('notice_url', $insecure['pre_session']['privacy']);
+        $this->assertSame('2026-11', $insecure['pre_session']['privacy']['notice_version']);
+
+        // The full privacy block of a configured site, and a development site's partial one.
+        $full = state_dto::from_vektra(['state' => 'eligible', 'pre_session' => ['privacy' => [
+            'notice_url' => 'https://vektra.example.test/privacy', 'notice_version' => 'v3', 'retention_days' => 30,
+            'legal_basis_label' => 'Public interest', 'summary' => 'Kept 30 days. Mailbox note.',
+            'mailbox_notice' => 'Mailbox note.',
+            'extra' => 'ignored']]]);
+        $this->assertSame(['notice_url' => 'https://vektra.example.test/privacy', 'notice_version' => 'v3',
+            'legal_basis_label' => 'Public interest', 'summary' => 'Kept 30 days. Mailbox note.',
+            'mailbox_notice' => 'Mailbox note.',
+            'retention_days' => 30], $full['pre_session']['privacy']);
+        $view = state_view::context($full, 7)['presession'];
+        $this->assertSame('Kept 30 days. Mailbox note.', $view['privacysummary']);
+        $this->assertNull($view['privacymailbox']);
+        $this->assertSame(get_string('pre_privacy_retention', 'local_vektradiscuss', 30), $view['privacyretention']);
+        $dev = state_dto::from_vektra(['state' => 'eligible', 'pre_session' => ['privacy' => [
+            'notice_version' => 'dev', 'mailbox_notice' => 'Mailbox note.', 'retention_days' => 9999]]]);
+        $this->assertSame(['notice_version' => 'dev', 'mailbox_notice' => 'Mailbox note.'], $dev['pre_session']['privacy']);
+        $view = state_view::context($dev, 7)['presession'];
+        $this->assertSame(get_string('pre_privacy_summary', 'local_vektradiscuss'), $view['privacysummary']);
+        $this->assertSame('Mailbox note.', $view['privacymailbox']);
+        $this->assertNull($view['privacyretention']);
 
         $active = state_dto::from_vektra(['state' => 'starting', 'active' => ['session_no' => 1, 'minutes_left' => 37,
             'deadline_at' => '2026-12-01T10:00:00Z']]);

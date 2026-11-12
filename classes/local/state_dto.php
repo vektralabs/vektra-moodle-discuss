@@ -191,13 +191,23 @@ final class state_dto {
             }
         }
         if (is_array($raw['privacy'] ?? null)) {
-            $url = self::https_url($raw['privacy']['notice_url'] ?? null);
+            // On a configured site every field is present; a development site without privacy settings sends
+            // only the version and the mailbox notice (plus the URL when set), so each field is optional.
+            $privacy = $raw['privacy'];
+            $url = self::https_url($privacy['notice_url'] ?? null);
             if ($url !== null) {
                 $pre['privacy']['notice_url'] = $url;
-                $version = self::text($raw['privacy']['notice_version'] ?? null, 40);
-                if ($version !== null) {
-                    $pre['privacy']['notice_version'] = $version;
+            }
+            $limits = ['notice_version' => 40, 'legal_basis_label' => 200, 'summary' => 4000, 'mailbox_notice' => 1000];
+            foreach ($limits as $key => $max) {
+                $value = self::text($privacy[$key] ?? null, $max);
+                if ($value !== null) {
+                    $pre['privacy'][$key] = $value;
                 }
+            }
+            $days = self::count($privacy['retention_days'] ?? null, 1);
+            if ($days !== null && $days <= 3650) {
+                $pre['privacy']['retention_days'] = $days;
             }
         }
         if (is_array($raw['files'] ?? null)) {
