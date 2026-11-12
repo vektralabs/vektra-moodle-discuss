@@ -2,9 +2,9 @@
 
 **ID**: 20261101-154950-discuss-teacher-privacy
 **Status**: active
-**Branch**: N/A
+**Branch**: one per PR slice (see Tasks), first `feat/discuss-teacher-settings`
 **Created**: 2026-11-01T14:49:50Z
-**Updated**: 2026-11-01T20:58:19Z
+**Updated**: 2026-11-12T23:30:00Z
 **Approved**: 2026-11-01 (coordinator)
 
 ## Traceability
@@ -69,6 +69,57 @@ The teacher and data-protection side of the plugin, all of it a client of Vektra
    cannot be carried out throws; it never returns as if it had succeeded.
 
 ## Design Notes
+
+**Contract alignment (2026-11-12).** The notes below were written before the vektra-stack teacher and
+privacy plans landed (plans 11a/11b, #208, 12a). Where they disagree, this block wins; source of
+truth is vektra-stack `docs/reference/api.md` on develop.
+- Config `GET/PUT /api/v1/assess/activities/{cmid}/config` (teacher key). GET needs the headers
+  `X-Assess-Actor`, `X-Assess-Course`, `X-Assess-Activity-Type` (`quiz`/`assign`); it returns
+  `version`, `configured`, `enabled`, `cap_minutes`, `rubric_source`, `show_solution`,
+  `rag_enabled` (always false), `available_until`, `solution_state` / `pasted_rubric_state` /
+  `transcript_recipients_state` (`impostata` / `non impostata`), `transcript_recipients_count`,
+  `opening {at, source, fallback_required}`, `warnings`, `active_sessions`. No text, no addresses.
+- There is no ETag: concurrency is `expected_version` in the PUT body (0 for a never-saved
+  activity); `409 ERR-ASSESS-023` (`details.current_version`) means reload, nothing saved. Read
+  "etag" below as "the version read on render": no PUT without it.
+- PUT body: `actor_userid`, `courseid`, `activity_type`, `expected_version` required; every other
+  field optional, ABSENT = unchanged. `null` clears only the write-only fields, `cap_minutes`
+  and `available_until`; never send `null` for `enabled`, `show_solution`, `rag_enabled`,
+  `rubric_source`. `rubric_source`: `none` / `pasted` (+ `lms` for assign). `rag_enabled`: only
+  `false`. Write-only: `solution`, `pasted_rubric` (20,000 code points after NFC, control
+  characters other than newline and tab removed), `transcript_recipients` (1-3 addresses, each in
+  the operator's allowed domains). Field errors: `400 ERR-ASSESS-022` `details.fields[{field, code,
+  range?, allowed_domains?, index?, reason?, opening_at?}]`; enable refusals arrive as codes on
+  `enabled` (`quiz_without_close_date`, `assignment_without_cutoff`, `team_submission`,
+  `marking_guide`, `lms_facts_unreadable`, `privacy_unset`, `setup_check_red`).
+  `403 ERR-ASSESS-021`: `editor_check_stale` retry after a few seconds, `not_an_editor` no retry.
+  `400 ERR-ASSESS-014` `teacher_gate_hint`: send course and type.
+- Recipients replace "graders implicit + free text": enable needs at least one address; the form
+  defaults to `$USER->email`, and the allowed domains come back on a field error.
+- Opening fallback is its own endpoint, `PUT .../opening-fallback` {actor_userid, courseid,
+  activity_type, opening_at, attestation: true, attestation_text_version}, shown only when
+  `opening.fallback_required` is true (`gate_fallback` below is gone). A `source` value the plugin
+  does not know means "no opening date".
+- Teacher operations (sessions list with cursor header, reset, terminate with
+  `expected_active_count` and `409 ERR-ASSESS-025`, extra time with `minutes` xor `percent` and
+  `confirm_over_100`) all carry `actor_userid`, `courseid`, `activity_type`. The reset reason is
+  shown only in the list. No student email on reset (REQ-092 out of v1): the list says so.
+- Grader download: `POST /transcripts/{tid}/download-token` with the teacher key and
+  `{"actor_userid"}`; resend: `POST /transcripts/{tid}/resend` with `{"actor_userid"}` only.
+- Setup check is asynchronous: `POST /sites/{site}/setup-check` -> `202 {report_id}` (one per site
+  per 5 minutes, `429 ERR-ASSESS-002`), then `GET .../setup-check/{report_id}` until `status` is
+  `done`; items `{name, result, reason_code}`.
+- Privacy endpoints: GET `/privacy/subjects/{userid}/transcripts` (export key, 10 per page,
+  `X-Assess-Cursor`, items carry `sha256` and `content_base64`), GET
+  `/privacy/activities/{cmid}/subjects` (500 per page), DELETE `/privacy/subjects/{userid}` and
+  DELETE `/privacy/activities/{cmid}/subjects` (optional `{"userids"}`), erase key. Success is
+  `{"outcome": "erased" | "retained", counts}`; `503 ERR-ASSESS-027` `details.reason: pending` is
+  retried with the same request (idempotent), `failed` throws. `retained` (exam-evidence mode)
+  throws the dedicated exception.
+- Pre-session privacy block (`pre_session.privacy {notice_url, notice_version, retention_days,
+  legal_basis_label, summary, mailbox_notice}`) is rendered by the student path; recording the
+  shown `notice_version` at Start needs a mint field that vektra-stack has not added yet (P3-4,
+  ask vektra-stack).
 
 **Form integration matrix**: legacy callbacks in `lib.php`:
 `local_vektradiscuss_coursemodule_standard_elements($formwrapper, $mform)`,
@@ -170,8 +221,13 @@ origin.
 
 ## Tasks
 
+**PR slices (user order, 2026-11-12).** P3-1 settings section (A, plus the opening-fallback form);
+P3-2 teacher page: sessions list, reset, terminate, extra time (B1-B3, B5, B6); P3-3 grader
+download and resend (B4, plus P2 E3 hash-equal); P3-4 privacy (D, plus pre-session notice
+version); P3-5 setup check page, docs, live E2E (C, E).
+
 ### A. Settings section in the activity form
-- [ ] A1. Verify on 4.3 and 5.2 envs: the three `coursemodule_*` callbacks fire for quiz and assign, or which `\core_course\hook\*` replace them; whether `mod/quiz:viewoverrides` and `mod/assign:viewoverrides` exist on both. Record results in the plan Notes before coding A2.
+- [x] A1. Verify on 4.3 and 5.2 envs: the three `coursemodule_*` callbacks fire for quiz and assign, or which `\core_course\hook\*` replace them; whether `mod/quiz:viewoverrides` and `mod/assign:viewoverrides` exist on both. Record results in the plan Notes before coding A2.
 - [ ] A2. `lib.php` callbacks (+ `db/hooks.php` if A1 requires) delegating to `classes/local/form/settings_section.php`: GET config on render, frozen/unavailable rendering, create-form defaults, all fields from Design Notes, help strings incl. the pasted-rubric line and the D3 sentence (REQ-077 AC), computed opening condition, end date, "N sessioni attive" with a link to the terminate action, review-options warning from Vektra.
 - [ ] A3. `amd/src/charcounter.js`: live counter for solution and pasted rubric (20,000), announced politely at thresholds; built into `amd/build`.
 - [ ] A4. `settings_section::validate()` for `coursemodule_validation` (BR-013 mirror, messages naming ranges) and `settings_section::save()` for `edit_post_actions` (etag rule, PUT with If-Match, solution/rubric only when replaced, unset from `$data` afterwards, Vektra field errors -> notification naming fields).
@@ -269,6 +325,13 @@ tool_dataprivacy UI status alone.
 
 ## Notes
 
+- A1 (2026-11-12, both dev envs): `coursemodule_standard_elements`, `coursemodule_validation`,
+  `coursemodule_edit_post_actions` (and `coursemodule_definition_after_data`) are still called from
+  `course/moodleform_mod.php` / `course/modlib.php` on 4.3.11 and 5.2.4, with no deprecation; the
+  5.x `\core_course\hook\after_form_*` hooks cover the course form only. So lib.php callbacks,
+  no `db/hooks.php` entry. Capabilities: `mod/quiz:viewoverrides` exists on both,
+  `mod/assign:viewoverrides` on neither: use `mod/assign:manageoverrides` for assignments. Vektra
+  itself only shows the override holder to `mod/quiz:manageoverrides` holders.
 - Drift: REQ-077 wants field-level errors, but rules that depend on the just-saved activity
   (BR-007 close date changed in the same save) and every rule on a create form cannot be validated
   by Vektra before Moodle saves. Errors after save are notifications; enable stays OFF. Product to
