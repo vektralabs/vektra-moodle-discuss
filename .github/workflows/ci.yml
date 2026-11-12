@@ -71,5 +71,8 @@ jobs:
       - name: Self-test the release tag assertion
         run: bash ./.github/scripts/test-release-tag.sh
 
+      - name: Self-test the release zip assertion
+        run: bash ./.github/scripts/test-release-zip.sh
+
       - name: Validate zip content
         run: bash ./.github/scripts/assert-release-zip.sh "$RUNNER_TEMP/vektradiscuss.zip" vektradiscuss

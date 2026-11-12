@@ -59,6 +59,15 @@ if [ -n "${forbidden}" ]; then
   fail=1
 fi
 
+# The Moodle LMS provider (provider/) is a separate Python distribution released as a wheel: none of
+# it, and no Python file or wheel from anywhere else, belongs in the plugin zip.
+python_entries="$(grep -E "^${prefix}/provider/|\.(py|pyc|whl)$" <<<"${list}" || true)"
+if [ -n "${python_entries}" ]; then
+  echo "::error::Provider or Python entries in the zip (provider/ must be export-ignore):"
+  echo "${python_entries}"
+  fail=1
+fi
+
 if [ "${fail}" -ne 0 ]; then
   exit 1
 fi
