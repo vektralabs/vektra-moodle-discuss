@@ -26,7 +26,8 @@
     * canmanage, canterminate, expectedactive - actions
     * gate - {opening, fallbackreason, fallbackmissing, settingsurl, activesessions, overrideholder}
     * hasterminations, terminations - [{at, by, reason, closed, rolledback, disabled}]
-    * hasstudents, students - [{userid, name, sessions[{n, state, closereason, closedat, hasdeliveries, deliveries[]}],
+    * hasstudents, students - [{userid, name, sessions[{n, state, closereason, closedat, hasdeliveries, deliveries[],
+      tid, downloadurl, canresend, page}],
       hasresets, resets[{after, reason, by, at}], extra, canreset, resetsid, resetafter, continuitydefault,
       canextratime}]
     * hasotherstudents, otherstudents - [{userid, name}] students not in the list, for extra time before their
@@ -44,7 +45,9 @@
         "hasstudents": true,
         "students": [{"userid": 7, "name": "Student One",
             "sessions": [{"n": 1, "state": "Closed", "closereason": "Finished by the student",
-                "closedat": "7 November 2026, 9:00 AM", "hasdeliveries": true,
+                "closedat": "7 November 2026, 9:00 AM", "hasdeliveries": true, "tid": "aaaa-1",
+                "downloadurl": "https://moodle.example.org/local/vektradiscuss/teacher_transcript.php?cmid=12&tid=aaaa-1&sesskey=x",
+                "canresend": true, "page": "",
                 "deliveries": ["Round 1: sent (7 November 2026, 9:01 AM)"]}],
             "hasresets": false, "resets": [], "extra": null, "canreset": true,
             "resetsid": "0f8e7d6c-5b4a-4321-8fed-cba987654321", "resetafter": 1, "continuitydefault": false,
@@ -137,6 +140,7 @@
                                     <input type="hidden" name="sesskey" value="{{sesskey}}">
                                     <input type="hidden" name="action" value="resend">
                                     <input type="hidden" name="tid" value="{{tid}}">
+                                    <input type="hidden" name="page" value="{{page}}">
                                     <button type="submit" class="btn btn-link btn-sm p-0 ms-1 ml-1">{{#str}}teacher_resend, local_vektradiscuss, {{n}}{{/str}}</button>
                                 </form>
                                 {{/canresend}}

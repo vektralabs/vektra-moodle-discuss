@@ -336,23 +336,43 @@ final class teacher_page_test extends \advanced_testcase {
     private function list_with(string $tid, ?int $next = null): array {
         return ['students' => [['userid' => (int) $this->student->id, 'sessions' => [['session_id' => self::SID,
             'session_no' => 2, 'state' => 'CLOSED', 'close_reason' => 'finished', 'transcript_id' => $tid,
-            'deliveries' => []]], 'resets' => [], 'reset_count' => 0, 'extra_seconds' => 0]],
+            'deliveries' => [['round' => 1, 'recipient_kind' => 'recipient', 'status' => 'SENT', 'attempts' => 1,
+                'smtp_code' => 250, 'error_class' => null, 'sent_at' => null]]]],
+            'resets' => [], 'reset_count' => 0, 'extra_seconds' => 0]],
             'next_cursor' => $next, 'terminations' => [], 'gate' => []];
     }
 
     /**
      * A transcript is found in the activity's list, across pages; one of another activity is not.
      */
-    public function test_session_of_transcript_pages(): void {
+    public function test_find_transcript_pages(): void {
+        $where = ['n' => 2, 'userid' => (int) $this->student->id];
         $this->transport->respond(200, $this->list_with('aaaa-1', 4711));
         $this->transport->respond(200, $this->list_with('bbbb-2'));
-        $this->assertSame(2, $this->page()->session_of_transcript('bbbb-2'));
+        $this->assertSame($where, $this->page()->find_transcript('bbbb-2'));
         $this->assertSame('4711', $this->transport->header_map(1)['x-assess-cursor']);
 
         $this->transport->respond(200, $this->list_with('aaaa-1'));
-        $this->assertNull($this->page()->session_of_transcript('cccc-3'));
-        $this->assertNull($this->page()->session_of_transcript('../x'));
+        $this->assertNull($this->page()->find_transcript('cccc-3'));
+        $this->assertNull($this->page()->find_transcript('../x'));
         $this->assertCount(3, $this->transport->calls);
+
+        // The link's page first: one call when the transcript is there.
+        $this->transport->respond(200, $this->list_with('bbbb-2'));
+        $this->assertSame($where, $this->page()->find_transcript('bbbb-2', '4711'));
+        $this->assertSame('4711', $this->transport->header_map(3)['x-assess-cursor']);
+        $this->assertCount(4, $this->transport->calls);
+    }
+
+    /**
+     * A stale role check during the lookup is retried once.
+     */
+    public function test_find_transcript_retries_a_stale_check(): void {
+        $this->transport->respond(403, ['error' => ['code' => 'ERR-ASSESS-021', 'message' => 'stale',
+            'details' => ['reason' => 'grader_check_stale']]]);
+        $this->transport->respond(200, $this->list_with('bbbb-2'));
+        $this->assertSame(2, $this->page()->find_transcript('bbbb-2')['n']);
+        $this->assertDebuggingCalled();
     }
 
     /**
@@ -382,6 +402,36 @@ final class teacher_page_test extends \advanced_testcase {
         $this->assertSame([transcript_proxy::OK, 'dl.token_1'], $proxy->mint_grader((int) $this->teacher->id, 'aaaa-1'));
         $this->assertSame('Bearer test-teacher-key-not-a-secret', $this->transport->header_map(0)['authorization']);
         $this->assertSame(['actor_userid' => (int) $this->teacher->id], $this->body());
+
+        // A stale grader check is reported as such (the page retries), not as unavailable.
+        $this->transport->respond(403, ['error' => ['code' => 'ERR-ASSESS-021', 'message' => 'stale',
+            'details' => ['reason' => 'grader_check_stale']]]);
+        $this->assertSame([transcript_proxy::STALE, null], $proxy->mint_grader((int) $this->teacher->id, 'aaaa-1'));
+        $this->assertDebuggingCalledCount(2);
+
+        // The grader's fallback file name names the student.
+        $this->assertContains(
+            'Content-Disposition: attachment; filename="transcript_42_s3.html"',
+            transcript_proxy::headers([], 3, '42')
+        );
+    }
+
+    /**
+     * Resend is offered only for a transcript that was delivered at least once (Vektra resends a round).
+     */
+    public function test_resend_offered_only_after_a_delivery(): void {
+        $list = $this->list_with('aaaa-1');
+        $this->transport->respond(200, $list);
+        $api = new teacher_api(new assess_client(null, $this->transport));
+        $ctx = $this->page()->context($api->list_sessions((int) $this->cm->id, (int) $this->course->id, 'quiz', 1));
+        $this->assertTrue($ctx['students'][0]['sessions'][0]['canresend']);
+        $this->assertStringNotContainsString('&n=', $ctx['students'][0]['sessions'][0]['downloadurl']);
+
+        $list['students'][0]['sessions'][0]['deliveries'] = [];
+        $this->transport->respond(200, $list);
+        $ctx = $this->page()->context($api->list_sessions((int) $this->cm->id, (int) $this->course->id, 'quiz', 1));
+        $this->assertFalse($ctx['students'][0]['sessions'][0]['canresend']);
+        $this->assertNotNull($ctx['students'][0]['sessions'][0]['downloadurl']);
     }
 
     /**

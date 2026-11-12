@@ -36,6 +36,7 @@ use local_vektradiscuss\local\transcript_proxy;
 
 $cmid = required_param('cmid', PARAM_INT);
 $tid = required_param('tid', PARAM_ALPHANUMEXT);
+$page = optional_param('page', '', PARAM_RAW_TRIMMED);
 
 [$course, $cm] = get_course_and_cm_from_cmid($cmid);
 require_login($course, false, $cm);
@@ -47,29 +48,60 @@ $PAGE->set_url(new moodle_url('/local/vektradiscuss/teacher_transcript.php', ['c
 $PAGE->set_context($context);
 $back = new moodle_url('/local/vektradiscuss/teacher.php', ['cmid' => $cm->id]);
 
-$config = new config();
-if (
-    student_endpoint::is_loginas() || !$config->is_enabled() || !in_array($cm->modname, teacher_api::ACTIVITY_TYPES, true)
-        || !transcript_proxy::valid_tid($tid)
-) {
-    redirect($back, get_string('transcript_unavailable', 'local_vektradiscuss'), null, \core\output\notification::NOTIFY_ERROR);
+/**
+ * End with a page that says why there is no file (the session lock is already released, so no redirect
+ * message could be stored).
+ *
+ * @param string $identifier Language string of this plugin.
+ * @param moodle_url $back The Discussions page.
+ */
+function local_vektradiscuss_teacher_transcript_refused(string $identifier, moodle_url $back): void {
+    global $OUTPUT, $PAGE;
+    $PAGE->set_title(get_string('teacher_heading', 'local_vektradiscuss'));
+    header('Cache-Control: no-store');
+    echo $OUTPUT->header();
+    echo $OUTPUT->notification(get_string($identifier, 'local_vektradiscuss'), 'warning', false);
+    echo $OUTPUT->continue_button($back);
+    echo $OUTPUT->footer();
+    die();
 }
-$n = (new teacher_page($cm, $course))->session_of_transcript($tid);
-if ($n === null) {
-    redirect($back, get_string('transcript_unavailable', 'local_vektradiscuss'), null, \core\output\notification::NOTIFY_ERROR);
+
+// Release the session lock: the lookup and the transfer may take a while and must not block other tabs.
+\core\session\manager::write_close();
+
+$config = new config();
+if (student_endpoint::is_loginas()) {
+    local_vektradiscuss_teacher_transcript_refused('teacher_loginas', $back);
+}
+if (!$config->is_enabled() || !in_array($cm->modname, teacher_api::ACTIVITY_TYPES, true) || !transcript_proxy::valid_tid($tid)) {
+    local_vektradiscuss_teacher_transcript_refused('transcript_unavailable', $back);
+}
+if (!$config->key_usable('teacher')) {
+    local_vektradiscuss_teacher_transcript_refused('form_not_configured', $back);
+}
+$found = (new teacher_page($cm, $course))->find_transcript($tid, $page);
+if ($found === null) {
+    local_vektradiscuss_teacher_transcript_refused('transcript_unavailable', $back);
 }
 
 $proxy = new transcript_proxy($config);
 [$result, $token] = $proxy->mint_grader((int) $USER->id, $tid);
+if ($result === transcript_proxy::STALE) {
+    // Vektra queued a fresh check of the teacher's role: one retry after it had time to land.
+    sleep(2);
+    [$result, $token] = $proxy->mint_grader((int) $USER->id, $tid);
+}
 if ($result === transcript_proxy::OK) {
-    $result = $proxy->send($tid, $token, $n);
+    $result = $proxy->send($tid, $token, $found['n'], (string) $found['userid']);
 }
 if ($result === transcript_proxy::OK || $result === transcript_proxy::TRUNCATED) {
     die();
 }
-redirect(
-    $back,
-    get_string($result === transcript_proxy::NOT_READY ? 'transcript_not_ready' : 'transcript_unavailable', 'local_vektradiscuss'),
-    null,
-    \core\output\notification::NOTIFY_ERROR
+local_vektradiscuss_teacher_transcript_refused(
+    match ($result) {
+        transcript_proxy::NOT_READY => 'transcript_not_ready',
+        transcript_proxy::STALE => 'teacher_check_stale',
+        default => 'transcript_unavailable',
+    },
+    $back
 );

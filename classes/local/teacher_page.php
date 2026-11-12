@@ -69,6 +69,9 @@ class teacher_page {
     /** @var \stdClass Course. */
     private \stdClass $course;
 
+    /** @var string Cursor of the list page being rendered (links carry it, so lookups start there). */
+    private string $cursor = '';
+
     /**
      * Constructor.
      *
@@ -136,7 +139,7 @@ class teacher_page {
         switch ($action) {
             case 'resend':
                 $tid = (string) ($params['tid'] ?? '');
-                if ($this->session_of_transcript($tid) === null) {
+                if ($this->find_transcript($tid, (string) ($params['page'] ?? '')) === null) {
                     return [false, get_string('teacher_err_generic', self::C)];
                 }
                 $response = $this->api->resend($tid, (int) $USER->id);
@@ -177,29 +180,44 @@ class teacher_page {
     }
 
     /**
-     * The session number of a transcript of this activity, read from Vektra's sessions list, or null.
+     * Where a transcript of this activity is: its session number and student, read from Vektra's sessions
+     * list, or null.
      *
      * Vektra checks that the actor grades the transcript's activity; this ties the transcript to the activity
      * whose capability Moodle checked, so a teacher prohibited on another activity cannot reach its
-     * transcripts through this one.
+     * transcripts through this one. The links carry the list page of their row, so the search starts there.
      *
      * @param string $tid
-     * @return int|null
+     * @param string $hint The cursor of the list page the link came from ('' = first page).
+     * @return array|null {n, userid}
      */
-    public function session_of_transcript(string $tid): ?int {
-        global $USER;
+    public function find_transcript(string $tid, string $hint = ''): ?array {
         if (!transcript_proxy::valid_tid($tid)) {
             return null;
         }
-        $cursor = '';
-        for ($page = 0; $page < self::MAX_PAGES; $page++) {
-            $response = $this->api->list_sessions(
-                (int) $this->cm->id,
-                (int) $this->course->id,
-                $this->cm->modname,
-                (int) $USER->id,
-                $cursor
-            );
+        $hint = self::clean_cursor($hint);
+        $found = $hint !== '' ? $this->search_transcript($tid, $hint, 1) : null;
+        return $found ?? $this->search_transcript($tid, '', self::MAX_PAGES);
+    }
+
+    /**
+     * Search the sessions list for a transcript, from a cursor, over at most $pages pages.
+     *
+     * @param string $tid
+     * @param string $cursor
+     * @param int $pages
+     * @return array|null {n, userid}
+     */
+    private function search_transcript(string $tid, string $cursor, int $pages): ?array {
+        global $USER;
+        for ($page = 0; $page < $pages; $page++) {
+            $args = [(int) $this->cm->id, (int) $this->course->id, $this->cm->modname, (int) $USER->id, $cursor];
+            $response = $this->api->list_sessions(...$args);
+            if (teacher_api::role_refusal($response) === 'stale') {
+                // Vektra queued a fresh check of the teacher's role: one retry after it had time to land.
+                sleep(2);
+                $response = $this->api->list_sessions(...$args);
+            }
             $students = $response->ok() && is_array($response->json['students'] ?? null) ? $response->json['students'] : null;
             if ($students === null) {
                 return null;
@@ -207,7 +225,7 @@ class teacher_page {
             foreach ($students as $student) {
                 foreach (is_array($student['sessions'] ?? null) ? $student['sessions'] : [] as $session) {
                     if (is_array($session) && ($session['transcript_id'] ?? null) === $tid) {
-                        return (int) ($session['session_no'] ?? 1);
+                        return ['n' => max(1, (int) ($session['session_no'] ?? 1)), 'userid' => (int) ($student['userid'] ?? 0)];
                     }
                 }
             }
@@ -227,6 +245,7 @@ class teacher_page {
      * @return array|null
      */
     public function context(assess_response $response, string $cursor = ''): ?array {
+        $this->cursor = self::clean_cursor($cursor);
         $json = $response->ok() ? $response->json : null;
         if (!is_array($json) || !is_array($json['students'] ?? null)) {
             return null;
@@ -320,9 +339,11 @@ class teacher_page {
                 'closedat' => self::date($session['closed_at'] ?? null),
                 'deliveries' => self::deliveries($session['deliveries'] ?? []),
                 'hasdeliveries' => !empty($session['deliveries']),
-                'tid' => $this->transcript_id($session),
-                'downloadurl' => $this->download_url($session),
-                'canresend' => $canmanage && $this->transcript_id($session) !== null,
+                'tid' => $tid = $this->transcript_id($session),
+                'downloadurl' => $this->download_url($tid),
+                // Vektra resends only a transcript that was delivered at least once (a new round of its deliveries).
+                'canresend' => $canmanage && $tid !== null && !empty($session['deliveries']),
+                'page' => $this->cursor,
             ], $sessions),
             'resets' => array_map(fn(array $r): array => [
                 'after' => (int) ($r['after_session_no'] ?? 0),
@@ -372,17 +393,19 @@ class teacher_page {
     }
 
     /**
-     * The grader download link of a session's transcript, or null.
+     * The grader download link of a transcript, or null; it carries the list page of its row.
      *
-     * @param array $session
+     * @param string|null $tid
      * @return string|null
      */
-    private function download_url(array $session): ?string {
-        $tid = $this->transcript_id($session);
+    private function download_url(?string $tid): ?string {
         if ($tid === null) {
             return null;
         }
-        $params = ['cmid' => $this->cm->id, 'tid' => $tid, 'n' => (int) ($session['session_no'] ?? 1), 'sesskey' => sesskey()];
+        $params = ['cmid' => $this->cm->id, 'tid' => $tid, 'sesskey' => sesskey()];
+        if ($this->cursor !== '') {
+            $params['page'] = $this->cursor;
+        }
         return (new \moodle_url('/local/vektradiscuss/teacher_transcript.php', $params))->out(false);
     }
 

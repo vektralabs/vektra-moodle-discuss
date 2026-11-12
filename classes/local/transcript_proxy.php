@@ -53,6 +53,9 @@ final class transcript_proxy {
     /** @var string Result: the transfer broke after the first byte (the browser sees a short download). */
     public const TRUNCATED = 'truncated';
 
+    /** @var string Vektra's role check of the grader was stale: a retry after a few seconds may pass. */
+    public const STALE = 'stale';
+
     /** @var int Upper bound of a token's length. */
     private const MAX_TOKEN_LENGTH = 4096;
 
@@ -129,6 +132,9 @@ final class transcript_proxy {
         );
         if (!$response->ok()) {
             self::log_failure('download-token', $response);
+            if (teacher_api::role_refusal($response) === 'stale') {
+                return [self::STALE, null];
+            }
             return [$response->status === 404 && $response->errorcode === 'ERR-ASSESS-017' ? self::NOT_READY : self::FAILED, null];
         }
         $token = $response->json['token'] ?? null;
@@ -151,9 +157,18 @@ final class transcript_proxy {
      * @param callable $header fn(string $line): sends one response header.
      * @param callable $emit fn(string $chunk): sends body bytes.
      * @param int $maxbytes Body size limit (0: the client's limit); it can only lower that limit.
+     * @param string $label Added to the fallback file name ('' for none).
      * @return string OK, NOT_READY, FAILED or TRUNCATED.
      */
-    public function stream(string $tid, string $token, int $n, callable $header, callable $emit, int $maxbytes = 0): string {
+    public function stream(
+        string $tid,
+        string $token,
+        int $n,
+        callable $header,
+        callable $emit,
+        int $maxbytes = 0,
+        string $label = ''
+    ): string {
         if (!self::valid_tid($tid)) {
             return self::FAILED;
         }
@@ -161,8 +176,8 @@ final class transcript_proxy {
         $response = $this->client->stream(
             '/api/v1/assess/transcripts/' . $tid,
             $token,
-            function (int $status, array $headers) use (&$started, $header, $n): void {
-                foreach (self::headers($headers, $n) as $line) {
+            function (int $status, array $headers) use (&$started, $header, $n, $label): void {
+                foreach (self::headers($headers, $n, $label) as $line) {
                     $header($line);
                 }
                 $started = true;
@@ -187,17 +202,18 @@ final class transcript_proxy {
     /**
      * Stream a transcript to the browser.
      *
-     * Once the transfer starts (a refusal page rendered afterwards still needs them otherwise), the session
-     * lock is released and Moodle's output buffers and zlib compression are turned off, so the body goes out
+     * Once the transfer starts (a refusal page rendered afterwards still needs them otherwise), Moodle's output
+     * buffers and zlib compression are turned off, so the body goes out
      * as it arrives with Vektra's Content-Length, and no debugging notice is written into the file (it still
      * reaches the log). Inline because disable_output_buffering() is deprecated since Moodle 4.5.
      *
      * @param string $tid
      * @param string $token
      * @param int $n
+     * @param string $label Added to the fallback file name (a grader download: the student's user id).
      * @return string OK, NOT_READY, FAILED or TRUNCATED.
      */
-    public function send(string $tid, string $token, int $n): string {
+    public function send(string $tid, string $token, int $n, string $label = ''): string {
         $started = false;
         return $this->stream(
             $tid,
@@ -207,8 +223,6 @@ final class transcript_proxy {
                 global $CFG;
                 if (!$started) {
                     $started = true;
-                    // The transfer may take a while: release the session lock so other tabs are not blocked.
-                    \core\session\manager::write_close();
                     if (ini_get_bool('zlib.output_compression')) {
                         ini_set('zlib.output_compression', 'Off');
                     }
@@ -222,7 +236,9 @@ final class transcript_proxy {
             function (string $chunk): void {
                 echo $chunk;
                 flush();
-            }
+            },
+            0,
+            $label
         );
     }
 
@@ -231,12 +247,14 @@ final class transcript_proxy {
      *
      * @param array $vektra Vektra's response headers, lower-case names.
      * @param int $n Session number, for the fallback file name.
+     * @param string $label Added to the fallback file name ('' for none).
      * @return string[]
      */
-    public static function headers(array $vektra, int $n): array {
+    public static function headers(array $vektra, int $n, string $label = ''): array {
         $name = self::filename((string) ($vektra['content-disposition'] ?? ''));
         if ($name === null) {
-            $name = 'transcript_s' . max(1, $n) . '.html';
+            // The label (a grader download: the student's user id) keeps files of different students apart.
+            $name = 'transcript_' . ($label !== '' ? $label . '_' : '') . 's' . max(1, $n) . '.html';
         }
         $lines = [
             'Content-Type: text/html; charset=utf-8',
