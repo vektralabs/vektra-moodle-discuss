@@ -29,6 +29,8 @@
     * hasstudents, students - [{userid, name, sessions[{n, state, closereason, closedat, hasdeliveries, deliveries[]}],
       hasresets, resets[{after, reason, by, at}], extra, canreset, resetsid, resetafter, continuitydefault,
       canextratime}]
+    * hasotherstudents, otherstudents - [{userid, name}] students not in the list, for extra time before their
+      first discussion
     * firstpageurl, nexturl - paging
 
     Example context (json):
@@ -47,6 +49,7 @@
             "hasresets": false, "resets": [], "extra": null, "canreset": true,
             "resetsid": "0f8e7d6c-5b4a-4321-8fed-cba987654321", "resetafter": 1, "continuitydefault": false,
             "canextratime": true}],
+        "hasotherstudents": true, "otherstudents": [{"userid": 8, "name": "Student Two"}],
         "firstpageurl": null, "nexturl": null
     }
 }}
@@ -186,6 +189,36 @@
         </table>
         </div>
         {{/hasstudents}}
+        {{#hasotherstudents}}
+        <form method="post" action="{{actionurl}}" class="card card-body mb-3">
+            <input type="hidden" name="sesskey" value="{{sesskey}}">
+            <input type="hidden" name="action" value="extratime">
+            <h4 class="h6">{{#str}}teacher_extratime_before, local_vektradiscuss{{/str}}</h4>
+            <div class="row">
+                <div class="col-sm-5">
+                    <label for="local-vektradiscuss-extra-student-{{cmid}}" class="small">{{#str}}teacher_col_student, local_vektradiscuss{{/str}}</label>
+                    <select class="form-select custom-select" id="local-vektradiscuss-extra-student-{{cmid}}" name="userid">
+                        {{#otherstudents}}<option value="{{userid}}">{{name}}</option>{{/otherstudents}}
+                    </select>
+                </div>
+                <div class="col-sm-4">
+                    <label for="local-vektradiscuss-extra-value-{{cmid}}" class="small">{{#str}}teacher_extratime, local_vektradiscuss{{/str}}</label>
+                    <div class="input-group">
+                        <input class="form-control" type="number" min="0" max="240" id="local-vektradiscuss-extra-value-{{cmid}}" name="value" required>
+                        <select class="form-select custom-select" name="unit" aria-label="{{#str}}teacher_extratime_unit, local_vektradiscuss{{/str}}">
+                            <option value="minutes">{{#str}}teacher_extratime_minutes, local_vektradiscuss{{/str}}</option>
+                            <option value="percent">{{#str}}teacher_extratime_percent, local_vektradiscuss{{/str}}</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="form-check mt-2">
+                <input class="form-check-input" type="checkbox" name="confirm" value="1" id="local-vektradiscuss-extra-confirm-{{cmid}}">
+                <label class="form-check-label small" for="local-vektradiscuss-extra-confirm-{{cmid}}">{{#str}}teacher_extratime_confirm, local_vektradiscuss{{/str}}</label>
+            </div>
+            <div><button type="submit" class="btn btn-secondary btn-sm mt-2">{{#str}}teacher_extratime_button, local_vektradiscuss{{/str}}</button></div>
+        </form>
+        {{/hasotherstudents}}
         <nav aria-label="{{#str}}teacher_paging, local_vektradiscuss{{/str}}">
             {{#firstpageurl}}<a class="btn btn-link" href="{{firstpageurl}}">{{#str}}teacher_first_page, local_vektradiscuss{{/str}}</a>{{/firstpageurl}}
             {{#nexturl}}<a class="btn btn-link" href="{{nexturl}}">{{#str}}teacher_next_page, local_vektradiscuss{{/str}}</a>{{/nexturl}}

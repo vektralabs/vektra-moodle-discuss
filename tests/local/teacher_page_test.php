@@ -190,6 +190,60 @@ final class teacher_page_test extends \advanced_testcase {
     }
 
     /**
+     * Grader refusals (ERR-ASSESS-021 on the teacher routes): stale asks to retry, not_a_grader says it is not one.
+     */
+    public function test_grader_refusals(): void {
+        $this->transport->respond(403, ['error' => ['code' => 'ERR-ASSESS-021', 'message' => 'no',
+            'details' => ['reason' => 'not_a_grader']]]);
+        [, $message] = $this->page()->act('terminate', ['reason' => 'x', 'expected' => 1]);
+        $this->assertSame(get_string('teacher_not_a_grader', 'local_vektradiscuss'), $message);
+        $this->transport->respond(403, ['error' => ['code' => 'ERR-ASSESS-021', 'message' => 'stale',
+            'details' => ['reason' => 'grader_check_stale']]]);
+        [, $message] = $this->page()->act('terminate', ['reason' => 'x', 'expected' => 1]);
+        $this->assertSame(get_string('teacher_check_stale', 'local_vektradiscuss'), $message);
+        $this->assertDebuggingCalledCount(2);
+    }
+
+    /**
+     * Log-in-as and a teacher of another course: refused before any request (plan B5).
+     */
+    public function test_loginas_and_other_course_refused_without_call(): void {
+        $other = $this->getDataGenerator()->create_course();
+        $foreign = $this->getDataGenerator()->create_and_enrol($other, 'editingteacher');
+        $this->setUser($foreign);
+        try {
+            $this->page()->act('terminate', ['reason' => 'x', 'expected' => 1]);
+            $this->fail('A teacher of another course must be refused.');
+        } catch (\required_capability_exception $e) {
+            $this->assertSame([], $this->transport->calls);
+        }
+
+        $this->setAdminUser();
+        \core\session\manager::loginas($this->teacher->id, \context_course::instance($this->course->id));
+        [$ok, $message] = $this->page()->act('terminate', ['reason' => 'x', 'expected' => 1]);
+        $this->assertFalse($ok);
+        $this->assertSame(get_string('teacher_loginas', 'local_vektradiscuss'), $message);
+        $this->assertSame([], $this->transport->calls);
+    }
+
+    /**
+     * A reason deleted by the retention purge is not reported as unreadable.
+     */
+    public function test_purged_reason(): void {
+        $this->transport->respond(200, ['students' => [['userid' => (int) $this->student->id, 'sessions' => [],
+            'resets' => [['reset_id' => 'r1', 'after_session_no' => 1, 'reason' => null, 'reason_state' => 'purged',
+                'granted_by' => 999999, 'granted_at' => null]], 'reset_count' => 1, 'extra_seconds' => 0]],
+            'next_cursor' => null, 'terminations' => [], 'gate' => []]);
+        $api = new teacher_api(new assess_client(null, $this->transport));
+        $ctx = $this->page()->context($api->list_sessions((int) $this->cm->id, (int) $this->course->id, 'quiz', 1));
+        $reset = $ctx['students'][0]['resets'][0];
+        $this->assertSame(get_string('teacher_reason_purged', 'local_vektradiscuss'), $reset['reason']);
+        $this->assertSame(get_string('teacher_user_unknown', 'local_vektradiscuss', 999999), $reset['by']);
+        // No session yet: extra time can be set.
+        $this->assertTrue($ctx['students'][0]['canextratime']);
+    }
+
+    /**
      * Reset refusals (409 ERR-ASSESS-024) are explained by their reason.
      */
     public function test_reset_refusal_reasons(): void {
@@ -206,6 +260,11 @@ final class teacher_page_test extends \advanced_testcase {
      * viewer who cannot manage overrides.
      */
     public function test_list_context(): void {
+        $waiting = $this->getDataGenerator()->create_and_enrol(
+            $this->course,
+            'student',
+            ['firstname' => 'Wanda', 'lastname' => 'Waiting']
+        );
         $list = ['students' => [[
             'userid' => (int) $this->student->id,
             'sessions' => [
@@ -218,7 +277,7 @@ final class teacher_page_test extends \advanced_testcase {
                 'include_previous_turns' => false, 'granted_by' => (int) $this->teacher->id, 'granted_at' => null,
                 'student_notice' => 'studente non avvisato via email']],
             'reset_count' => 1, 'extra_seconds' => 600,
-        ]], 'next_cursor' => 'c2', 'terminations' => [],
+        ]], 'next_cursor' => 4711, 'terminations' => [],
             'gate' => ['opening' => ['at' => null, 'source' => 'unreadable', 'fallback_required' => true],
                 'fallback_reason' => 'Vektra non può verificare proroghe/override per questa attività',
                 'fallback_date_missing' => true, 'active_sessions' => 0, 'override_holder' => (int) $this->student->id]];
@@ -240,7 +299,14 @@ final class teacher_page_test extends \advanced_testcase {
         $this->assertTrue($ctx['gate']['fallbackmissing']);
         $this->assertSame(get_string('form_opening_none', 'local_vektradiscuss'), $ctx['gate']['opening']);
         $this->assertFalse($ctx['canterminate']);
-        $this->assertStringContainsString('cursor=c2', $ctx['nexturl']);
+        // Vektra's cursor is the last user id of the page, a JSON number.
+        $this->assertStringContainsString('cursor=4711', $ctx['nexturl']);
+        // The latest session is closed without a granted reset: no extra time for this student now, but the
+        // students without a session can get it before their first discussion.
+        $this->assertFalse($student['canextratime']);
+        $this->assertTrue($ctx['hasotherstudents']);
+        $this->assertNotContains((int) $this->student->id, array_column($ctx['otherstudents'], 'userid'));
+        $this->assertContains((int) $waiting->id, array_column($ctx['otherstudents'], 'userid'));
         // The editing teacher manages overrides: the holder's name is shown.
         $this->assertSame('Sam Student', $ctx['gate']['overrideholder']);
 

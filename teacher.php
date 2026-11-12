@@ -91,17 +91,18 @@ if ($refusal !== null) {
 $cursor = teacher_page::clean_cursor(optional_param('cursor', '', PARAM_RAW_TRIMMED));
 $api = new teacher_api();
 $response = $api->list_sessions((int) $cm->id, (int) $course->id, $cm->modname, (int) $USER->id, $cursor);
-if ($response->errorcode === 'ERR-ASSESS-021' && ($response->details['reason'] ?? null) === 'editor_check_stale') {
+if (teacher_api::role_refusal($response) === 'stale') {
     // Vektra queued a fresh check of the teacher's role: one retry after it had time to land.
     sleep(2);
     $response = $api->list_sessions((int) $cm->id, (int) $course->id, $cm->modname, (int) $USER->id, $cursor);
 }
 $context = $page->context($response, $cursor);
 if ($context === null) {
-    $identifier = $response->errorcode === 'ERR-ASSESS-021' ? 'teacher_check_stale' : 'teacher_unreachable';
-    if ($response->errorcode === 'ERR-ASSESS-021' && ($response->details['reason'] ?? null) === 'not_an_editor') {
-        $identifier = 'teacher_not_a_grader';
-    }
+    $identifier = match (teacher_api::role_refusal($response)) {
+        'stale' => 'teacher_check_stale',
+        'refused' => 'teacher_not_a_grader',
+        default => 'teacher_unreachable',
+    };
     echo $OUTPUT->notification(get_string($identifier, 'local_vektradiscuss'), 'warning', false);
 } else {
     echo $OUTPUT->render_from_template('local_vektradiscuss/teacher_sessions', $context);

@@ -69,11 +69,7 @@ class teacher_api {
         self::assert_type($type);
         return $this->client->request('GET', self::config_path($cmid), [], null, 'teacher', [
             'timeout' => self::FORM_TIMEOUT,
-            'headers' => [
-                'X-Assess-Actor' => (string) $actorid,
-                'X-Assess-Course' => (string) $courseid,
-                'X-Assess-Activity-Type' => $type,
-            ],
+            'headers' => self::actor_headers($courseid, $type, $actorid),
         ]);
     }
 
@@ -140,11 +136,7 @@ class teacher_api {
      */
     public function list_sessions(int $cmid, int $courseid, string $type, int $actorid, string $cursor = ''): assess_response {
         self::assert_type($type);
-        $headers = [
-            'X-Assess-Actor' => (string) $actorid,
-            'X-Assess-Course' => (string) $courseid,
-            'X-Assess-Activity-Type' => $type,
-        ];
+        $headers = self::actor_headers($courseid, $type, $actorid);
         if ($cursor !== '') {
             $headers['X-Assess-Cursor'] = $cursor;
         }
@@ -254,6 +246,38 @@ class teacher_api {
             $body,
             'teacher'
         );
+    }
+
+    /**
+     * How Vektra refused the actor's role, if it did (ERR-ASSESS-021): "stale" when its role facts were stale
+     * and a fresh check is queued (a retry after a few seconds may pass), "refused" when the actor does not
+     * have the role (editor for the configuration, grader for the teacher operations), null otherwise.
+     *
+     * @param assess_response $response
+     * @return string|null
+     */
+    public static function role_refusal(assess_response $response): ?string {
+        if ($response->errorcode !== 'ERR-ASSESS-021') {
+            return null;
+        }
+        $reason = (string) ($response->details['reason'] ?? '');
+        return str_ends_with($reason, '_check_stale') ? 'stale' : 'refused';
+    }
+
+    /**
+     * The headers every teacher read carries.
+     *
+     * @param int $courseid
+     * @param string $type
+     * @param int $actorid
+     * @return array
+     */
+    private static function actor_headers(int $courseid, string $type, int $actorid): array {
+        return [
+            'X-Assess-Actor' => (string) $actorid,
+            'X-Assess-Course' => (string) $courseid,
+            'X-Assess-Activity-Type' => $type,
+        ];
     }
 
     /**

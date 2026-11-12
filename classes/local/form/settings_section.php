@@ -642,7 +642,7 @@ class settings_section {
      * @return bool
      */
     private static function stale_check(assess_response $response): bool {
-        return $response->errorcode === 'ERR-ASSESS-021' && ($response->details['reason'] ?? null) === 'editor_check_stale';
+        return teacher_api::role_refusal($response) === 'stale';
     }
 
     /**
@@ -653,9 +653,10 @@ class settings_section {
      * @return string
      */
     private static function refusal(assess_response $response, string $default): string {
-        if ($response->errorcode !== 'ERR-ASSESS-021') {
+        $refusal = teacher_api::role_refusal($response);
+        if ($refusal === null) {
             return $default;
         }
-        return ($response->details['reason'] ?? null) === 'not_an_editor' ? 'form_not_an_editor' : 'form_check_stale';
+        return $refusal === 'refused' ? 'form_not_an_editor' : 'form_check_stale';
     }
 }

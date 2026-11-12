@@ -90,6 +90,20 @@ class teacher_page {
     }
 
     /**
+     * The next page's cursor from a list page: Vektra sends the last user id of the page (a JSON number).
+     *
+     * @param array $json
+     * @return string
+     */
+    public static function next_cursor(array $json): string {
+        $cursor = $json['next_cursor'] ?? null;
+        if (is_int($cursor) && $cursor > 0) {
+            return (string) $cursor;
+        }
+        return is_string($cursor) ? self::clean_cursor($cursor) : '';
+    }
+
+    /**
      * Carry out one action. The caller has checked the session key; this checks the capability.
      *
      * @param string $action reset, terminate or extratime
@@ -184,8 +198,10 @@ class teacher_page {
         }
         $names = self::names($ids);
 
+        $listed = array_map(fn(array $s): int => (int) ($s['userid'] ?? 0), $students);
+        $others = $canmanage ? $this->other_students($listed) : [];
         $url = new \moodle_url('/local/vektradiscuss/teacher.php', ['cmid' => $this->cm->id]);
-        $next = is_string($json['next_cursor'] ?? null) ? self::clean_cursor($json['next_cursor']) : '';
+        $next = self::next_cursor($json);
         return [
             'cmid' => (int) $this->cm->id,
             'actionurl' => $url->out(false),
@@ -203,7 +219,7 @@ class teacher_page {
             'expectedactive' => $active,
             'terminations' => array_map(fn(array $t): array => [
                 'at' => self::date($t['at'] ?? null),
-                'by' => $names[(int) ($t['by'] ?? 0)] ?? '',
+                'by' => $names[(int) ($t['by'] ?? 0)] ?? get_string('teacher_user_unknown', self::C, (int) ($t['by'] ?? 0)),
                 'reason' => self::reason($t),
                 'closed' => (int) ($t['closed'] ?? 0),
                 'rolledback' => (int) ($t['rolled_back'] ?? 0),
@@ -212,6 +228,8 @@ class teacher_page {
             'hasterminations' => (bool) $terminations,
             'students' => array_map(fn(array $s): array => $this->student($s, $names, $canmanage), $students),
             'hasstudents' => (bool) $students,
+            'otherstudents' => $others,
+            'hasotherstudents' => (bool) $others,
             'firstpageurl' => $cursor !== '' ? $url->out(false) : null,
             'nexturl' => $next !== '' ? (new \moodle_url($url, ['cursor' => $next]))->out(false) : null,
         ];
@@ -250,7 +268,8 @@ class teacher_page {
             'resets' => array_map(fn(array $r): array => [
                 'after' => (int) ($r['after_session_no'] ?? 0),
                 'reason' => self::reason($r),
-                'by' => $names[(int) ($r['granted_by'] ?? 0)] ?? '',
+                'by' => $names[(int) ($r['granted_by'] ?? 0)]
+                    ?? get_string('teacher_user_unknown', self::C, (int) ($r['granted_by'] ?? 0)),
                 'at' => self::date($r['granted_at'] ?? null),
             ], $resets),
             'hasresets' => (bool) $resets,
@@ -259,8 +278,38 @@ class teacher_page {
             'resetsid' => $canreset ? (string) $latest['session_id'] : null,
             'resetafter' => $canreset ? (int) ($latest['session_no'] ?? 0) : null,
             'continuitydefault' => $canreset && ($latest['close_reason'] ?? null) === 'service_failure',
-            'canextratime' => $canmanage,
+            // Vektra accepts extra time only between sessions: before the first one, or after a granted reset
+            // whose session has not started (REQ-078).
+            'canextratime' => $canmanage && ($latest === null
+                || (($latest['state'] ?? '') === 'CLOSED' && in_array((int) ($latest['session_no'] ?? 0), $resetafter, true))),
         ];
+    }
+
+    /**
+     * Students of the activity who are not in the list (no session yet), for extra time before their first
+     * discussion (REQ-078 accommodations).
+     *
+     * @param int[] $listed
+     * @return array [{userid, name}]
+     */
+    private function other_students(array $listed): array {
+        $users = get_enrolled_users(
+            \context_module::instance($this->cm->id),
+            'local/vektradiscuss:start',
+            0,
+            'u.*',
+            'u.lastname, u.firstname',
+            0,
+            500,
+            true
+        );
+        $out = [];
+        foreach ($users as $user) {
+            if (!in_array((int) $user->id, $listed, true)) {
+                $out[] = ['userid' => (int) $user->id, 'name' => fullname($user)];
+            }
+        }
+        return $out;
     }
 
     /**
@@ -295,8 +344,8 @@ class teacher_page {
                 }
                 return [false, $codes ? implode(' ', array_unique($codes)) : get_string('teacher_err_generic', self::C)];
             case 'ERR-ASSESS-021':
-                return [false, get_string(($details['reason'] ?? null) === 'not_an_editor'
-                    ? 'teacher_not_a_grader' : 'teacher_check_stale', self::C)];
+                $refusal = teacher_api::role_refusal($response);
+                return [false, get_string($refusal === 'refused' ? 'teacher_not_a_grader' : 'teacher_check_stale', self::C)];
             case 'ERR-ASSESS-008':
                 return [false, get_string('teacher_session_gone', self::C)];
             default:
@@ -344,6 +393,9 @@ class teacher_page {
      * @return string
      */
     private static function reason(array $item): string {
+        if (($item['reason_state'] ?? null) === 'purged') {
+            return get_string('teacher_reason_purged', self::C);
+        }
         if (($item['reason_state'] ?? null) === 'unreadable' || !is_string($item['reason'] ?? null)) {
             return get_string('teacher_reason_unreadable', self::C);
         }
@@ -399,7 +451,8 @@ class teacher_page {
         if (!is_string($value) || $value === '') {
             return '-';
         }
-        return in_array($value, $known, true) ? get_string($prefix . strtolower($value), self::C) : s($value);
+        // Raw: the template escapes it (escaping here too would show "&amp;").
+        return in_array($value, $known, true) ? get_string($prefix . strtolower($value), self::C) : $value;
     }
 
     /**
