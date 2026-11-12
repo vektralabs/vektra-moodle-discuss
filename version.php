@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component    = 'local_vektradiscuss';
-$plugin->version      = 2026111300;
+$plugin->version      = 2026111301;
 $plugin->requires     = 2023100900; // Moodle 4.3.
 $plugin->supported    = [403, 502]; // Moodle 4.3 - 5.2.
 $plugin->maturity     = MATURITY_ALPHA;
