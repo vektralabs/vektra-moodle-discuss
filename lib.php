@@ -32,3 +32,45 @@
 function local_vektradiscuss_before_footer(): string {
     return \local_vektradiscuss\local\injector::inject();
 }
+
+/**
+ * Add the assessment discussion section to the quiz and assignment settings form.
+ *
+ * @param moodleform_mod $formwrapper
+ * @param MoodleQuickForm $mform
+ */
+function local_vektradiscuss_coursemodule_standard_elements($formwrapper, $mform): void {
+    \local_vektradiscuss\local\form\settings_section::extend($formwrapper, $mform);
+}
+
+/**
+ * Clear the write-only texts when the form is shown again.
+ *
+ * @param moodleform_mod $formwrapper
+ * @param MoodleQuickForm $mform
+ */
+function local_vektradiscuss_coursemodule_definition_after_data($formwrapper, $mform): void {
+    \local_vektradiscuss\local\form\settings_section::after_data($formwrapper, $mform);
+}
+
+/**
+ * Check the section's fields (a mirror of Vektra's rules, for field-level messages).
+ *
+ * @param moodleform_mod $formwrapper
+ * @param array $data
+ * @return array Errors by element name.
+ */
+function local_vektradiscuss_coursemodule_validation($formwrapper, $data): array {
+    return \local_vektradiscuss\local\form\settings_section::validate((array) $data);
+}
+
+/**
+ * Send the changed discussion settings to Vektra once the activity is saved.
+ *
+ * @param stdClass $data
+ * @param stdClass $course
+ * @return stdClass
+ */
+function local_vektradiscuss_coursemodule_edit_post_actions($data, $course) {
+    return \local_vektradiscuss\local\form\settings_section::save($data, $course);
+}
