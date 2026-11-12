@@ -331,8 +331,9 @@ class assess_client {
      * @return array|assess_response [url, headers, secret, timeout, connecttimeout] or a refusal
      */
     private function prepare(string $path, array $query, string $keyrole, array $opts, bool $accept = true) {
-        // Site kill switch: disabled means nothing is sent to Vektra.
-        if (!$this->config->is_enabled()) {
+        // Site kill switch: disabled means nothing is sent to Vektra, except privacy requests: the data stays in
+        // Vektra after the plugin is turned off, and the site must still be able to export and erase it.
+        if (!$this->config->is_enabled() && !str_starts_with($keyrole, 'privacy_')) {
             return assess_response::failure('disabled', 'The assessment discussion is disabled on this site.');
         }
 

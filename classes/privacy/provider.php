@@ -36,12 +36,17 @@ use local_vektradiscuss\local\privacy_api;
  * The plugin stores nothing in Moodle: discussions and transcripts live in Vektra (an external location).
  *
  * Export reads a person's transcripts from Vektra and writes the exact bytes, after checking each one against
- * the hash Vektra reports. Deletion asks Vektra to erase, per activity when the request is scoped to
- * activities, then reads back to verify that nothing is left. Any failure, a missing key, a verification that
- * finds data, or Vektra keeping the data for exam evidence throws: the request is never marked as done
- * without the deletion (OQ-033).
+ * the hash Vektra reports. Deletion asks Vektra to erase, per activity whenever the request names
+ * activities, then reads back to verify that nothing is left.
  *
- * Transcripts of activities that no longer exist in Moodle are placed in the person's user context.
+ * Failures throw a moodle_exception with an explicit message (a missing key, Vektra failing or still
+ * erasing, data still found, data kept as exam evidence). Moodle's privacy manager catches it
+ * (core_privacy\manager::handled_component_class_callback()), sends the message to the site's Data
+ * Protection Officers and completes the request anyway: a plugin cannot mark it as failed. The plugin keeps
+ * no record of its own (COMP-001); Vektra alerts its operator when an erasure fails or stays pending.
+ *
+ * The person's user context is always listed: it holds the transcripts of activities deleted from Moodle,
+ * and it lets an erasure reach the data that has no transcript (a session that never closed, a reset).
  */
 class provider implements
     \core_privacy\local\metadata\provider,
@@ -70,8 +75,7 @@ class provider implements
     }
 
     /**
-     * The contexts with transcripts of a person: the activities, or the person's own context for activities
-     * deleted from Moodle.
+     * The person's context, and the activities where they have transcripts.
      *
      * @param int $userid
      * @return contextlist
@@ -82,30 +86,32 @@ class provider implements
         if (!$api->in_use()) {
             return $contextlist;
         }
-        $ids = [];
-        foreach ($api->subject_transcripts($userid) as $item) {
-            $ids[] = self::context_of((int) $item['cmid'], $userid)->id;
+        $ids = [\context_user::instance($userid)->id];
+        foreach ($api->subject_cmids($userid) as $cmid) {
+            $ids[] = self::context_of($cmid, $userid)->id;
         }
-        if ($ids) {
-            global $DB;
-            [$sql, $params] = $DB->get_in_or_equal(array_values(array_unique($ids)), SQL_PARAMS_NAMED);
-            $contextlist->add_from_sql("SELECT id FROM {context} WHERE id $sql", $params);
-        }
+        global $DB;
+        [$sql, $params] = $DB->get_in_or_equal(array_values(array_unique($ids)), SQL_PARAMS_NAMED);
+        $contextlist->add_from_sql("SELECT id FROM {context} WHERE id $sql", $params);
         return $contextlist;
     }
 
     /**
-     * The people with data in an activity.
+     * The people with data in an activity, or the owner of a user context who has data in Vektra.
      *
      * @param userlist $userlist
      */
     public static function get_users_in_context(userlist $userlist): void {
         $context = $userlist->get_context();
         $api = self::api();
-        if (!$context instanceof \context_module || !self::is_discussion_module($context) || !$api->in_use()) {
+        if (!$api->in_use()) {
             return;
         }
-        $userlist->add_users($api->activity_subjects((int) $context->instanceid));
+        if ($context instanceof \context_module && self::is_discussion_module($context)) {
+            $userlist->add_users($api->activity_subjects((int) $context->instanceid));
+        } else if ($context instanceof \context_user && $api->subject_cmids((int) $context->instanceid)) {
+            $userlist->add_user((int) $context->instanceid);
+        }
     }
 
     /**
@@ -114,7 +120,7 @@ class provider implements
      * @param approved_contextlist $contextlist
      */
     public static function export_user_data(approved_contextlist $contextlist): void {
-        if (!$contextlist->count()) {
+        if (!$contextlist->count() || !self::api()->in_use()) {
             return;
         }
         $userid = (int) $contextlist->get_user()->id;
@@ -145,13 +151,20 @@ class provider implements
     }
 
     /**
-     * Erase an activity's data for everyone, then verify.
+     * Erase an activity's data for everyone, or a user context's data, then verify.
      *
      * @param \context $context
      */
     public static function delete_data_for_all_users_in_context(\context $context): void {
         $api = self::api();
-        if (!$context instanceof \context_module || !self::is_discussion_module($context) || !$api->in_use()) {
+        if (!$api->in_use()) {
+            return;
+        }
+        if ($context instanceof \context_user) {
+            self::erase_person($api, (int) $context->instanceid, [], true);
+            return;
+        }
+        if (!$context instanceof \context_module || !self::is_discussion_module($context)) {
             return;
         }
         $cmid = (int) $context->instanceid;
@@ -173,31 +186,19 @@ class provider implements
         }
         $userid = (int) $contextlist->get_user()->id;
         $cmids = [];
-        $subjectwide = false;
+        $usercontext = false;
         foreach ($contextlist->get_contexts() as $context) {
             if ($context instanceof \context_module && self::is_discussion_module($context)) {
                 $cmids[] = (int) $context->instanceid;
             } else if ($context instanceof \context_user && (int) $context->instanceid === $userid) {
-                // Activities deleted from Moodle have no module context left: erase the person entirely.
-                $subjectwide = true;
+                $usercontext = true;
             }
         }
-        if ($subjectwide) {
-            $api->erase_subject($userid);
-        } else {
-            foreach ($cmids as $cmid) {
-                $api->erase_activity($cmid, [$userid]);
-            }
-        }
-        foreach ($api->subject_transcripts($userid) as $item) {
-            if ($subjectwide || in_array((int) $item['cmid'], $cmids, true)) {
-                throw new \moodle_exception('privacy_erase_unverified', 'local_vektradiscuss');
-            }
-        }
+        self::erase_person($api, $userid, $cmids, $usercontext);
     }
 
     /**
-     * Erase the data of some people in an activity, then verify.
+     * Erase the data of some people in an activity (or of a user context's owner), then verify.
      *
      * @param approved_userlist $userlist
      */
@@ -205,12 +206,59 @@ class provider implements
         $context = $userlist->get_context();
         $api = self::api();
         $userids = array_map('intval', $userlist->get_userids());
-        if (!$userids || !$context instanceof \context_module || !self::is_discussion_module($context) || !$api->in_use()) {
+        if (!$userids || !$api->in_use()) {
+            return;
+        }
+        if ($context instanceof \context_user) {
+            if (in_array((int) $context->instanceid, $userids, true)) {
+                self::erase_person($api, (int) $context->instanceid, [], true);
+            }
+            return;
+        }
+        if (!$context instanceof \context_module || !self::is_discussion_module($context)) {
             return;
         }
         $cmid = (int) $context->instanceid;
         $api->erase_activity($cmid, $userids);
         if (array_intersect($userids, $api->activity_subjects($cmid))) {
+            throw new \moodle_exception('privacy_erase_unverified', 'local_vektradiscuss');
+        }
+    }
+
+    /**
+     * Erase a person's data in the approved activities and, with the user context, in the activities deleted
+     * from Moodle; everything Vektra holds for them only when no existing activity of theirs was left out of
+     * the approval. Then verify.
+     *
+     * @param privacy_api $api
+     * @param int $userid
+     * @param int[] $cmids Approved activities.
+     * @param bool $usercontext Whether the person's own context is approved.
+     */
+    private static function erase_person(privacy_api $api, int $userid, array $cmids, bool $usercontext): void {
+        $known = $api->subject_cmids($userid);
+        $deleted = array_values(array_filter($known, fn(int $cmid): bool =>
+            !\context_module::instance($cmid, IGNORE_MISSING)));
+        $existing = array_values(array_diff($known, $deleted));
+        $subjectwide = $usercontext && !array_diff($existing, $cmids);
+
+        if ($subjectwide) {
+            // Also reaches the rows without a transcript (sessions never closed, resets, extra time).
+            $api->erase_subject($userid);
+        } else {
+            $targets = array_values(array_unique(array_merge($cmids, $usercontext ? $deleted : [])));
+            foreach ($targets as $cmid) {
+                $api->erase_activity($cmid, [$userid]);
+            }
+        }
+
+        foreach ($cmids as $cmid) {
+            if (in_array($userid, $api->activity_subjects($cmid), true)) {
+                throw new \moodle_exception('privacy_erase_unverified', 'local_vektradiscuss');
+            }
+        }
+        $left = $api->subject_cmids($userid);
+        if (($subjectwide && $left) || ($usercontext && array_intersect($left, $deleted))) {
             throw new \moodle_exception('privacy_erase_unverified', 'local_vektradiscuss');
         }
     }

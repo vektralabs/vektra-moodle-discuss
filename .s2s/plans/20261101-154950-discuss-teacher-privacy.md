@@ -66,7 +66,8 @@ The teacher and data-protection side of the plugin, all of it a client of Vektra
 3. A site admin "Verifica configurazione" page (REQ-079).
 4. A real Privacy API provider: metadata with an external location, export through the Vektra
    privacy-export endpoint, deletion through the erasure endpoint (OQ-033 default). A delete that
-   cannot be carried out throws; it never returns as if it had succeeded.
+   cannot be carried out throws an explicit exception, which Moodle sends to the DPOs; it never returns
+   as if it had succeeded.
 
 ## Design Notes
 
@@ -205,9 +206,14 @@ never File API / pluginfile). FAILED transcripts are downloadable (REQ-076).
   `DELETE /privacy/subjects/{userid}` (privacy-erase key), then re-query the export endpoint and
   require 0 transcripts for the affected cmids (verify, do not trust the 200). Any failure, missing
   key, or a non-subject-wide request that the endpoint cannot scope (see Notes) throws a
-  `moodle_exception`, so tool_dataprivacy records the request as failed and an admin sees it. If the
-  DPO records a retention exemption (OQ-020/OQ-033), the plugin reads an `erasure_exempt` response
-  and throws a dedicated, explained exception; it never returns normally without deleting.
+  `moodle_exception` with an explicit message. Moodle's privacy manager catches it and sends it to
+  the DPOs; the request still completes (a provider cannot fail it, see D6), and Vektra alerts its
+  operator on a failed or long-pending erasure. If the DPO records a retention exemption
+  (OQ-020/OQ-033), Vektra answers `outcome: retained` and the plugin throws a dedicated, explained
+  exception; it never returns normally without deleting. (Implemented: per activity with the
+  person's id whenever the request names activities; subject-wide only through the user context and
+  only when no existing activity of the person was left out; verification through the activity's
+  subject list and the person's transcript list.)
 - Two new settings (`privacyexportkey`, `privacyerasekey`), separate from mint/teacher keys, using
   the foundation's `setting_assess_key` (refuses the admin key and duplicates); `assess_client`
   roles `privacy_export`, `privacy_erase`.
@@ -252,7 +258,7 @@ version); P3-5 setup check page, docs, live E2E (C, E).
 - [ ] D3. Delete methods with post-delete verification and throw-on-anything-else; dedicated exception strings for "key not configured", "Vektra refused", "verification found N remaining", "erasure exempt (DPO)".
 - [ ] D4. PHPUnit `tests/privacy/provider_test.php` (extends `\core_privacy\tests\provider_testcase`): metadata contains the external location; export writes bytes sha256-equal to the mock; hash mismatch throws; delete with missing key throws; delete with 200 but verification returning 1 transcript throws; delete success makes exactly 2 requests (DELETE + verification GET); exempt -> throws; cross-user: export for user B never includes A's records (mock asserts the requested userid).
 - [ ] D5. Live (plan-4 env + real stack): create a discussion for a fixture student, unenrol them, run `admin/tool/dataprivacy` export -> zip contains transcripts #1..#N sha256-equal to the in-course copy (REQ-093(b)); run deletion -> Vektra row counts for that subject's sessions, snapshots, turns, transcripts = 0 (SQL counts recorded), export afterwards contains 0 transcripts.
-- [ ] D6. Live negative: revoke the erase key in Vektra, run a deletion request -> the tool_dataprivacy request ends in failed state (DB status recorded), not completed.
+- [ ] D6. Live negative: revoke the erase key in Vektra, run a deletion request -> the provider throws an explicit exception, the site's DPOs receive Moodle's failure notification with its text, and Vektra's rows are unchanged (count before/after). Moodle completes the request anyway: `core_privacy\manager::handled_component_class_callback()` catches any Throwable from a provider, notifies the observer (tool_dataprivacy emails the DPOs) and returns null (privacy/classes/manager.php:609 on 4.3.11; same on 5.2). Decided by the coordinator 2026-11-13 (OQ-033): DPO notification on the Moodle side, operator alert on the Vektra side.
 
 ### E. Docs and wrap-up
 - [ ] E1. README: teacher guide (settings fields, write-only solution, RAG off), required keys and scopes table (mint, teacher, privacy-export, privacy-erase; admin key never), privacy section (what leaves Moodle, export/delete behaviour, DPO exemption path); CHANGELOG `[Unreleased]`; raise `maturity` to BETA only after D5/D6 pass.
@@ -286,7 +292,7 @@ Discussion config, sessions, transcripts and audit live only in Vektra; the plug
 - [ ] FAILED transcript downloadable by a grader; served with attachment, nosniff, CSP sandbox, no-store; 0 bytes on non-200 (REQ-076, BR-016)
 - [ ] Setup check against a misconfigured service account names the failing item (REQ-079)
 - [ ] Unenrolled student's privacy export contains #1..#N, sha256-equal to the in-course copy (REQ-093)
-- [ ] Privacy deletion -> 0 rows for the subject in Vektra (SQL count); a deletion that fails or cannot be verified leaves the request in failed state, never completed (OQ-033)
+- [ ] Privacy deletion -> 0 rows for the subject in Vektra (SQL count); a deletion that fails or cannot be verified throws an explicit exception that Moodle sends to the DPOs (the request still completes, see D6), and Vektra alerts its operator (OQ-033)
 
 ## Testing Approach
 

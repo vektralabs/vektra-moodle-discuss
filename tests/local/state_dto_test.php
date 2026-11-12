@@ -143,7 +143,9 @@ final class state_dto_test extends \advanced_testcase {
         $view = state_view::context($full, 7)['presession'];
         $this->assertSame('Kept 30 days. Mailbox note.', $view['privacysummary']);
         $this->assertNull($view['privacymailbox']);
-        $this->assertSame(get_string('pre_privacy_retention', 'local_vektradiscuss', 30), $view['privacyretention']);
+        // The summary already states the legal basis and the retention: not repeated.
+        $this->assertNull($view['privacyretention']);
+        $this->assertNull($view['privacylegalbasis']);
         $dev = state_dto::from_vektra(['state' => 'eligible', 'pre_session' => ['privacy' => [
             'notice_version' => 'dev', 'mailbox_notice' => 'Mailbox note.', 'retention_days' => 9999]]]);
         $this->assertSame(['notice_version' => 'dev', 'mailbox_notice' => 'Mailbox note.'], $dev['pre_session']['privacy']);

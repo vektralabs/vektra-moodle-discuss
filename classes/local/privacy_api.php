@@ -46,6 +46,12 @@ class privacy_api {
     /** @var int Seconds between two erasure attempts. */
     public const ERASE_WAIT = 3;
 
+    /** @var int Timeout of a read, in seconds (a page carries up to 10 transcripts). */
+    public const READ_TIMEOUT = 30;
+
+    /** @var int Timeout of an erasure, in seconds: Vektra holds it up to its erasure wait (at most 30 s). */
+    public const ERASE_TIMEOUT = 35;
+
     /** @var int Largest userids list of one activity erasure. */
     public const MAX_USERIDS = 1000;
 
@@ -89,6 +95,26 @@ class privacy_api {
     }
 
     /**
+     * The activities (cmids) where a person has transcripts, without downloading or checking the files: for
+     * finding contexts and verifying an erasure, which a damaged transcript must never block.
+     *
+     * @param int $userid
+     * @return int[]
+     * @throws \moodle_exception
+     */
+    public function subject_cmids(int $userid): array {
+        $cmids = [];
+        foreach ($this->pages('/api/v1/assess/privacy/subjects/' . $userid . '/transcripts') as $json) {
+            foreach (is_array($json['items'] ?? null) ? $json['items'] : [] as $item) {
+                if (is_array($item) && is_int($item['cmid'] ?? null)) {
+                    $cmids[] = $item['cmid'];
+                }
+            }
+        }
+        return array_values(array_unique($cmids));
+    }
+
+    /**
      * Every transcript of a person, across all pages.
      *
      * @param int $userid
@@ -96,29 +122,13 @@ class privacy_api {
      * @throws \moodle_exception
      */
     public function subject_transcripts(int $userid): array {
-        $this->require_key('privacy_export');
         $items = [];
-        $cursor = '';
-        for ($page = 0; $page < self::MAX_PAGES; $page++) {
-            $opts = $cursor !== '' ? ['headers' => ['X-Assess-Cursor' => $cursor]] : [];
-            $response = $this->client->request(
-                'GET',
-                '/api/v1/assess/privacy/subjects/' . $userid . '/transcripts',
-                [],
-                null,
-                'privacy_export',
-                $opts
-            );
-            $json = $this->ok($response, 'privacy_export_failed');
+        foreach ($this->pages('/api/v1/assess/privacy/subjects/' . $userid . '/transcripts') as $json) {
             foreach (is_array($json['items'] ?? null) ? $json['items'] : [] as $item) {
                 $items[] = self::transcript($item);
             }
-            $cursor = self::cursor($json['next_cursor'] ?? null);
-            if ($cursor === '') {
-                return $items;
-            }
         }
-        throw new \moodle_exception('privacy_export_failed', self::C);
+        return $items;
     }
 
     /**
@@ -129,28 +139,38 @@ class privacy_api {
      * @throws \moodle_exception
      */
     public function activity_subjects(int $cmid): array {
-        $this->require_key('privacy_export');
         $ids = [];
-        $cursor = '';
-        for ($page = 0; $page < self::MAX_PAGES; $page++) {
-            $opts = $cursor !== '' ? ['headers' => ['X-Assess-Cursor' => $cursor]] : [];
-            $response = $this->client->request(
-                'GET',
-                '/api/v1/assess/privacy/activities/' . $cmid . '/subjects',
-                [],
-                null,
-                'privacy_export',
-                $opts
-            );
-            $json = $this->ok($response, 'privacy_export_failed');
+        foreach ($this->pages('/api/v1/assess/privacy/activities/' . $cmid . '/subjects') as $json) {
             foreach (is_array($json['userids'] ?? null) ? $json['userids'] : [] as $id) {
                 if (is_int($id) && $id > 0) {
                     $ids[] = $id;
                 }
             }
+        }
+        return array_values(array_unique($ids));
+    }
+
+    /**
+     * Every page of a paged privacy read (export key).
+     *
+     * @param string $path
+     * @return array[] The pages' JSON.
+     * @throws \moodle_exception
+     */
+    private function pages(string $path): array {
+        $this->require_key('privacy_export');
+        $pages = [];
+        $cursor = '';
+        for ($page = 0; $page < self::MAX_PAGES; $page++) {
+            $opts = ['timeout' => self::READ_TIMEOUT];
+            if ($cursor !== '') {
+                $opts['headers'] = ['X-Assess-Cursor' => $cursor];
+            }
+            $json = $this->ok($this->client->request('GET', $path, [], null, 'privacy_export', $opts), 'privacy_export_failed');
+            $pages[] = $json;
             $cursor = self::cursor($json['next_cursor'] ?? null);
             if ($cursor === '') {
-                return array_values(array_unique($ids));
+                return $pages;
             }
         }
         throw new \moodle_exception('privacy_export_failed', self::C);
@@ -195,7 +215,7 @@ class privacy_api {
     private function erase(string $path, ?array $body): void {
         $this->require_key('privacy_erase');
         for ($attempt = 1; $attempt <= self::ERASE_ATTEMPTS; $attempt++) {
-            $response = $this->client->request('DELETE', $path, [], $body, 'privacy_erase');
+            $response = $this->client->request('DELETE', $path, [], $body, 'privacy_erase', ['timeout' => self::ERASE_TIMEOUT]);
             $pending = $response->status === 503 && $response->errorcode === 'ERR-ASSESS-027'
                 && ($response->details['reason'] ?? null) === 'pending';
             if (!$pending) {
@@ -246,7 +266,7 @@ class privacy_api {
      * @throws \moodle_exception
      */
     private function require_key(string $role): void {
-        if (!$this->config->is_enabled() || !$this->config->key_usable($role)) {
+        if (!$this->config->key_usable($role)) {
             $setting = get_string('settings_' . str_replace('_', '', $role) . 'key', self::C);
             throw new \moodle_exception('privacy_key_missing', self::C, '', $setting);
         }
@@ -287,15 +307,23 @@ class privacy_api {
     }
 
     /**
-     * A page cursor (Vektra sends a string or a number), or ''.
+     * The next page's cursor ('' on the last page). A cursor the plugin cannot send back throws: reading it as
+     * the last page would export, or verify, only part of the data.
      *
      * @param mixed $cursor
      * @return string
+     * @throws \moodle_exception
      */
     private static function cursor($cursor): string {
+        if ($cursor === null) {
+            return '';
+        }
         if (is_int($cursor) && $cursor > 0) {
             return (string) $cursor;
         }
-        return is_string($cursor) && preg_match('/^[A-Za-z0-9._~+\/=:-]{1,256}$/', $cursor) ? $cursor : '';
+        if (is_string($cursor) && preg_match('/^[\x21-\x7E]{1,512}$/', $cursor)) {
+            return $cursor;
+        }
+        throw new \moodle_exception('privacy_export_failed', self::C);
     }
 }

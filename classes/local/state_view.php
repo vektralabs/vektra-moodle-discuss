@@ -196,9 +196,11 @@ final class state_view {
             // the mailbox notice (a development site without privacy settings).
             'privacysummary' => $pre['privacy']['summary'] ?? get_string('pre_privacy_summary', self::C),
             'privacymailbox' => isset($pre['privacy']['summary']) ? null : ($pre['privacy']['mailbox_notice'] ?? null),
-            'privacylegalbasis' => isset($pre['privacy']['legal_basis_label'])
+            // Vektra's summary already states the legal basis and the retention: the plugin adds them only when
+            // there is no summary.
+            'privacylegalbasis' => !isset($pre['privacy']['summary']) && isset($pre['privacy']['legal_basis_label'])
                 ? get_string('pre_privacy_legal_basis', self::C, $pre['privacy']['legal_basis_label']) : null,
-            'privacyretention' => isset($pre['privacy']['retention_days'])
+            'privacyretention' => !isset($pre['privacy']['summary']) && isset($pre['privacy']['retention_days'])
                 ? get_string('pre_privacy_retention', self::C, $pre['privacy']['retention_days']) : null,
             'startlabel' => get_string('pre_start', self::C),
             'cancellabel' => get_string('pre_cancel', self::C),
