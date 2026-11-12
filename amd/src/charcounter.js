@@ -63,10 +63,16 @@ export const init = (names, max) => {
         field.setAttribute('aria-describedby', described.concat(counter.id).join(' '));
 
         let level = 0;
+        let latest = 0;
         const update = async() => {
+            const sequence = ++latest;
             const count = length(field.value);
             const over = count > max;
             const text = await getString(over ? 'charcounter_over' : 'charcounter_count', 'local_vektradiscuss', {count, max});
+            if (sequence !== latest) {
+                // A newer keystroke already updated (or is updating) the counter: this answer arrived late.
+                return;
+            }
             counter.textContent = text;
             counter.classList.toggle('text-danger', over);
             counter.classList.toggle('text-muted', !over);

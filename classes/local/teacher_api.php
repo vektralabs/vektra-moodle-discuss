@@ -88,7 +88,14 @@ class teacher_api {
      * @param array $fields Only the changed fields; absent means unchanged.
      * @return assess_response
      */
-    public function put_config(int $cmid, int $courseid, string $type, int $actorid, int $expectedversion, array $fields): assess_response {
+    public function put_config(
+        int $cmid,
+        int $courseid,
+        string $type,
+        int $actorid,
+        int $expectedversion,
+        array $fields
+    ): assess_response {
         self::assert_type($type);
         $body = [
             'actor_userid' => $actorid,

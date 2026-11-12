@@ -134,8 +134,7 @@ final class settings_section_test extends \advanced_testcase {
         $p = settings_section::PREFIX;
         return $overrides + [
             $p . 'version' => 3,
-            $p . 'orig' => json_encode(['enabled' => false, 'cap_minutes' => 30, 'rubric_source' => 'none',
-                'show_solution' => false, 'available_until' => null, 'rubric_set' => false, 'recipients_count' => 1]),
+            $p . 'view' => json_encode(self::view()),
             $p . 'enabled' => 0, $p . 'cap' => '30', $p . 'rubricsource' => 'none', $p . 'showsolution' => 0,
             $p . 'availableuntil' => 0, $p . 'solution_replace' => 0, $p . 'solution' => '', $p . 'solution_remove' => 0,
             $p . 'rubric_replace' => 0, $p . 'rubric' => '', $p . 'recipients_replace' => 0, $p . 'recipients' => '',
@@ -227,7 +226,8 @@ final class settings_section_test extends \advanced_testcase {
      * Opening fallback: shown only when Vektra says fallback_required, the attestation never pre-ticked.
      */
     public function test_opening_fallback_shown_only_when_required(): void {
-        $this->transport->respond(200, self::view(['opening' => ['at' => null, 'source' => 'unreadable', 'fallback_required' => true]]));
+        $this->transport->respond(200, self::view(['opening' => ['at' => null, 'source' => 'unreadable',
+            'fallback_required' => true]]));
         $mform = $this->extend();
         $p = settings_section::PREFIX;
         $this->assertTrue($mform->elementExists($p . 'openingat'));
@@ -238,8 +238,10 @@ final class settings_section_test extends \advanced_testcase {
             'fallback_required' => false]]));
         $mform = $this->extend();
         $this->assertFalse($mform->elementExists($p . 'openingat'));
-        $this->assertStringContainsString(get_string('form_opening_none', 'local_vektradiscuss'),
-            $mform->getElement($p . 'opening')->toHtml());
+        $this->assertStringContainsString(
+            get_string('form_opening_none', 'local_vektradiscuss'),
+            $mform->getElement($p . 'opening')->toHtml()
+        );
     }
 
     /**
@@ -298,8 +300,10 @@ final class settings_section_test extends \advanced_testcase {
         $p = settings_section::PREFIX;
         $this->transport->respond(200, self::view());
         $this->save($this->submitted([$p . 'recipients_replace' => 1, $p . 'recipients' => "a@example.test\nb@example.test"]));
-        $this->assertSame(['a@example.test', 'b@example.test'],
-            json_decode($this->transport->calls[0]['body'], true)['transcript_recipients']);
+        $this->assertSame(
+            ['a@example.test', 'b@example.test'],
+            json_decode($this->transport->calls[0]['body'], true)['transcript_recipients']
+        );
     }
 
     /**
@@ -309,7 +313,8 @@ final class settings_section_test extends \advanced_testcase {
         $p = settings_section::PREFIX;
         $this->transport->respond(400, ['error' => ['code' => 'ERR-ASSESS-022', 'message' => 'fields', 'details' => ['fields' => [
             ['field' => 'enabled', 'code' => 'quiz_without_close_date'],
-            ['field' => 'transcript_recipients', 'code' => 'domain_not_allowed', 'index' => 0, 'allowed_domains' => ['example.test']],
+            ['field' => 'transcript_recipients', 'code' => 'domain_not_allowed', 'index' => 0,
+                'allowed_domains' => ['example.test']],
         ]]]]);
         $out = $this->save($this->submitted([$p . 'enabled' => 1, $p . 'solution_replace' => 1, $p . 'solution' => self::CANARY]));
         $this->assertDebuggingCalled();
@@ -372,6 +377,89 @@ final class settings_section_test extends \advanced_testcase {
     }
 
     /**
+     * A submission rebuilds the section from the view it was rendered with: no second GET, so an outage
+     * between render and save cannot drop the changes.
+     */
+    public function test_submission_reuses_the_rendered_view(): void {
+        $_POST[settings_section::PREFIX . 'view'] = json_encode(self::view(['version' => 7]));
+        try {
+            $mform = $this->extend();
+        } finally {
+            unset($_POST[settings_section::PREFIX . 'view']);
+        }
+        $this->assertSame([], $this->transport->calls);
+        $this->assertSame(7, $mform->getElement(settings_section::PREFIX . 'version')->getValue());
+    }
+
+    /**
+     * A stale role check on render is retried once; a permanent refusal is not, and says so.
+     */
+    public function test_render_retries_a_stale_check_once(): void {
+        $this->transport->respond(403, ['error' => ['code' => 'ERR-ASSESS-021', 'message' => 'stale',
+            'details' => ['reason' => 'editor_check_stale']]]);
+        $this->transport->respond(200, self::view());
+        $mform = $this->extend();
+        $this->assertDebuggingCalled();
+        $this->assertCount(2, $this->transport->calls);
+        $this->assertTrue($mform->elementExists(settings_section::PREFIX . 'version'));
+
+        $this->transport->respond(403, ['error' => ['code' => 'ERR-ASSESS-021', 'message' => 'no',
+            'details' => ['reason' => 'not_an_editor']]]);
+        $mform = $this->extend();
+        $this->assertDebuggingCalled();
+        $this->assertCount(3, $this->transport->calls);
+        $this->assertStringContainsString(
+            get_string('form_not_an_editor', 'local_vektradiscuss'),
+            $mform->getElement(settings_section::PREFIX . 'note')->toHtml()
+        );
+    }
+
+    /**
+     * The recipients switch is never pre-ticked, so an unrelated save sends no recipients.
+     */
+    public function test_recipients_not_preticked(): void {
+        $this->transport->respond(200, self::view(['transcript_recipients_state' => 'non impostata',
+            'transcript_recipients_count' => 0]));
+        $mform = $this->extend();
+        $this->assertSame(0, $mform->_defaultValues[settings_section::PREFIX . 'recipients_replace']);
+        $this->assertSame($this->teacher->email, $mform->_defaultValues[settings_section::PREFIX . 'recipients']);
+    }
+
+    /**
+     * An end date stored with seconds is unchanged when the form posts the same minute.
+     */
+    public function test_available_until_compared_by_minute(): void {
+        $p = settings_section::PREFIX;
+        $view = self::view(['available_until' => '2026-12-01T10:30:45+00:00']);
+        $values = $this->submitted([$p . 'view' => json_encode($view), $p . 'availableuntil' => strtotime('2026-12-01T10:30:00Z')]);
+        $this->assertSame([], settings_section::changes($values, 'quiz'));
+        $values[$p . 'availableuntil'] += 60;
+        $this->assertSame(['available_until' => '2026-12-01T10:31:00Z'], settings_section::changes($values, 'quiz'));
+    }
+
+    /**
+     * Duplicate recipients collapse case-insensitively, as in Vektra.
+     */
+    public function test_recipients_dedupe_case_insensitive(): void {
+        $this->assertSame(
+            ['Prof@uni.test', 'a@uni.test', 'b@uni.test'],
+            settings_section::recipients('Prof@uni.test, prof@uni.test, a@uni.test, b@uni.test')
+        );
+    }
+
+    /**
+     * Configuration first, then the opening fallback (which needs a configured activity).
+     */
+    public function test_config_before_opening_fallback(): void {
+        $p = settings_section::PREFIX;
+        $this->transport->respond(200, self::view(['version' => 4, 'enabled' => true]));
+        $this->transport->respond(200, ['opening_at' => '2026-11-07T10:00:00+00:00', 'previous' => null, 'version' => 5]);
+        $this->save($this->submitted([$p . 'enabled' => 1, $p . 'openingat' => 1794045600, $p . 'attest' => 1]));
+        $this->assertStringEndsWith('/config', $this->transport->calls[0]['url']);
+        $this->assertStringEndsWith('/opening-fallback', $this->transport->calls[1]['url']);
+    }
+
+    /**
      * Local checks mirror BR-013 and name the range.
      */
     public function test_validation_mirror(): void {
@@ -388,8 +476,10 @@ final class settings_section_test extends \advanced_testcase {
         $errors = settings_section::validate($this->submitted([$p . 'solution_replace' => 1, $p . 'solution' => $ok . 'y']));
         $this->assertArrayHasKey($p . 'solution', $errors);
         $this->assertArrayHasKey($p . 'solution', settings_section::validate($this->submitted([$p . 'solution_replace' => 1])));
-        $this->assertArrayHasKey($p . 'rubricsource', settings_section::validate($this->submitted([$p . 'rubricsource' => 'pasted'])));
-        $errors = settings_section::validate($this->submitted([$p . 'recipients_replace' => 1, $p . 'recipients' => "a@x.test\nb@x.test\nc@x.test\nd@x.test"]));
+        $errors = settings_section::validate($this->submitted([$p . 'rubricsource' => 'pasted']));
+        $this->assertArrayHasKey($p . 'rubricsource', $errors);
+        $errors = settings_section::validate($this->submitted([$p . 'recipients_replace' => 1,
+            $p . 'recipients' => "a@x.test\nb@x.test\nc@x.test\nd@x.test"]));
         $this->assertArrayHasKey($p . 'recipients', $errors);
         $this->assertArrayHasKey($p . 'attest', settings_section::validate($this->submitted([$p . 'openingat' => 1794045600])));
     }

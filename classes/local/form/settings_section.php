@@ -101,11 +101,22 @@ class settings_section {
             return;
         }
 
-        $response = ($api ?? new teacher_api())->get_config((int) $cm->id, (int) $course->id, $type, (int) $USER->id);
-        $view = self::view($response);
+        // On a submission the form is built again: it reuses the view it was rendered with, so a Vektra outage
+        // between render and save cannot drop the teacher's changes, and no second GET is made.
+        $view = self::posted_view();
         if ($view === null) {
-            self::note($mform, $response->errorcode === 'ERR-ASSESS-021' ? 'form_not_an_editor' : 'form_unreachable');
-            return;
+            $api = $api ?? new teacher_api();
+            $response = $api->get_config((int) $cm->id, (int) $course->id, $type, (int) $USER->id);
+            if (self::stale_check($response)) {
+                // Vektra queued a fresh check of the teacher's role: one retry after it had time to land.
+                sleep(2);
+                $response = $api->get_config((int) $cm->id, (int) $course->id, $type, (int) $USER->id);
+            }
+            $view = self::view($response);
+            if ($view === null) {
+                self::note($mform, self::refusal($response, 'form_unreachable'));
+                return;
+            }
         }
 
         self::add_fields($mform, $type, $view);
@@ -145,7 +156,11 @@ class settings_section {
 
         $cap = trim((string) ($data[$p . 'cap'] ?? ''));
         if ($cap !== '' && (!ctype_digit($cap) || (int) $cap < self::CAP_MIN || (int) $cap > self::CAP_MAX)) {
-            $errors[$p . 'cap'] = get_string('form_err_cap', 'local_vektradiscuss', ['min' => self::CAP_MIN, 'max' => self::CAP_MAX]);
+            $errors[$p . 'cap'] = get_string(
+                'form_err_cap',
+                'local_vektradiscuss',
+                ['min' => self::CAP_MIN, 'max' => self::CAP_MAX]
+            );
         }
 
         foreach (array_keys(self::SECRETS) as $name) {
@@ -154,7 +169,11 @@ class settings_section {
                 if ($length === 0) {
                     $errors[$p . $name] = get_string('form_err_text_empty', 'local_vektradiscuss');
                 } else if ($length > self::MAX_TEXT) {
-                    $errors[$p . $name] = get_string('form_err_text_long', 'local_vektradiscuss', ['max' => self::MAX_TEXT, 'length' => $length]);
+                    $errors[$p . $name] = get_string(
+                        'form_err_text_long',
+                        'local_vektradiscuss',
+                        ['max' => self::MAX_TEXT, 'length' => $length]
+                    );
                 }
             }
         }
@@ -214,28 +233,31 @@ class settings_section {
             $api = $api ?? new teacher_api();
             $values = (array) $data;
 
-            if (!empty($values[$p . 'attest']) && (int) ($values[$p . 'openingat'] ?? 0) > 0) {
-                $opening = $api->put_opening_fallback($cmid, (int) $course->id, $type, (int) $USER->id, (int) $values[$p . 'openingat']);
-                if (!$opening->ok()) {
-                    self::notify_failure($opening);
+            // The configuration first: the opening fallback needs a configured activity and is checked against
+            // the end date saved here; it does not use the configuration's version.
+            $fields = self::changes($values, $type);
+            if ($fields) {
+                $version = (int) $values[$p . 'version'];
+                $response = $api->put_config($cmid, (int) $course->id, $type, (int) $USER->id, $version, $fields);
+                if (self::stale_check($response)) {
+                    // One retry: otherwise the teacher's changes would be lost with the submission.
+                    sleep(2);
+                    $response = $api->put_config($cmid, (int) $course->id, $type, (int) $USER->id, $version, $fields);
+                }
+                if ($response->ok()) {
+                    \core\notification::success(get_string('form_saved', 'local_vektradiscuss'));
+                } else {
+                    self::notify_failure($response);
                 }
             }
-
-            $fields = self::changes($values, $type);
-            if (!$fields) {
-                return $data;
-            }
-            $version = (int) $values[$p . 'version'];
-            $response = $api->put_config($cmid, (int) $course->id, $type, (int) $USER->id, $version, $fields);
-            if ($response->status === 403 && ($response->details['reason'] ?? null) === 'editor_check_stale') {
-                // Vektra queued a fresh check of the teacher's role: one retry after it had time to land.
-                sleep(2);
-                $response = $api->put_config($cmid, (int) $course->id, $type, (int) $USER->id, $version, $fields);
-            }
-            if ($response->ok()) {
-                \core\notification::success(get_string('form_saved', 'local_vektradiscuss'));
-            } else {
-                self::notify_failure($response);
+            if (!empty($values[$p . 'attest']) && (int) ($values[$p . 'openingat'] ?? 0) > 0) {
+                $openingat = (int) $values[$p . 'openingat'];
+                $opening = $api->put_opening_fallback($cmid, (int) $course->id, $type, (int) $USER->id, $openingat);
+                if ($opening->ok()) {
+                    \core\notification::success(get_string('form_opening_saved', 'local_vektradiscuss'));
+                } else {
+                    self::notify_failure($opening);
+                }
             }
             return $data;
         } finally {
@@ -274,9 +296,12 @@ class settings_section {
         if ($show !== (bool) ($orig['show_solution'] ?? false)) {
             $fields['show_solution'] = $show;
         }
+        // The date selector has no seconds: compare whole minutes, or a stored value with seconds would always
+        // look changed.
         $until = (int) ($values[$p . 'availableuntil'] ?? 0);
         $until = $until > 0 ? $until : null;
-        if ($until !== ($orig['available_until'] ?? null)) {
+        $origuntil = is_int($orig['available_until'] ?? null) ? $orig['available_until'] : null;
+        if (($until === null ? null : intdiv($until, 60)) !== ($origuntil === null ? null : intdiv($origuntil, 60))) {
             $fields['available_until'] = $until === null ? null : gmdate('Y-m-d\TH:i:s\Z', $until);
         }
 
@@ -303,7 +328,12 @@ class settings_section {
      * @return string[]|null Null when the list is empty, too long or has an invalid address.
      */
     public static function recipients(string $text): ?array {
-        $addresses = array_values(array_unique(array_filter(array_map('trim', preg_split('/[\s,;]+/', $text) ?: []))));
+        // Duplicates collapse case-insensitively, as in Vektra.
+        $addresses = [];
+        foreach (array_filter(array_map('trim', preg_split('/[\s,;]+/', $text) ?: [])) as $address) {
+            $addresses[\core_text::strtolower($address)] ??= $address;
+        }
+        $addresses = array_values($addresses);
         if (!$addresses || count($addresses) > self::MAX_RECIPIENTS) {
             return null;
         }
@@ -357,22 +387,15 @@ class settings_section {
         $p = self::PREFIX;
         $s = fn(string $id, $a = null): string => get_string($id, 'local_vektradiscuss', $a);
 
-        $until = is_string($view['available_until'] ?? null) ? strtotime($view['available_until']) : false;
         $cap = is_int($view['cap_minutes'] ?? null) ? $view['cap_minutes'] : null;
         $source = in_array($view['rubric_source'] ?? null, self::rubric_sources($type), true) ? $view['rubric_source'] : 'none';
-        $orig = [
-            'enabled' => ($view['enabled'] ?? false) === true,
-            'cap_minutes' => $cap,
-            'rubric_source' => $source,
-            'show_solution' => ($view['show_solution'] ?? false) === true,
-            'available_until' => $until !== false ? $until : null,
-            'rubric_set' => self::is_set($view['pasted_rubric_state'] ?? null),
-            'recipients_count' => is_int($view['transcript_recipients_count'] ?? null) ? $view['transcript_recipients_count'] : 0,
-        ];
+        $orig = self::orig_from_view($view);
         $mform->addElement('hidden', $p . 'version', (int) $view['version']);
         $mform->setType($p . 'version', PARAM_INT);
-        $mform->addElement('hidden', $p . 'orig', json_encode($orig));
-        $mform->setType($p . 'orig', PARAM_RAW);
+        // The view the form was rendered with: the save compares against it, and a resubmission rebuilds the
+        // form from it. Vektra stays authoritative: an edited value only changes what the plugin sends.
+        $mform->addElement('hidden', $p . 'view', json_encode(self::keep($view)));
+        $mform->setType($p . 'view', PARAM_RAW);
 
         $active = is_int($view['active_sessions'] ?? null) ? $view['active_sessions'] : 0;
         if ($active > 0) {
@@ -421,8 +444,10 @@ class settings_section {
         $count = $orig['recipients_count'];
         $mform->addElement('static', $p . 'recipients_state', $s('form_recipients'), $count > 0
             ? $s('form_recipients_set', $count) : $s('form_recipients_unset'));
-        $mform->addElement('advcheckbox', $p . 'recipients_replace', '', $s($count > 0 ? 'form_recipients_replace' : 'form_recipients_add'));
-        $mform->setDefault($p . 'recipients_replace', $count > 0 ? 0 : 1);
+        $replacelabel = $s($count > 0 ? 'form_recipients_replace' : 'form_recipients_add');
+        $mform->addElement('advcheckbox', $p . 'recipients_replace', '', $replacelabel);
+        // Never pre-ticked: an unrelated save of the activity must not send recipients.
+        $mform->setDefault($p . 'recipients_replace', 0);
         $mform->addElement('textarea', $p . 'recipients', $s('form_recipients_list'), ['rows' => 3, 'cols' => 50]);
         $mform->setType($p . 'recipients', PARAM_RAW_TRIMMED);
         $mform->setDefault($p . 'recipients', $count > 0 ? '' : (string) $USER->email);
@@ -451,7 +476,12 @@ class settings_section {
             return;
         }
         $mform->addElement('static', $p . 'openingneeded', '', get_string('form_opening_needed', 'local_vektradiscuss'));
-        $mform->addElement('date_time_selector', $p . 'openingat', get_string('form_openingat', 'local_vektradiscuss'), ['optional' => true]);
+        $mform->addElement(
+            'date_time_selector',
+            $p . 'openingat',
+            get_string('form_openingat', 'local_vektradiscuss'),
+            ['optional' => true]
+        );
         // The attestation is ticked again on every edit, never pre-ticked.
         $mform->addElement('advcheckbox', $p . 'attest', '', get_string('form_attest', 'local_vektradiscuss'));
         $mform->setDefault($p . 'attest', 0);
@@ -505,11 +535,8 @@ class settings_section {
             \core\notification::error(get_string('form_refused', 'local_vektradiscuss') . ' ' . implode(' ', $lines));
             return;
         }
-        $identifier = match ($response->errorcode) {
-            'ERR-ASSESS-023' => 'form_err_conflict',
-            'ERR-ASSESS-021' => 'form_not_an_editor',
-            default => 'form_unreachable_save',
-        };
+        $identifier = $response->errorcode === 'ERR-ASSESS-023'
+            ? 'form_err_conflict' : self::refusal($response, 'form_unreachable_save');
         \core\notification::error(get_string($identifier, 'local_vektradiscuss'));
     }
 
@@ -556,13 +583,79 @@ class settings_section {
     }
 
     /**
-     * The values the form showed, from the hidden field.
+     * The values the form showed, from the hidden view.
      *
      * @param array $values
      * @return array
      */
     private static function orig(array $values): array {
-        $orig = json_decode((string) ($values[self::PREFIX . 'orig'] ?? ''), true);
-        return is_array($orig) ? $orig : [];
+        $view = json_decode((string) ($values[self::PREFIX . 'view'] ?? ''), true);
+        return is_array($view) ? self::orig_from_view($view) : [];
+    }
+
+    /**
+     * The comparable values of a view.
+     *
+     * @param array $view
+     * @return array
+     */
+    private static function orig_from_view(array $view): array {
+        $until = is_string($view['available_until'] ?? null) ? strtotime($view['available_until']) : false;
+        return [
+            'enabled' => ($view['enabled'] ?? false) === true,
+            'cap_minutes' => is_int($view['cap_minutes'] ?? null) ? $view['cap_minutes'] : null,
+            'rubric_source' => is_string($view['rubric_source'] ?? null) ? $view['rubric_source'] : 'none',
+            'show_solution' => ($view['show_solution'] ?? false) === true,
+            'available_until' => $until !== false ? $until : null,
+            'rubric_set' => self::is_set($view['pasted_rubric_state'] ?? null),
+            'recipients_count' => is_int($view['transcript_recipients_count'] ?? null) ? $view['transcript_recipients_count'] : 0,
+        ];
+    }
+
+    /**
+     * The fields of a view the form needs (nothing else is carried in the page).
+     *
+     * @param array $view
+     * @return array
+     */
+    private static function keep(array $view): array {
+        return array_intersect_key($view, array_flip(['version', 'enabled', 'cap_minutes', 'rubric_source', 'show_solution',
+            'available_until', 'solution_state', 'pasted_rubric_state', 'transcript_recipients_count', 'opening', 'warnings',
+            'active_sessions']));
+    }
+
+    /**
+     * The view posted with the form, on a submission.
+     *
+     * @return array|null
+     */
+    private static function posted_view(): ?array {
+        $raw = optional_param(self::PREFIX . 'view', '', PARAM_RAW);
+        $view = $raw !== '' ? json_decode($raw, true) : null;
+        return is_array($view) && is_int($view['version'] ?? null) && $view['version'] >= 0 ? $view : null;
+    }
+
+    /**
+     * Whether Vektra refused because its check of the teacher's role was stale (a retry may pass).
+     *
+     * @param assess_response $response
+     * @return bool
+     */
+    private static function stale_check(assess_response $response): bool {
+        return $response->errorcode === 'ERR-ASSESS-021' && ($response->details['reason'] ?? null) === 'editor_check_stale';
+    }
+
+    /**
+     * The language string for a refusal: role check stale or failed, or the given default.
+     *
+     * @param assess_response $response
+     * @param string $default
+     * @return string
+     */
+    private static function refusal(assess_response $response, string $default): string {
+        if ($response->errorcode !== 'ERR-ASSESS-021') {
+            return $default;
+        }
+        return ($response->details['reason'] ?? null) === 'not_an_editor' ? 'form_not_an_editor' : 'form_check_stale';
     }
 }
