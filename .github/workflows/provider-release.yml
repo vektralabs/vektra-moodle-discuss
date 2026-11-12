@@ -1,0 +1,91 @@
+# Wheel release of the Moodle LMS provider (provider/). A tag provider-v<version> runs the provider
+# tests (provider.yml), builds the wheel and publishes it with its sha256 as a GitHub release. The
+# release notes name the vektra-stack commit the wheel was tested against; vektra-stack's
+# `lms-moodle` image variant installs the wheel pinned by version and hash. The plugin's own release
+# (release.yml, tags v*) is separate: this release is never marked latest.
+name: Provider release
+
+on:
+  push:
+    tags:
+      - "provider-v*"
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: The tag matches the provider version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - id: version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          declared="$(python3 -c 'import tomllib; print(tomllib.load(open("provider/pyproject.toml", "rb"))["project"]["version"])')"
+          if [ "${TAG}" != "provider-v${declared}" ]; then
+            echo "::error::tag ${TAG} does not match provider/pyproject.toml version ${declared}"
+            exit 1
+          fi
+          echo "version=${declared}" >> "$GITHUB_OUTPUT"
+          # PEP 440 pre-releases and dev releases are published as GitHub pre-releases
+          if [[ "${declared}" =~ (a|b|rc|\.dev)[0-9]+ ]]; then pre=true; else pre=false; fi
+          echo "prerelease=${pre}" >> "$GITHUB_OUTPUT"
+
+  test:
+    needs: version
+    uses: ./.github/workflows/provider.yml
+
+  release:
+    name: Build and publish the wheel
+    needs: [version, test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: false
+
+      - name: Build the wheel
+        run: uv build --wheel provider -o dist
+
+      - name: Checksum and release notes
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          STACK_REF: ${{ needs.test.outputs.stack_ref }}
+        run: |
+          cd dist
+          wheel="vektra_lms_moodle-${VERSION}-py3-none-any.whl"
+          [ -f "${wheel}" ] || { echo "::error::expected ${wheel}, got: $(ls)"; exit 1; }
+          sha256sum "${wheel}" > "${wheel}.sha256"
+          sha="$(cut -d' ' -f1 "${wheel}.sha256")"
+          cat > ../notes.md <<EOF
+          vektra-lms-moodle ${VERSION}: the Moodle LMS provider of the Vektra assessment vertical.
+
+          - Wheel: \`${wheel}\`
+          - sha256: \`${sha}\`
+          - Tested against vektralabs/vektra-stack \`${STACK_REF}\`
+          EOF
+          cat ../notes.md
+
+      - name: Create the GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: vektra-lms-moodle ${{ needs.version.outputs.version }}
+          body_path: notes.md
+          prerelease: ${{ needs.version.outputs.prerelease == 'true' }}
+          make_latest: false
+          files: |
+            dist/*.whl
+            dist/*.whl.sha256
