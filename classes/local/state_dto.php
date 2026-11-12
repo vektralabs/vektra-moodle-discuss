@@ -223,7 +223,7 @@ final class state_dto {
         foreach (array_slice($raw, 0, 50) as $item) {
             $tid = $item['tid'] ?? null;
             $n = self::count($item['n'] ?? null, 1);
-            if (!is_string($tid) || !preg_match('/^[A-Za-z0-9-]{1,64}$/', $tid) || $n === null) {
+            if (!is_string($tid) || !transcript_proxy::valid_tid($tid) || $n === null) {
                 continue;
             }
             $out[] = [
