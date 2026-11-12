@@ -29,7 +29,7 @@ fi
 # Allowlist of the plugin surface, failing closed: any top-level entry that is not listed here is an
 # unanticipated artefact (a deploy script, a secrets file, a new tool) and fails the job. Adding a new
 # top-level file or directory to the plugin means adding it here on purpose.
-allow_files=${ALLOW_FILES:-"version.php settings.php lib.php locallib.php ajax.php transcript.php styles.css README.md CHANGELOG.md LICENSE thirdpartylibs.xml readme_moodle.txt"}
+allow_files=${ALLOW_FILES:-"version.php settings.php lib.php locallib.php ajax.php transcript.php teacher.php teacher_transcript.php styles.css README.md CHANGELOG.md LICENSE thirdpartylibs.xml readme_moodle.txt"}
 allow_dirs=${ALLOW_DIRS:-"classes db lang tests amd templates pix backup"}
 unexpected=""
 while IFS= read -r entry; do
