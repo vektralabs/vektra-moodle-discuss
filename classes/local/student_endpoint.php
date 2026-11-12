@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Handler of the student AJAX endpoint (ajax.php): advisory state and server-side mint.
+ * Handler of the student AJAX endpoint (ajax.php): advisory state, server-side mint, transcript download token.
  *
  * @package    local_vektradiscuss
  * @copyright  2026 VektraLabs
@@ -36,7 +36,7 @@ use local_vektradiscuss\local\http\assess_response;
  */
 final class student_endpoint {
     /** @var string[] Actions. */
-    public const ACTIONS = ['state', 'mint'];
+    public const ACTIONS = ['state', 'mint', 'download'];
 
     /** @var string[] Activity modules the discussion supports. */
     public const MODULES = ['quiz', 'assign'];
@@ -72,13 +72,14 @@ final class student_endpoint {
      *
      * Moodle refusals are thrown (require_login, sesskey, capability), before any Vektra call.
      *
-     * @param string $action state or mint.
+     * @param string $action state, mint or download.
      * @param int $cmid Course module id.
      * @param int $attemptid Viewed quiz attempt id (review page only), used for the state 9 pointer.
+     * @param string $tid Transcript id (download only): the iframe's closing screen asks for it.
      * @return array The response document.
      * @throws \moodle_exception On a Moodle refusal.
      */
-    public function handle(string $action, int $cmid, int $attemptid = 0): array {
+    public function handle(string $action, int $cmid, int $attemptid = 0, string $tid = ''): array {
         global $USER;
 
         if (!in_array($action, self::ACTIONS, true)) {
@@ -90,6 +91,8 @@ final class student_endpoint {
         $context = \context_module::instance($cm->id);
         if ($action === 'mint') {
             require_capability('local/vektradiscuss:start', $context);
+        } else if ($action === 'download') {
+            require_capability('local/vektradiscuss:viewowntranscript', $context);
         } else if (!has_any_capability(['local/vektradiscuss:start', 'local/vektradiscuss:viewowntranscript'], $context)) {
             throw new \required_capability_exception($context, 'local/vektradiscuss:start', 'nopermissions', '');
         }
@@ -101,6 +104,25 @@ final class student_endpoint {
         }
         if (!$this->config->is_enabled() || !in_array($cm->modname, self::MODULES, true)) {
             return state_dto::bare(state_dto::UNAVAILABLE);
+        }
+
+        if ($action === 'download') {
+            // The capability was checked on this activity, so the transcript must belong to it: Vektra checks
+            // only the owner, and a tid of another activity (where the student may be prohibited) must not
+            // ride on this one's capability.
+            if (
+                !transcript_proxy::valid_tid($tid)
+                    || !$this->transcript_in_activity((int) $USER->id, $cm, (int) $course->id, $tid)
+            ) {
+                return state_dto::bare(state_dto::UNAVAILABLE);
+            }
+            // A single-use download token for the student's own transcript (Vektra checks the ownership),
+            // handed to the iframe that asked for it. Never cached.
+            [$result, $token] = (new transcript_proxy($this->config, $this->client))->mint_own((int) $USER->id, $tid);
+            if ($result !== transcript_proxy::OK) {
+                return state_dto::bare(state_dto::UNAVAILABLE);
+            }
+            return ['state' => 'ready', 'tid' => $tid, 'token' => $token];
         }
 
         if ($action === 'mint') {
@@ -127,6 +149,36 @@ final class student_endpoint {
         }
         $dto = state_dto::from_vektra($response->json);
         return self::point_to_selected($dto, $cm, $attemptid, (int) $USER->id);
+    }
+
+    /**
+     * Whether a transcript belongs to the student's discussions of this activity.
+     *
+     * The list is the one Vektra builds for this student and activity (`/state` transcripts), read on every
+     * call, never cached. Any failure answers false.
+     *
+     * @param int $userid
+     * @param \cm_info $cm
+     * @param int $courseid
+     * @param string $tid
+     * @return bool
+     */
+    public function transcript_in_activity(int $userid, \cm_info $cm, int $courseid, string $tid): bool {
+        $minted = $this->mint($userid, (int) $cm->id, $courseid);
+        if ($minted === null) {
+            return false;
+        }
+        $response = $this->client->request('GET', self::PATH_STATE, [], null, 'mint', ['bearer' => $minted['token']]);
+        if (!$response->ok()) {
+            self::log_failure('state', $response);
+            return false;
+        }
+        foreach (state_dto::from_vektra($response->json)['transcripts'] ?? [] as $transcript) {
+            if ($transcript['tid'] === $tid) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -199,7 +251,12 @@ final class student_endpoint {
         if ($viewed === false || (int) $viewed === $dto['selected_attempt_no']) {
             return $dto;
         }
-        return ['state' => state_dto::NOT_SELECTED, 'reason' => null, 'selected_attempt_no' => $dto['selected_attempt_no']];
+        $local = ['state' => state_dto::NOT_SELECTED, 'reason' => null, 'selected_attempt_no' => $dto['selected_attempt_no']];
+        // The transcripts of earlier sessions stay reachable from any of the student's attempt pages.
+        if (!empty($dto['transcripts'])) {
+            $local['transcripts'] = $dto['transcripts'];
+        }
+        return $local;
     }
 
     /**

@@ -39,10 +39,14 @@ require_once(__DIR__ . '/../fixtures/scripted_transport.php');
  *
  * @covers \local_vektradiscuss\local\student_endpoint
  * @covers \local_vektradiscuss\local\state_dto
+ * @covers \local_vektradiscuss\local\transcript_proxy
  */
 final class student_endpoint_test extends \advanced_testcase {
     /** @var string Mint key used by the tests. */
     private const MINTKEY = 'test-mint-key-not-a-secret';
+
+    /** @var string A transcript id. */
+    private const TID = '0f8e7d6c-5b4a-4321-8fed-cba987654321';
 
     /** @var string A token-shaped value returned by the scripted mint. */
     private const TOKEN = 'pre.token-value_123';
@@ -93,12 +97,13 @@ final class student_endpoint_test extends \advanced_testcase {
      * @param string $action
      * @param int $cmid
      * @param int $attemptid
+     * @param string $tid
      * @return array
      */
-    private function handle(string $action, int $cmid, int $attemptid = 0): array {
+    private function handle(string $action, int $cmid, int $attemptid = 0, string $tid = ''): array {
         global $PAGE;
         $PAGE = new \moodle_page();
-        return $this->endpoint()->handle($action, $cmid, $attemptid);
+        return $this->endpoint()->handle($action, $cmid, $attemptid, $tid);
     }
 
     /**
@@ -114,6 +119,20 @@ final class student_endpoint_test extends \advanced_testcase {
      */
     private function respond_mint(): void {
         $this->transport->respond(201, ['token' => self::TOKEN, 'expires_in' => 120, 'jti' => 'j1']);
+    }
+
+    /**
+     * Queue the ownership check of a download: a mint, then /state listing these transcripts.
+     *
+     * @param string[] $tids
+     */
+    private function respond_transcripts(array $tids): void {
+        $this->respond_mint();
+        $this->transport->respond(200, ['state' => 'closed', 'reason' => null, 'transcripts' => array_map(
+            fn(string $tid, int $i): array => ['tid' => $tid, 'n' => $i + 1, 'available' => true, 'purged' => false],
+            $tids,
+            array_keys($tids)
+        )]);
     }
 
     /**
@@ -239,8 +258,8 @@ final class student_endpoint_test extends \advanced_testcase {
         \core\session\manager::loginas($this->student->id, \context_course::instance($this->course->id));
         $_POST['sesskey'] = sesskey();
 
-        foreach (['state', 'mint'] as $action) {
-            $result = $this->handle($action, (int) $this->quiz->cmid);
+        foreach (['state', 'mint', 'download'] as $action) {
+            $result = $this->handle($action, (int) $this->quiz->cmid, 0, self::TID);
             $this->assertSame(['state' => 'loginas', 'reason' => null], $result);
         }
         $this->assert_no_vektra_call();
@@ -274,14 +293,85 @@ final class student_endpoint_test extends \advanced_testcase {
         role_assign($roleid, $this->student->id, $context->id);
         $this->as_student();
 
-        foreach (['state', 'mint'] as $action) {
+        foreach (['state', 'mint', 'download'] as $action) {
             try {
-                $this->handle($action, (int) $this->quiz->cmid);
+                $this->handle($action, (int) $this->quiz->cmid, 0, self::TID);
                 $this->fail('Refusal expected for ' . $action);
             } catch (\required_capability_exception $e) {
                 $this->assert_no_vektra_call();
             }
         }
+    }
+
+    /**
+     * Download (the iframe's closing screen): a download token for the student's own transcript, minted with
+     * the mint key and the student as sub, handed back with its tid; a refusal is the generic unavailable.
+     */
+    public function test_download_mints_for_the_owner(): void {
+        $this->as_student();
+        $this->respond_transcripts([self::TID]);
+        $this->transport->respond(201, ['token' => self::TOKEN, 'expires_in' => 120]);
+        $this->assertSame(
+            ['state' => 'ready', 'tid' => self::TID, 'token' => self::TOKEN],
+            $this->handle('download', (int) $this->quiz->cmid, 0, self::TID)
+        );
+        // The ownership check (mint, /state of this activity), then the download token.
+        $this->assertStringEndsWith('/api/v1/assess/tokens', $this->transport->calls[0]['url']);
+        $this->assertStringEndsWith('/api/v1/assess/state', $this->transport->calls[1]['url']);
+        $path = '/api/v1/assess/transcripts/' . self::TID . '/download-token';
+        $this->assertStringEndsWith($path, $this->transport->calls[2]['url']);
+        $this->assertSame(['sub' => (int) $this->student->id], json_decode($this->transport->calls[2]['body'], true));
+
+        $this->respond_transcripts([self::TID]);
+        $this->transport->respond(403, ['error' => ['code' => 'ERR-AUTH-003', 'message' => 'not yours']]);
+        $refused = $this->handle('download', (int) $this->quiz->cmid, 0, self::TID);
+        $this->assertSame(['state' => 'unavailable', 'reason' => null], $refused);
+        $this->assertDebuggingCalledCount(2);
+
+        // A malformed tid never reaches Vektra.
+        $calls = count($this->transport->calls);
+        $this->assertSame(['state' => 'unavailable', 'reason' => null], $this->handle('download', (int) $this->quiz->cmid, 0, ''));
+        $this->assertCount($calls, $this->transport->calls);
+    }
+
+    /**
+     * Download needs only viewowntranscript: a student who lost the start capability keeps their copy.
+     */
+    public function test_download_needs_only_viewowntranscript(): void {
+        $roleid = $this->getDataGenerator()->create_role();
+        $context = \context_module::instance($this->quiz->cmid);
+        assign_capability('local/vektradiscuss:start', CAP_PROHIBIT, $roleid, $context->id);
+        role_assign($roleid, $this->student->id, $context->id);
+        $this->as_student();
+
+        $this->respond_transcripts([self::TID]);
+        $this->transport->respond(201, ['token' => self::TOKEN, 'expires_in' => 120]);
+        $this->assertSame('ready', $this->handle('download', (int) $this->quiz->cmid, 0, self::TID)['state']);
+    }
+
+    /**
+     * A transcript of another activity is refused on this one: no download token is minted, so a student
+     * prohibited from viewing transcripts on activity A cannot fetch A's transcript through activity B.
+     */
+    public function test_download_refuses_a_transcript_of_another_activity(): void {
+        $this->as_student();
+        $this->respond_transcripts(['a1b2c3d4-0000-4000-8000-000000000001']);
+
+        $refused = $this->handle('download', (int) $this->quiz->cmid, 0, self::TID);
+        $this->assertSame(['state' => 'unavailable', 'reason' => null], $refused);
+        $this->assertCount(2, $this->transport->calls);
+        foreach ($this->transport->calls as $call) {
+            $this->assertStringNotContainsString('/download-token', $call['url']);
+        }
+        $this->assertSame(0, $this->transport->remaining());
+
+        // A failed ownership check refuses too, and mints no download token either.
+        $this->respond_mint();
+        $this->transport->respond(503, ['error' => ['code' => 'ERR-ASSESS-001', 'message' => 'down']]);
+        $refused = $this->handle('download', (int) $this->quiz->cmid, 0, self::TID);
+        $this->assertSame(['state' => 'unavailable', 'reason' => null], $refused);
+        $this->assertCount(4, $this->transport->calls);
+        $this->assertDebuggingCalledCount(2);
     }
 
     /**
@@ -357,5 +447,13 @@ final class student_endpoint_test extends \advanced_testcase {
         $this->respond_mint();
         $this->transport->respond(200, $vektra);
         $this->assertSame('eligible', $this->handle('state', (int) $this->quiz->cmid, $second)['state']);
+
+        // The transcripts of earlier sessions stay on the pointer.
+        $transcripts = [['tid' => self::TID, 'n' => 1, 'available' => true, 'purged' => false]];
+        $this->respond_mint();
+        $this->transport->respond(200, $vektra + ['transcripts' => $transcripts]);
+        $result = $this->handle('state', (int) $this->quiz->cmid, $first);
+        $this->assertSame('not_selected', $result['state']);
+        $this->assertSame($transcripts, $result['transcripts']);
     }
 }

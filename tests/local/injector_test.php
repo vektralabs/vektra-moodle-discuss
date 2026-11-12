@@ -34,6 +34,9 @@ final class injector_test extends \advanced_testcase {
     /** @var \stdClass Course. */
     private \stdClass $course;
 
+    /** @var string Site identifier issued by the Vektra operator (a UUID). */
+    private const SITEID = '6f1c2a3e-8d4b-4c7e-9a10-2b3c4d5e6f70';
+
     /** @var \stdClass Student. */
     private \stdClass $student;
 
@@ -45,6 +48,7 @@ final class injector_test extends \advanced_testcase {
         $this->resetAfterTest();
         set_config('enabled', 1, 'local_vektradiscuss');
         set_config('uiurl', 'https://ui.example.test', 'local_vektradiscuss');
+        set_config('siteid', self::SITEID, 'local_vektradiscuss');
         $this->course = $this->getDataGenerator()->create_course();
         $this->student = $this->getDataGenerator()->create_and_enrol($this->course, 'student');
         $this->setUser($this->student);
@@ -76,6 +80,10 @@ final class injector_test extends \advanced_testcase {
             $html = injector::inject($page);
             $this->assertStringContainsString('data-region="local_vektradiscuss"', $html, $type);
             $this->assertStringContainsString('data-cmid="' . $page->cm->id . '"', $html, $type);
+            // The AMD module gets the UI origin and the site identifier (both public), nothing else secret.
+            $js = $page->requires->get_end_code();
+            $this->assertStringContainsString('"uiorigin":"https:\/\/ui.example.test"', $js, $type);
+            $this->assertStringContainsString('"siteid":"' . self::SITEID . '"', $js, $type);
         }
     }
 
@@ -91,6 +99,11 @@ final class injector_test extends \advanced_testcase {
         set_config('enabled', 0, 'local_vektradiscuss');
         $this->assertSame('', injector::inject($this->page('quiz', 'mod-quiz-view')));
         set_config('enabled', 1, 'local_vektradiscuss');
+
+        // Without a site identifier the UI page cannot be addressed.
+        set_config('siteid', '', 'local_vektradiscuss');
+        $this->assertSame('', injector::inject($this->page('quiz', 'mod-quiz-view')));
+        set_config('siteid', self::SITEID, 'local_vektradiscuss');
 
         set_config('uiurl', 'http://ui.example.test', 'local_vektradiscuss');
         $this->assertSame('', injector::inject($this->page('quiz', 'mod-quiz-view')));

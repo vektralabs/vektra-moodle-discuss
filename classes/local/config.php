@@ -82,16 +82,14 @@ class config {
     /**
      * Origin (scheme://host[:port]) that serves the discussion UI.
      *
-     * The plugin setting wins; when empty the origin of the block's public URL is used.
+     * Only the plugin's own setting: there is no fallback to the block's public URL, because the
+     * Vektra UI page answers only on its own origin (VEKTRA_ASSESS_UI_ORIGIN), never on the API host.
      *
-     * @return string Empty when nothing is configured or the origin is not https.
+     * @return string Empty when the setting is empty or the origin is not https.
      */
     public function ui_origin(): string {
-        $own = trim((string) get_config(self::COMPONENT, 'uiurl'));
-        $source = $own !== '' ? $own : $this->public_url();
-        $origin = self::origin_of($source);
-        // Https only, whatever the source: a value saved earlier or inherited from the block's public
-        // URL must not hand an http origin to the UI.
+        $origin = self::origin_of(trim((string) get_config(self::COMPONENT, 'uiurl')));
+        // Https only: a value saved earlier must not hand an http origin to the UI.
         if ($origin !== '' && !str_starts_with($origin, 'https://') && !$this->allow_insecure()) {
             return '';
         }

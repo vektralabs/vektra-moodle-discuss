@@ -44,7 +44,7 @@ const unavailableContext = async(cmid) => {
     return {
         visible: true, uniqid: 'local-vektradiscuss-' + cmid, state: 'unavailable', statenumber: 7,
         heading, message, enabled: false, canstart: false, canresume: false, buttonlabel: label,
-        suggestcopy: false,
+        suggestcopy: false, hastranscripts: false, transcripts: [],
     };
 };
 
@@ -69,10 +69,14 @@ const announce = (region, text) => {
 /**
  * Fetch the state and render the panel.
  *
+ * After a discussion closed, only the status part is replaced: the iframe stays, with the UI's closing
+ * screen and its transcript download (REQ-072). Moving or re-creating the iframe would reload it.
+ *
  * @param {HTMLElement} region
- * @param {Object} config {cmid, attemptid, uiorigin}
+ * @param {Object} config {cmid, attemptid, uiorigin, siteid}
+ * @param {Boolean} keepFrame Keep the open iframe and replace only the status part.
  */
-const refresh = async(region, config) => {
+const refresh = async(region, config, keepFrame = false) => {
     let context;
     try {
         context = await post('state', {cmid: config.cmid, attemptid: config.attemptid});
@@ -83,22 +87,33 @@ const refresh = async(region, config) => {
         context = await unavailableContext(config.cmid);
     }
     const {html, js} = await Templates.renderForPromise('local_vektradiscuss/button', context);
-    await Templates.replaceNodeContents(region, html, js);
+    const status = region.querySelector('[data-region="local_vektradiscuss-status"]');
+    const fresh = document.createElement('div');
+    fresh.innerHTML = html;
+    const freshStatus = fresh.querySelector('[data-region="local_vektradiscuss-status"]');
+    const panel = region.querySelector('.local-vektradiscuss-panel');
+    if (keepFrame && status && freshStatus && panel) {
+        await Templates.replaceNodeContents(status, freshStatus.innerHTML, js);
+        panel.dataset.state = context.state;
+        panel.dataset.statenumber = String(context.statenumber);
+    } else {
+        await Templates.replaceNodeContents(region, html, js);
+    }
     region.dataset.state = context.state;
 
     const frameRegion = () => region.querySelector('[data-region="local_vektradiscuss-frame"]');
-    const start = async() => {
+    const open = async(mode) => {
         announce(region, await getString('preparing', 'local_vektradiscuss'));
-        await openFrame(frameRegion(), config, () => refresh(region, config));
+        await openFrame(frameRegion(), config, () => refresh(region, config, true), mode);
     };
 
     const resume = region.querySelector('[data-action="local_vektradiscuss-resume"]');
     if (resume) {
-        resume.addEventListener('click', start);
+        resume.addEventListener('click', () => open('resume'));
     }
     const startButton = region.querySelector('[data-action="local_vektradiscuss-start"]');
     if (startButton && context.presession) {
-        startButton.addEventListener('click', () => showPresession(context, start));
+        startButton.addEventListener('click', () => showPresession(context, () => open('start')));
     }
 };
 
@@ -134,7 +149,7 @@ const showPresession = async(context, start) => {
 /**
  * Initialise the panel of one activity.
  *
- * @param {Object} config {cmid, attemptid, uiorigin}
+ * @param {Object} config {cmid, attemptid, uiorigin, siteid}
  */
 export const init = (config) => {
     const region = document.querySelector('[data-region="local_vektradiscuss"][data-cmid="' + Number(config.cmid) + '"]');

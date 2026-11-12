@@ -23,7 +23,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Student AJAX endpoint (`ajax.php`): advisory state and server-side mint of the pre-session token,
   with the positive login-as assertion and the plugin version in the mint body.
 - Discussion iframe on the Vektra UI origin with an origin- and source-checked postMessage handshake
-  (`local_vektradiscuss/frame`; message names to be aligned with the Vektra discussion UI).
+  (`local_vektradiscuss/frame`) following the Vektra postMessage contract version 1: the UI page
+  `/api/v1/assess/ui?site=<site id>`, every message `{v: 1, type: "vektra-assess-<name>"}`, the token sent
+  with its mode (`start` or `resume`) and no session id. The entry point needs the site identifier.
+- A student's own transcripts (REQ-088): the panel lists one entry per closed session, in any state, and
+  `transcript.php` streams the file from Vektra with a single-use download token minted server-side. The
+  plugin sends its own headers: attachment with the BR-016 file name or a fallback, `nosniff`, a CSP
+  sandbox, `no-store` and `no-referrer`. Nothing is stored. The discussion iframe's download request
+  (`vektra-assess-download-token-request`) is answered the same way, and the iframe now stays with its
+  closing screen when the session closes.
+- README: the Vektra-side configuration needed before enabling the plugin (TLS UI origin reachable
+  from student browsers, `frame-ancestors` listing the Moodle origin, matching site identifier and keys).
 
 ### Security
 
@@ -39,3 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Log redaction is structural (any depth, any value type) and cannot fail on very long values; a body that
   cannot be JSON-encoded is refused instead of being sent empty.
 - `viewtranscripts` carries `RISK_PERSONAL` and `setupcheck` carries `RISK_CONFIG`.
+- The discussion UI origin comes only from the plugin's own setting, never from the block's public URL
+  (the Vektra API host, where the UI page does not answer). The iframe sandbox is exactly the one the UI is
+  tested with (`allow-scripts allow-same-origin allow-downloads`, no `allow-forms`), with only
+  `clipboard-write` allowed.

@@ -43,6 +43,12 @@ class behat_stub_transport implements transport {
     /** @var string Config name prefix of the state fixture of an activity (suffix: cmid). */
     public const STATE = 'behatstubstate_';
 
+    /** @var string Config name prefix of a transcript fixture (suffix: tid): {owner, filename, body}. */
+    public const TRANSCRIPT = 'behatstubtranscript_';
+
+    /** @var string Download token prefix; the tid travels in it, as the binding does in Vektra. */
+    private const DOWNLOAD_PREFIX = 'stubdl.';
+
     /**
      * Whether the stub replaces the network on this site.
      *
@@ -100,6 +106,18 @@ class behat_stub_transport implements transport {
             $token = 'stub.' . $cmid . '.' . bin2hex(random_bytes(12));
             return self::json(201, ['token' => $token, 'expires_in' => 120, 'jti' => bin2hex(random_bytes(8))]);
         }
+        if ($method === 'POST' && preg_match('#^/api/v1/assess/transcripts/([A-Za-z0-9-]+)/download-token$#', $path, $m)) {
+            $fixture = self::transcript($m[1]);
+            if ($fixture === null) {
+                return self::json(404, ['error' => ['code' => 'ERR-ASSESS-017', 'message' => 'not generated']]);
+            }
+            $request = json_decode((string) $body, true);
+            if ((int) ($request['sub'] ?? 0) !== (int) ($fixture['owner'] ?? -1)) {
+                return self::json(403, ['error' => ['code' => 'ERR-AUTH-003', 'message' => 'not the owner']]);
+            }
+            return self::json(201, ['token' => self::DOWNLOAD_PREFIX . $m[1] . '.' . bin2hex(random_bytes(12)),
+                'expires_in' => 120]);
+        }
         if ($method === 'GET' && $path === '/api/v1/assess/state') {
             $cmid = preg_match('/^stub\.(\d+)\./', $bearer, $m) ? (int) $m[1] : 0;
             $fixture = json_decode((string) get_config(self::COMPONENT, self::STATE . $cmid), true);
@@ -112,7 +130,7 @@ class behat_stub_transport implements transport {
     }
 
     /**
-     * Streaming is not stubbed yet (transcript plan): 404.
+     * Stream a transcript fixture to a matching download token, like GET /transcripts/{tid}; 401 otherwise.
      *
      * @param string $url
      * @param string[] $headers
@@ -130,10 +148,53 @@ class behat_stub_transport implements transport {
         int $timeout,
         int $connecttimeout
     ): array {
-        $this->record('GET', (string) parse_url($url, PHP_URL_PATH), true, null);
-        $onheaderline("HTTP/1.1 404 Not Found\r\n");
+        $path = (string) parse_url($url, PHP_URL_PATH);
+        $bearer = '';
+        foreach ($headers as $line) {
+            if (stripos($line, 'Authorization: Bearer ') === 0) {
+                $bearer = substr($line, strlen('Authorization: Bearer '));
+            }
+        }
+        $this->record('GET', $path, $bearer !== '', null);
+        $fixture = null;
+        if (
+            preg_match('#^/api/v1/assess/transcripts/([A-Za-z0-9-]+)$#', $path, $m)
+                && str_starts_with($bearer, self::DOWNLOAD_PREFIX . $m[1] . '.')
+        ) {
+            $fixture = self::transcript($m[1]);
+        }
+        if ($fixture === null) {
+            $onheaderline("HTTP/1.1 401 Unauthorized\r\n");
+            $onheaderline("content-type: application/json\r\n");
+            $onheaderline("\r\n");
+            $onchunk(json_encode(['error' => ['code' => 'ERR-ASSESS-018', 'message' => 'invalid download token']]));
+            return ['status' => 401, 'errno' => 0, 'error' => ''];
+        }
+        $bytes = (string) ($fixture['body'] ?? '');
+        $onheaderline("HTTP/1.1 200 OK\r\n");
+        $onheaderline("content-type: text/html; charset=utf-8\r\n");
+        $onheaderline('content-disposition: attachment; filename="' . ($fixture['filename'] ?? '') . "\"\r\n");
+        $onheaderline('content-length: ' . strlen($bytes) . "\r\n");
         $onheaderline("\r\n");
-        return ['status' => 404, 'errno' => 0, 'error' => ''];
+        foreach (str_split($bytes, 1024) as $chunk) {
+            if ($chunk !== '' && $onchunk($chunk) === false) {
+                return ['status' => 200, 'errno' => 23, 'error' => 'write aborted'];
+            }
+        }
+        return ['status' => 200, 'errno' => 0, 'error' => ''];
+    }
+
+    /**
+     * A transcript fixture, read straight from the table (the browser's requests may run in another process).
+     *
+     * @param string $tid
+     * @return array|null
+     */
+    private static function transcript(string $tid): ?array {
+        global $DB;
+        $value = $DB->get_field('config_plugins', 'value', ['plugin' => self::COMPONENT, 'name' => self::TRANSCRIPT . $tid]);
+        $fixture = json_decode((string) $value, true);
+        return is_array($fixture) ? $fixture : null;
     }
 
     /**

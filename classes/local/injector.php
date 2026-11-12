@@ -63,10 +63,11 @@ final class injector {
             return '';
         }
         $uiorigin = self::usable_ui_origin($config);
-        if ($uiorigin === '') {
+        $siteid = $config->site_id();
+        if ($uiorigin === '' || $siteid === '') {
             if (has_capability('moodle/site:config', \context_system::instance())) {
-                debugging('local_vektradiscuss: the discussion UI origin is not set, not https, or equal to the Moodle '
-                    . 'origin; the discussion is not shown.', DEBUG_NORMAL);
+                debugging('local_vektradiscuss: the site identifier is not set, or the discussion UI origin is not set, '
+                    . 'not https, or equal to the Moodle origin; the discussion is not shown.', DEBUG_NORMAL);
             }
             return '';
         }
@@ -77,6 +78,8 @@ final class injector {
             'attemptid' => (int) $attemptid,
             // Not a secret: the iframe src and the only origin accepted by the handshake.
             'uiorigin' => $uiorigin,
+            // Not a secret either: the UI page is public and selects the site's framing origin with it.
+            'siteid' => $siteid,
         ]]);
         return \html_writer::div('', 'local-vektradiscuss', [
             'data-region' => 'local_vektradiscuss',

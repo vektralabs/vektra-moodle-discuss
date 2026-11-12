@@ -36,3 +36,14 @@ Feature: No discussion in a "log in as" session
       | activity |
       | quiz1    |
       | assign1  |
+
+  Scenario: Logged in as the student, the transcript download is refused before any request to Vektra
+    Given the Vektra assess stub has the transcript of session 1 of "quiz1" for "student1" named "C1_42_7_s1_20261108.html"
+    And I log in as "admin"
+    And I am on the "student1" "user > profile" page
+    And I follow "Log in as"
+    And I press "Continue"
+    And I am on the "quiz1" Activity page
+    When I open the transcript download of session 1 of "quiz1"
+    Then I should see "Not available while logged in as another user."
+    And the Vektra assess stub received 0 requests in total

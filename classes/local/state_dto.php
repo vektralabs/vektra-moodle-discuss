@@ -65,9 +65,6 @@ final class state_dto {
     /** @var string[] States in which Vektra may send the pre-session block. */
     private const PRESESSION_STATES = ['eligible', 'reset_granted'];
 
-    /** @var string[] States in which Vektra may send transcript links. */
-    private const TRANSCRIPT_STATES = ['closed', 'reset_granted', 'ended'];
-
     /** @var string[] Render state => the date field Vektra may send in it (ISO-8601, optional). */
     private const DATE_FIELDS = [
         'not_open' => 'opens_at',
@@ -146,7 +143,9 @@ final class state_dto {
         if (in_array($state, self::PRESESSION_STATES, true) && is_array($json['pre_session'] ?? null)) {
             $dto['pre_session'] = self::pre_session($json['pre_session']);
         }
-        if (in_array($state, self::TRANSCRIPT_STATES, true) && is_array($json['transcripts'] ?? null)) {
+        // Any state, once the student has a closed session (contract of plan 10): a reset or an ended activity
+        // keeps the links of the earlier sessions.
+        if (is_array($json['transcripts'] ?? null)) {
             $transcripts = self::transcripts($json['transcripts']);
             if ($transcripts) {
                 $dto['transcripts'] = $transcripts;
@@ -224,7 +223,7 @@ final class state_dto {
         foreach (array_slice($raw, 0, 50) as $item) {
             $tid = $item['tid'] ?? null;
             $n = self::count($item['n'] ?? null, 1);
-            if (!is_string($tid) || !preg_match('/^[A-Za-z0-9-]{1,64}$/', $tid) || $n === null) {
+            if (!is_string($tid) || !transcript_proxy::valid_tid($tid) || $n === null) {
                 continue;
             }
             $out[] = [
