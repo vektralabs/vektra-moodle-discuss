@@ -257,8 +257,8 @@ version); P3-5 setup check page, docs, live E2E (C, E).
 - [x] D2. Provider metadata + `get_contexts_for_userid` + `get_users_in_context` + `export_user_data` with hash verification per Design Notes.
 - [x] D3. Delete methods with post-delete verification and throw-on-anything-else; dedicated exception strings for "key not configured", "Vektra refused", "verification found N remaining", "erasure exempt (DPO)".
 - [x] D4. PHPUnit `tests/privacy/provider_test.php` (extends `\core_privacy\tests\provider_testcase`): metadata contains the external location; export writes bytes sha256-equal to the mock; hash mismatch throws; delete with missing key throws; delete with 200 but verification returning 1 transcript throws; delete success makes exactly 2 requests (DELETE + verification GET); exempt -> throws; cross-user: export for user B never includes A's records (mock asserts the requested userid).
-- [ ] D5. Live (plan-4 env + real stack): create a discussion for a fixture student, unenrol them, run `admin/tool/dataprivacy` export -> zip contains transcripts #1..#N sha256-equal to the in-course copy (REQ-093(b)); run deletion -> Vektra row counts for that subject's sessions, snapshots, turns, transcripts = 0 (SQL counts recorded), export afterwards contains 0 transcripts.
-- [ ] D6. Live negative: revoke the erase key in Vektra, run a deletion request -> the provider throws an explicit exception, the site's DPOs receive Moodle's failure notification with its text, and Vektra's rows are unchanged (count before/after). Moodle completes the request anyway: `core_privacy\manager::handled_component_class_callback()` catches any Throwable from a provider, notifies the observer (tool_dataprivacy emails the DPOs) and returns null (privacy/classes/manager.php:609 on 4.3.11; same on 5.2). Decided by the coordinator 2026-11-13 (OQ-033): DPO notification on the Moodle side, operator alert on the Vektra side.
+- [x] D5. Live (plan-4 env + real stack): create a discussion for a fixture student, unenrol them, run `admin/tool/dataprivacy` export -> zip contains transcripts #1..#N sha256-equal to the in-course copy (REQ-093(b)); run deletion -> Vektra row counts for that subject's sessions, snapshots, turns, transcripts = 0 (SQL counts recorded), export afterwards contains 0 transcripts.
+- [x] D6. Live negative: revoke the erase key in Vektra, run a deletion request -> the provider throws an explicit exception, the site's DPOs receive Moodle's failure notification with its text, and Vektra's rows are unchanged (count before/after). Moodle completes the request anyway: `core_privacy\manager::handled_component_class_callback()` catches any Throwable from a provider, notifies the observer (tool_dataprivacy emails the DPOs) and returns null (privacy/classes/manager.php:609 on 4.3.11; same on 5.2). Decided by the coordinator 2026-11-13 (OQ-033): DPO notification on the Moodle side, operator alert on the Vektra side.
 
 ### E. Docs and wrap-up
 - [x] E1. README: teacher guide (settings fields, write-only solution, RAG off), required keys and scopes table (mint, teacher, privacy-export, privacy-erase; admin key never), privacy section (what leaves Moodle, export/delete behaviour, DPO exemption path); CHANGELOG `[Unreleased]`; raise `maturity` to BETA only after D5/D6 pass.
@@ -285,14 +285,14 @@ Discussion config, sessions, transcripts and audit live only in Vektra; the plug
 - [x] Vektra unreachable while editing an activity -> 0 PUT requests on save (stub log) and config unchanged (dormant-capability guard)
 - [x] No PUT body ever carries RAG ON (ARCH-072)
 - [ ] Non-grader and other-course teacher get an authorization error and cause 0 Vektra requests; Vektra also refuses a forged actor (live) (REQ-076, NFR-014)
-- [ ] Reset reason visible in the list, absent from the transcript bytes (grep = 0) (REQ-076, REQ-087)
+- [x] Reset reason visible in the list, absent from the transcript bytes (grep = 0) (REQ-076, REQ-087)
 - [ ] Terminate with N active sessions -> N CLOSED(terminated_by_teacher) rows and N transcripts (row counts) (REQ-081)
 - [ ] +50% on a 30-min cap -> 45-min server deadline (session row) (REQ-078)
 - [ ] Opening date earlier than the activity close -> field error; attestation required on every edit (REQ-091)
 - [ ] FAILED transcript downloadable by a grader; served with attachment, nosniff, CSP sandbox, no-store; 0 bytes on non-200 (REQ-076, BR-016)
 - [x] Setup check against a misconfigured service account names the failing item (REQ-079)
-- [ ] Unenrolled student's privacy export contains #1..#N, sha256-equal to the in-course copy (REQ-093)
-- [ ] Privacy deletion -> 0 rows for the subject in Vektra (SQL count); a deletion that fails or cannot be verified throws an explicit exception that Moodle sends to the DPOs (the request still completes, see D6), and Vektra alerts its operator (OQ-033)
+- [x] Unenrolled student's privacy export contains #1..#N, sha256-equal to the in-course copy (REQ-093)
+- [x] Privacy deletion -> 0 rows for the subject in Vektra (SQL count); a deletion that fails or cannot be verified throws an explicit exception that Moodle sends to the DPOs (the request still completes, see D6), and Vektra alerts its operator (OQ-033)
 
 ## Testing Approach
 
@@ -379,3 +379,24 @@ tool_dataprivacy UI status alone.
 - Pending live checks, waiting for F1 after vektra-stack #209 (F1's 4.3 WS token was missing on
   2026-11-12: setup check `no_token`): D5, D6, E2, and the student plan's F1 and E3 (moved here when
   #3 merged).
+
+**Live evidence on F1 (vektra-stack develop 5d27ff6f + provider wheel, 2026-11-13, headless Chromium).**
+- Student plan F1, both sites: the button reached by keyboard; the pre-session screen dismissed -> 0 new
+  session rows; Start -> exactly one row; sandboxed iframe, no token in the page HTML; Finish ->
+  CLOSED(finished); state 6 with the transcript link; the student downloads the BR-016 file.
+- Student plan E3: student and grader copies sha256-equal (4.3 `0cce291c...`, 5.2 `7a25fa64...`, the
+  grader's through teacher_transcript.php); another student's mint key on the tid -> 403 ERR-AUTH-003,
+  +1 audit row `assess_ownership_mismatch_rejected`, no token; through the plugin the other student gets
+  `unavailable` without a download-token call.
+- E2 (4.3, partial): the settings form read Vektra's values and saved a cap change (version 2 -> 3);
+  +50% extra time for a student without a session (pre-session duration 60 min on a 40-min cap); a new
+  session granted with a reason after a first `gate_inputs_stale` (the page said to retry), the student
+  then `reset_granted` / next #2; the reason shown in the list. Not done: terminate with N active
+  sessions and the session row of the extra time, because every Start rolled back
+  (`provider_unavailable`, the model's Part B timing out) from 23:32Z; reported to vektra-stack.
+  Assignments not run live (no assignment configured on F1).
+- D5 (through `core_privacy\manager`, as tool_dataprivacy calls it): contexts user + quiz; the export zip
+  holds the transcript sha256-equal to both downloads; the deletion leaves 0 sessions and 0 transcripts
+  of the person on the site.
+- D6: an erase key Vektra refuses -> the provider throws, `tool_dataprivacy\manager_observer` notifies the
+  DPO with the plugin's message ("Vektra could not erase..."), Vektra's rows unchanged.
