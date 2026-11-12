@@ -72,6 +72,12 @@ if (!$config->is_enabled() || !in_array($cm->modname, student_endpoint::MODULES,
     local_vektradiscuss_transcript_refused('transcript_unavailable', $back);
 }
 
+// The capability was checked on this activity: the transcript must be one of its own (Vektra checks only
+// the owner, so a tid of another activity would otherwise ride on this one's capability).
+if (!(new student_endpoint($config))->transcript_in_activity((int) $USER->id, $cm, (int) $course->id, $tid)) {
+    local_vektradiscuss_transcript_refused('transcript_unavailable', $back);
+}
+
 // Release the session lock: the transfer may take a while and must not block the student's other tabs.
 \core\session\manager::write_close();
 

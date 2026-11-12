@@ -107,6 +107,15 @@ final class student_endpoint {
         }
 
         if ($action === 'download') {
+            // The capability was checked on this activity, so the transcript must belong to it: Vektra checks
+            // only the owner, and a tid of another activity (where the student may be prohibited) must not
+            // ride on this one's capability.
+            if (
+                !transcript_proxy::valid_tid($tid)
+                    || !$this->transcript_in_activity((int) $USER->id, $cm, (int) $course->id, $tid)
+            ) {
+                return state_dto::bare(state_dto::UNAVAILABLE);
+            }
             // A single-use download token for the student's own transcript (Vektra checks the ownership),
             // handed to the iframe that asked for it. Never cached.
             [$result, $token] = (new transcript_proxy($this->config, $this->client))->mint_own((int) $USER->id, $tid);
@@ -140,6 +149,36 @@ final class student_endpoint {
         }
         $dto = state_dto::from_vektra($response->json);
         return self::point_to_selected($dto, $cm, $attemptid, (int) $USER->id);
+    }
+
+    /**
+     * Whether a transcript belongs to the student's discussions of this activity.
+     *
+     * The list is the one Vektra builds for this student and activity (`/state` transcripts), read on every
+     * call, never cached. Any failure answers false.
+     *
+     * @param int $userid
+     * @param \cm_info $cm
+     * @param int $courseid
+     * @param string $tid
+     * @return bool
+     */
+    public function transcript_in_activity(int $userid, \cm_info $cm, int $courseid, string $tid): bool {
+        $minted = $this->mint($userid, (int) $cm->id, $courseid);
+        if ($minted === null) {
+            return false;
+        }
+        $response = $this->client->request('GET', self::PATH_STATE, [], null, 'mint', ['bearer' => $minted['token']]);
+        if (!$response->ok()) {
+            self::log_failure('state', $response);
+            return false;
+        }
+        foreach (state_dto::from_vektra($response->json)['transcripts'] ?? [] as $transcript) {
+            if ($transcript['tid'] === $tid) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
