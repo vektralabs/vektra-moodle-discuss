@@ -30,6 +30,12 @@ if ($hassiteconfig) {
         get_string('pluginname', 'local_vektradiscuss')
     );
     $ADMIN->add('localplugins', $settings);
+    $ADMIN->add('localplugins', new admin_externalpage(
+        'local_vektradiscuss_setupcheck',
+        get_string('setupcheck_heading', 'local_vektradiscuss'),
+        new moodle_url('/local/vektradiscuss/admin/setupcheck.php'),
+        'local/vektradiscuss:setupcheck'
+    ));
 
     if ($ADMIN->fulltree) {
         $config = new \local_vektradiscuss\local\config();
