@@ -76,6 +76,7 @@ if ($refusal === null && $action !== '') {
         'unit' => optional_param('unit', 'minutes', PARAM_ALPHA),
         'value' => optional_param('value', '', PARAM_RAW_TRIMMED),
         'confirm' => optional_param('confirm', 0, PARAM_BOOL),
+        'tid' => optional_param('tid', '', PARAM_ALPHANUMEXT),
     ]);
     redirect($url, $message, null, $ok ? \core\output\notification::NOTIFY_SUCCESS : \core\output\notification::NOTIFY_ERROR);
 }

@@ -84,34 +84,7 @@ if (!(new student_endpoint($config))->transcript_in_activity((int) $USER->id, $c
 $proxy = new transcript_proxy($config);
 [$result, $token] = $proxy->mint_own((int) $USER->id, $tid);
 if ($result === transcript_proxy::OK) {
-    $result = $proxy->stream(
-        $tid,
-        $token,
-        $n,
-        function (string $line): void {
-            global $CFG;
-            static $started = false;
-            if (!$started) {
-                // Only once a transfer starts (a refusal page still needs Moodle's buffers): the body goes out as
-                // it arrives, with Vektra's Content-Length, so no output buffer or zlib compression may sit in
-                // between, and a debugging notice must never be written into the file (it still reaches the log).
-                // Inline because disable_output_buffering() is deprecated since Moodle 4.5.
-                $started = true;
-                if (ini_get_bool('zlib.output_compression')) {
-                    ini_set('zlib.output_compression', 'Off');
-                }
-                while (ob_get_level() > 0 && ob_end_clean()) {
-                    continue;
-                }
-                $CFG->debugdisplay = 0;
-            }
-            header($line);
-        },
-        function (string $chunk): void {
-            echo $chunk;
-            flush();
-        }
-    );
+    $result = $proxy->send($tid, $token, $n);
 }
 if ($result === transcript_proxy::OK || $result === transcript_proxy::TRUNCATED) {
     die();

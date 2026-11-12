@@ -281,6 +281,27 @@ class teacher_api {
     }
 
     /**
+     * Send a transcript again to the activity's current recipients (a new delivery round). The body names
+     * only the actor: recipients cannot be named here (ERR-ASSESS-019).
+     *
+     * @param string $tid
+     * @param int $actorid
+     * @return assess_response
+     */
+    public function resend(string $tid, int $actorid): assess_response {
+        if (!transcript_proxy::valid_tid($tid)) {
+            throw new \coding_exception('Invalid transcript id.');
+        }
+        return $this->client->request(
+            'POST',
+            '/api/v1/assess/transcripts/' . $tid . '/resend',
+            [],
+            ['actor_userid' => $actorid],
+            'teacher'
+        );
+    }
+
+    /**
      * The fields every teacher write carries.
      *
      * @param int $courseid

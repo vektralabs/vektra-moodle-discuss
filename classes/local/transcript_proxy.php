@@ -91,6 +91,32 @@ final class transcript_proxy {
      * @return array [result, token|null]: result OK with the token, NOT_READY or FAILED with null.
      */
     public function mint_own(int $userid, string $tid): array {
+        return $this->mint($tid, ['sub' => $userid], 'mint');
+    }
+
+    /**
+     * Mint a single-use download token for a grader (assess:teacher key, actor_userid = the teacher).
+     *
+     * Vektra checks that the actor grades the transcript's activity; the caller has checked that the
+     * transcript belongs to the activity whose capability it checked.
+     *
+     * @param int $actorid The teacher.
+     * @param string $tid
+     * @return array [result, token|null]: result OK with the token, NOT_READY or FAILED with null.
+     */
+    public function mint_grader(int $actorid, string $tid): array {
+        return $this->mint($tid, ['actor_userid' => $actorid], 'teacher');
+    }
+
+    /**
+     * POST download-token with a key role and its body.
+     *
+     * @param string $tid
+     * @param array $body
+     * @param string $keyrole
+     * @return array [result, token|null]
+     */
+    private function mint(string $tid, array $body, string $keyrole): array {
         if (!self::valid_tid($tid)) {
             return [self::FAILED, null];
         }
@@ -98,8 +124,8 @@ final class transcript_proxy {
             'POST',
             '/api/v1/assess/transcripts/' . $tid . '/download-token',
             [],
-            ['sub' => $userid],
-            'mint'
+            $body,
+            $keyrole
         );
         if (!$response->ok()) {
             self::log_failure('download-token', $response);
@@ -156,6 +182,48 @@ final class transcript_proxy {
             return self::TRUNCATED;
         }
         return $response->status === 404 && $response->errorcode === 'ERR-ASSESS-017' ? self::NOT_READY : self::FAILED;
+    }
+
+    /**
+     * Stream a transcript to the browser.
+     *
+     * Once the transfer starts (a refusal page rendered afterwards still needs them otherwise), the session
+     * lock is released and Moodle's output buffers and zlib compression are turned off, so the body goes out
+     * as it arrives with Vektra's Content-Length, and no debugging notice is written into the file (it still
+     * reaches the log). Inline because disable_output_buffering() is deprecated since Moodle 4.5.
+     *
+     * @param string $tid
+     * @param string $token
+     * @param int $n
+     * @return string OK, NOT_READY, FAILED or TRUNCATED.
+     */
+    public function send(string $tid, string $token, int $n): string {
+        $started = false;
+        return $this->stream(
+            $tid,
+            $token,
+            $n,
+            function (string $line) use (&$started): void {
+                global $CFG;
+                if (!$started) {
+                    $started = true;
+                    // The transfer may take a while: release the session lock so other tabs are not blocked.
+                    \core\session\manager::write_close();
+                    if (ini_get_bool('zlib.output_compression')) {
+                        ini_set('zlib.output_compression', 'Off');
+                    }
+                    while (ob_get_level() > 0 && ob_end_clean()) {
+                        continue;
+                    }
+                    $CFG->debugdisplay = 0;
+                }
+                header($line);
+            },
+            function (string $chunk): void {
+                echo $chunk;
+                flush();
+            }
+        );
     }
 
     /**

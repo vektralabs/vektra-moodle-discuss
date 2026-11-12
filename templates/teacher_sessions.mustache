@@ -131,6 +131,15 @@
                         <ul class="list-unstyled mb-0">
                         {{#sessions}}
                             <li><strong>#{{n}}</strong> {{state}}{{#closereason}}: {{closereason}}{{/closereason}}{{#closedat}} ({{closedat}}){{/closedat}}
+                                {{#downloadurl}}<a href="{{downloadurl}}" class="ms-1 ml-1">{{#str}}teacher_download, local_vektradiscuss, {{n}}{{/str}}</a>{{/downloadurl}}
+                                {{#canresend}}
+                                <form method="post" action="{{actionurl}}" class="d-inline">
+                                    <input type="hidden" name="sesskey" value="{{sesskey}}">
+                                    <input type="hidden" name="action" value="resend">
+                                    <input type="hidden" name="tid" value="{{tid}}">
+                                    <button type="submit" class="btn btn-link btn-sm p-0 ms-1 ml-1">{{#str}}teacher_resend, local_vektradiscuss, {{n}}{{/str}}</button>
+                                </form>
+                                {{/canresend}}
                                 {{#hasdeliveries}}
                                 <ul class="mb-1">{{#deliveries}}<li><small>{{.}}</small></li>{{/deliveries}}</ul>
                                 {{/hasdeliveries}}

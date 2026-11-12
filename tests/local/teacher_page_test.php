@@ -327,6 +327,64 @@ final class teacher_page_test extends \advanced_testcase {
     }
 
     /**
+     * A list page with one student whose session has this transcript.
+     *
+     * @param string $tid
+     * @param int|null $next
+     * @return array
+     */
+    private function list_with(string $tid, ?int $next = null): array {
+        return ['students' => [['userid' => (int) $this->student->id, 'sessions' => [['session_id' => self::SID,
+            'session_no' => 2, 'state' => 'CLOSED', 'close_reason' => 'finished', 'transcript_id' => $tid,
+            'deliveries' => []]], 'resets' => [], 'reset_count' => 0, 'extra_seconds' => 0]],
+            'next_cursor' => $next, 'terminations' => [], 'gate' => []];
+    }
+
+    /**
+     * A transcript is found in the activity's list, across pages; one of another activity is not.
+     */
+    public function test_session_of_transcript_pages(): void {
+        $this->transport->respond(200, $this->list_with('aaaa-1', 4711));
+        $this->transport->respond(200, $this->list_with('bbbb-2'));
+        $this->assertSame(2, $this->page()->session_of_transcript('bbbb-2'));
+        $this->assertSame('4711', $this->transport->header_map(1)['x-assess-cursor']);
+
+        $this->transport->respond(200, $this->list_with('aaaa-1'));
+        $this->assertNull($this->page()->session_of_transcript('cccc-3'));
+        $this->assertNull($this->page()->session_of_transcript('../x'));
+        $this->assertCount(3, $this->transport->calls);
+    }
+
+    /**
+     * Resend: only a transcript of this activity, with the actor and nothing else in the body; a foreign one
+     * makes no resend call.
+     */
+    public function test_resend(): void {
+        $this->transport->respond(200, $this->list_with('aaaa-1'));
+        $this->transport->respond(202, ['transcript_id' => 'aaaa-1', 'round' => 2]);
+        [$ok] = $this->page()->act('resend', ['tid' => 'aaaa-1']);
+        $this->assertTrue($ok);
+        $this->assertStringEndsWith('/transcripts/aaaa-1/resend', $this->transport->calls[1]['url']);
+        $this->assertSame(['actor_userid' => (int) $this->teacher->id], $this->body(1));
+
+        $this->transport->respond(200, $this->list_with('aaaa-1'));
+        [$ok] = $this->page()->act('resend', ['tid' => 'zzzz-9']);
+        $this->assertFalse($ok);
+        $this->assertCount(3, $this->transport->calls);
+    }
+
+    /**
+     * The grader's download token: teacher key, the actor in the body.
+     */
+    public function test_mint_grader(): void {
+        $this->transport->respond(201, ['token' => 'dl.token_1', 'expires_in' => 120]);
+        $proxy = new transcript_proxy(null, new assess_client(null, $this->transport));
+        $this->assertSame([transcript_proxy::OK, 'dl.token_1'], $proxy->mint_grader((int) $this->teacher->id, 'aaaa-1'));
+        $this->assertSame('Bearer test-teacher-key-not-a-secret', $this->transport->header_map(0)['authorization']);
+        $this->assertSame(['actor_userid' => (int) $this->teacher->id], $this->body());
+    }
+
+    /**
      * A failed list gives no context; a cursor outside the expected shape is dropped.
      */
     public function test_failed_list_and_cursor(): void {
