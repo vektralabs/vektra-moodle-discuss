@@ -159,6 +159,32 @@ final class transcript_proxy_test extends \advanced_testcase {
     }
 
     /**
+     * A body over the size limit is cut off: the headers and the first bytes went out, so the result is
+     * TRUNCATED, never OK, although the status stays 200.
+     */
+    public function test_oversized_body_is_truncated_not_ok(): void {
+        $this->transport->respond(200, self::BODY, ['Content-Type' => 'text/html; charset=utf-8']);
+        $headers = [];
+        $body = '';
+        $result = $this->proxy()->stream(
+            self::TID,
+            self::TOKEN,
+            2,
+            function (string $line) use (&$headers): void {
+                $headers[] = $line;
+            },
+            function (string $chunk) use (&$body): void {
+                $body .= $chunk;
+            },
+            8
+        );
+        $this->assertSame(transcript_proxy::TRUNCATED, $result);
+        $this->assertNotEmpty($headers);
+        $this->assertLessThanOrEqual(8, strlen($body));
+        $this->assertDebuggingCalled();
+    }
+
+    /**
      * A file name outside the BR-016 pattern falls back to transcript_s<N>.html.
      */
     public function test_filename_fallback(): void {

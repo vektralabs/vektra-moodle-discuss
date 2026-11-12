@@ -124,9 +124,10 @@ final class transcript_proxy {
      * @param int $n Session number, for the fallback file name.
      * @param callable $header fn(string $line): sends one response header.
      * @param callable $emit fn(string $chunk): sends body bytes.
+     * @param int $maxbytes Body size limit (0: the client's limit); it can only lower that limit.
      * @return string OK, NOT_READY, FAILED or TRUNCATED.
      */
-    public function stream(string $tid, string $token, int $n, callable $header, callable $emit): string {
+    public function stream(string $tid, string $token, int $n, callable $header, callable $emit, int $maxbytes = 0): string {
         if (!self::valid_tid($tid)) {
             return self::FAILED;
         }
@@ -143,9 +144,11 @@ final class transcript_proxy {
             function (string $chunk) use ($emit): bool {
                 $emit($chunk);
                 return true;
-            }
+            },
+            $maxbytes > 0 ? ['maxbytes' => $maxbytes] : []
         );
-        if ($response->ok()) {
+        // An aborted oversized body keeps the 200 status: it is a truncation, not a success.
+        if ($response->ok() && $response->errorcode === null) {
             return self::OK;
         }
         self::log_failure('transcript', $response);
