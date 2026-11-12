@@ -318,9 +318,11 @@ async def test_a_revoked_token_makes_the_site_not_ready_with_one_audit_row_and_o
 
 async def test_a_queued_report_is_revalidated_and_run(pg):
     site = await make_site(pg)
+    # seeded as the superuser: under row-level security the API role writes only for the site in
+    # app.assess_site_id, and the API's own INSERT is the vertical's test
     rid = (
         await pg.run(
-            "api",
+            "super",
             "INSERT INTO assess_setup_check_reports (site_id) VALUES (:s) RETURNING id",
             {"s": site},
         )
