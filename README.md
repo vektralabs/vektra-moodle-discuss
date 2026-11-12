@@ -36,9 +36,16 @@ Prerequisites:
 2. The [`block_vektra`](https://github.com/vektralabs/vektra-moodle) plugin, version
    `2026103001` or later, installed and configured (this plugin reuses its Vektra API URL
    and public URL). Installing without it fails with the Moodle dependency error.
-3. From the Vektra operator: a site identifier and two dedicated keys, one with the
-   `assess:mint` scope and one with `assess:teacher`. Never use the block admin key: the
-   settings page refuses it, and Vektra rejects it on assess endpoints anyway.
+3. From the Vektra operator: a site identifier and four dedicated keys, each bound to this site
+   (see the table below). Never use the block admin key: the settings page refuses it, and Vektra
+   rejects it on assess endpoints anyway. The settings page also refuses the same key in two roles.
+
+| Setting | Vektra scope | Used for |
+|---------|--------------|----------|
+| Mint key | `assess:mint` | Students: the discussion token, the state of the button, their own transcript downloads |
+| Teacher key | `assess:teacher` | Teachers: the activity settings, the Discussions page (sessions, new sessions, ending discussions, extra time, transcript downloads and resends) and the setup check |
+| Privacy export key | `assess:privacy-export` | The Moodle privacy API: finding and exporting a person's transcripts |
+| Privacy erase key | `assess:privacy-erase` | The Moodle privacy API: deleting a person's discussion data |
 
 Copy the plugin directory to `local/vektradiscuss` (`public/local/vektradiscuss` on Moodle
 5.2), run the Moodle upgrade, then configure it under
@@ -69,6 +76,59 @@ The iframe is sandboxed (`allow-scripts allow-same-origin allow-downloads`, with
 allowed), sends no
 referrer, and receives the discussion token only by `postMessage` to the UI origin. The token never
 appears in a URL or in the page.
+
+### Setup check
+
+*Site administration > Plugins > Local plugins > Assessment discussion: setup check* shows which
+keys are configured (never their values) and whether the UI origin is usable, and runs Vektra's
+check of the site's service account: each item by name with its result. Vektra refuses to enable a
+discussion while an item is not OK. At most one check every 5 minutes.
+
+## Teacher guide
+
+**Activity settings.** In a quiz or an assignment, the *Discussion with the assistant* section reads
+the activity's settings from Vektra when the form opens, and saves only what you change.
+
+- Save a new activity first: the section can be configured once the activity exists.
+- To enable the discussion, the activity needs a close date (quiz) or a cut-off date (assignment), a
+  time limit, at least one transcript recipient, and the site's privacy settings and setup check
+  must be in order. When Vektra refuses, the reason appears after saving, and the discussion stays
+  off.
+- The solution, the pasted rubric and the recipients are write-only: once saved, the form only says
+  whether they are set. Replace them to change them. They are stored in Vektra and never in Moodle.
+- Course material search is off in this version.
+- If Vektra cannot read every closing date of the activity (overrides, grace period), the form asks
+  for the date from which discussions can start, with a confirmation that no student has time
+  beyond it.
+- If Vektra cannot be reached while you edit the activity, the section is locked and nothing is
+  sent: the rest of the activity saves as usual.
+
+**Discussions page.** The activity's *Discussions* entry (teachers who can see transcripts) lists
+each student's sessions, how their transcripts were delivered, the new sessions granted and the extra
+time. Teachers who can manage discussions can:
+
+- grant a new session after a student's latest closed one, with a reason that only this page shows
+  (the student is not notified by email);
+- end every discussion in progress, confirming their number, optionally disabling the activity;
+- give extra time in minutes or as a percentage, before a student's first discussion or after a new
+  session was granted (more than +100% needs a confirmation; time limit plus extra time at most 240
+  minutes);
+- download any transcript, and send a delivered transcript again to the current recipients.
+
+## Privacy
+
+The plugin stores no discussion data in Moodle: conversations and transcripts are kept by Vektra,
+under the retention period the operator configured. Students see Vektra's privacy summary, the legal
+basis, the retention period and the notice link on the screen before they start.
+
+The Moodle privacy API works through Vektra:
+
+- **Export** writes each transcript exactly as Vektra stored it, after checking it against its hash.
+  Transcripts of activities deleted from Moodle are exported in the person's own context.
+- **Deletion** asks Vektra to erase the data (per activity when the request names activities), and
+  reads back to verify that nothing is left. If a key is missing, Vektra fails, data is still found,
+  or the operator keeps the data as exam evidence, the request fails with an explanation and stays
+  visible to the administrator: it is never reported as done without the deletion.
 
 ## Continuous integration
 

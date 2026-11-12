@@ -34,6 +34,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   closing screen when the session closes.
 - README: the Vektra-side configuration needed before enabling the plugin (TLS UI origin reachable
   from student browsers, `frame-ancestors` listing the Moodle origin, matching site identifier and keys).
+- Activity settings section in the quiz and assignment form (REQ-077, REQ-091): enable, time limit,
+  end date, rubric source, write-only solution, pasted rubric and transcript recipients, the solution
+  toggle, RAG shown locked off, and the opening-date fallback with its attestation when Vektra needs
+  it. Load before write, only the changed fields with the version read, Vektra's field errors named.
+- Teacher *Discussions* page (REQ-076, REQ-081, REQ-087, REQ-078): sessions, deliveries, resets and
+  extra time per student, the gate panel, new sessions, ending the running discussions with the
+  confirmed count, extra time; grader transcript download and resend.
+- Privacy: export and erase keys, a Moodle privacy provider that exports Vektra's exact transcript
+  bytes (hash-checked) and deletes per activity with verification, failing loudly otherwise (OQ-033);
+  the pre-session screen shows Vektra's privacy summary, legal basis, retention and notice version.
+- Setup check page for the site administrator (REQ-079).
 
 ### Security
 
