@@ -102,6 +102,11 @@ export const open = async(container, config, onClosed, mode) => {
         }
         switch (data.type) {
             case 'vektra-assess-ready':
+                // Once the session closed, the frame keeps its closing screen: a reload of that page must not
+                // mint a new pre-session token.
+                if (container.dataset.frameState === 'closing' || container.dataset.frameState === 'closed') {
+                    break;
+                }
                 await handToken(iframe, origin, config, tokenmode);
                 break;
             case 'vektra-assess-resize': {
