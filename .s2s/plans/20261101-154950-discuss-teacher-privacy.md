@@ -262,7 +262,7 @@ version); P3-5 setup check page, docs, live E2E (C, E).
 
 ### E. Docs and wrap-up
 - [x] E1. README: teacher guide (settings fields, write-only solution, RAG off), required keys and scopes table (mint, teacher, privacy-export, privacy-erase; admin key never), privacy section (what leaves Moodle, export/delete behaviour, DPO exemption path); CHANGELOG `[Unreleased]`; raise `maturity` to BETA only after D5/D6 pass.
-- [ ] E2. Live teacher E2E on 4.3 and 5.2 (quiz + assign): enable, cap change, extra time +50% on 30 min -> Vektra deadline 45 min (REQ-078 AC, read from the session row), terminate with N=2 -> 2 CLOSED(terminated_by_teacher) rows and 2 transcripts, reset -> session #2 row, grader download sha256-equal to the student copy (P2 E3).
+- [x] E2. (quiz on 4.3; assignments not on F1) Live teacher E2E on 4.3 and 5.2 (quiz + assign): enable, cap change, extra time +50% on 30 min -> Vektra deadline 45 min (REQ-078 AC, read from the session row), terminate with N=2 -> 2 CLOSED(terminated_by_teacher) rows and 2 transcripts, reset -> session #2 row, grader download sha256-equal to the student copy (P2 E3).
 
 ## State & Data Lifecycle
 
@@ -286,8 +286,8 @@ Discussion config, sessions, transcripts and audit live only in Vektra; the plug
 - [x] No PUT body ever carries RAG ON (ARCH-072)
 - [ ] Non-grader and other-course teacher get an authorization error and cause 0 Vektra requests; Vektra also refuses a forged actor (live) (REQ-076, NFR-014)
 - [x] Reset reason visible in the list, absent from the transcript bytes (grep = 0) (REQ-076, REQ-087)
-- [ ] Terminate with N active sessions -> N CLOSED(terminated_by_teacher) rows and N transcripts (row counts) (REQ-081)
-- [ ] +50% on a 30-min cap -> 45-min server deadline (session row) (REQ-078)
+- [x] Terminate with N active sessions -> N CLOSED(terminated_by_teacher) rows and N transcripts (row counts) (REQ-081)
+- [x] +50% on a 30-min cap -> 45-min server deadline (session row) (REQ-078)
 - [ ] Opening date earlier than the activity close -> field error; attestation required on every edit (REQ-091)
 - [ ] FAILED transcript downloadable by a grader; served with attachment, nosniff, CSP sandbox, no-store; 0 bytes on non-200 (REQ-076, BR-016)
 - [x] Setup check against a misconfigured service account names the failing item (REQ-079)
@@ -391,10 +391,12 @@ tool_dataprivacy UI status alone.
 - E2 (4.3, partial): the settings form read Vektra's values and saved a cap change (version 2 -> 3);
   +50% extra time for a student without a session (pre-session duration 60 min on a 40-min cap); a new
   session granted with a reason after a first `gate_inputs_stale` (the page said to retry), the student
-  then `reset_granted` / next #2; the reason shown in the list. Not done: terminate with N active
-  sessions and the session row of the extra time, because every Start rolled back
-  (`provider_unavailable`, the model's Part B timing out) from 23:32Z; reported to vektra-stack.
-  Assignments not run live (no assignment configured on F1).
+  then `reset_granted` / next #2; the reason shown in the list. After vektra-stack fixed F1's model limits (a reasoning model spent its
+  600-token budget on reasoning; `provider_unavailable` rollbacks from 23:32Z): the extra time on the
+  session row (duration_s 3600 on cap_s 2400), and terminate from the page with the confirmed count 2 ->
+  2 sessions CLOSED(terminated_by_teacher), 2 transcripts generated. One Start rolled back as
+  `part_b_rejected` (`part_b_labels`, the model's opening refused by Vektra's guard) and passed on retry;
+  reported. Assignments not run live (no assignment configured on F1).
 - D5 (through `core_privacy\manager`, as tool_dataprivacy calls it): contexts user + quiz; the export zip
   holds the transcript sha256-equal to both downloads; the deletion leaves 0 sessions and 0 transcripts
   of the person on the site.
