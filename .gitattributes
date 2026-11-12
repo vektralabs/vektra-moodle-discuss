@@ -13,3 +13,6 @@ CTX-MEMORY.md   export-ignore
 .gitignore      export-ignore
 .moodle-plugin-ci.yml export-ignore
 cli/            export-ignore
+scripts/        export-ignore
+.pre-commit-config.yaml export-ignore
+provider/       export-ignore

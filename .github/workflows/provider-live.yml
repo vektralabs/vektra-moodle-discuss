@@ -1,0 +1,130 @@
+# Live contract run of the Moodle LMS provider (provider/) against real Moodle 4.3 and 5.2, built
+# fresh from the dev environments of the vektra-moodle repository (docker/compose.moodle.yml,
+# make moodle43-up / moodle52-up). Manual and weekly: it builds two Moodle sites, so it is not part
+# of the PR gate. Moved here from vektra-stack's assess-moodle-contract.yml (ADR-0033 phase 2b).
+# A scheduled run only fires from the default branch.
+name: Provider live contract
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  moodle-contract:
+    name: Readers vs Moodle ${{ matrix.version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { version: "4.3", target: moodle43, tag: m43, port: 8080 }
+          - { version: "5.2", target: moodle52, tag: m52, port: 8082 }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Read the pinned vektra-stack commit
+        id: ref
+        run: |
+          sha="$(tr -d '[:space:]' < provider/vektra-stack.ref)"
+          [[ "${sha}" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::provider/vektra-stack.ref is not a full commit sha"; exit 1; }
+          echo "sha=${sha}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          repository: vektralabs/vektra-stack
+          ref: ${{ steps.ref.outputs.sha }}
+          path: vektra-stack
+          persist-credentials: false
+
+      - uses: actions/checkout@v4
+        with:
+          repository: vektralabs/vektra-moodle
+          # a fixed ref, never an input: the job must not execute code chosen by whoever dispatches it
+          ref: develop
+          path: vektra-moodle
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          # No cache: this job runs another repository's Makefile; a cache written by such a run
+          # must never be reused (CodeQL actions/cache-poisoning).
+          enable-cache: false
+
+      - name: Install the pinned workspace and the provider
+        working-directory: vektra-stack
+        run: |
+          uv sync --dev --frozen
+          uv pip install --no-deps -e "$GITHUB_WORKSPACE/provider"
+
+      - name: Bring up Moodle ${{ matrix.version }}, provision and seed
+        working-directory: vektra-moodle/docker
+        run: |
+          make ${{ matrix.target }}-up
+          # wait for the installer to finish and Apache to serve
+          for i in $(seq 1 60); do
+            curl -fsS -o /dev/null http://localhost:${{ matrix.port }}/login/index.php && break
+            sleep 10
+          done
+          make ${{ matrix.target }}-provision
+          make ${{ matrix.target }}-devdeps
+          make ${{ matrix.target }}-seed
+          make ${{ matrix.target }}-check
+
+      - name: Run the live reader and setup-check tests
+        env:
+          VEKTRA_STACK_ROOT: ${{ github.workspace }}/vektra-stack
+          # the dev sites are plain http: the setup check accepts that only in development
+          VEKTRA_ENV: development
+          VEKTRA_ASSESS_MOODLE43_URL: http://localhost:8080
+          VEKTRA_ASSESS_MOODLE52_URL: http://localhost:8082
+          VEKTRA_ASSESS_MOODLE_MANIFEST_DIR: ${{ github.workspace }}/vektra-moodle/docker/fixtures/out
+          VEKTRA_ASSESS_MOODLE_TOKEN_DIR: ${{ github.workspace }}/vektra-moodle/docker/fixtures/out
+          UV_NO_SYNC: "1"
+        run: >
+          "$VEKTRA_STACK_ROOT/.venv/bin/python" -m pytest provider/tests -m moodle -v -rs --tb=short
+          -k "${{ matrix.tag }} or ${{ matrix.version }}"
+          --junitxml=live-${{ matrix.tag }}.xml
+
+      # Only this job's version is up, and -k selects its tests: a skip among them is a BLOCKED
+      # that would otherwise pass in silence.
+      - name: This version's live suites must have run, not skipped
+        run: |
+          python3 - live-${{ matrix.tag }}.xml <<'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+
+          cases = list(ET.parse(sys.argv[1]).getroot().iter("testcase"))
+          skipped = [c.get("name") for c in cases if c.find("skipped") is not None]
+          print(f"live: {len(cases)} collected, {len(skipped)} skipped")
+          if len(cases) < 40 or skipped:
+              sys.exit(f"live suites did not fully run: skipped={skipped}")
+          PY
+
+      - name: Capability matrix (content-free)
+        if: always()
+        env:
+          VEKTRA_ENV: development
+        run: |
+          mkdir -p matrix
+          OUT=vektra-moodle/docker/fixtures/out
+          vektra-stack/.venv/bin/python provider/scripts/setup_spike.py \
+            --site http://localhost:${{ matrix.port }} \
+            --manifest $OUT/manifest-${{ matrix.tag }}.json \
+            --token-file $OUT/provision-${{ matrix.tag }}.json \
+            --allow-http --allow-cidr 127.0.0.0/8 --resolve-ipv4 \
+            > matrix/matrix-${{ matrix.tag }}.txt || true
+
+      - name: Upload the matrix
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: provider-capability-matrix-${{ matrix.tag }}
+          path: matrix/
+          retention-days: 30

@@ -1,0 +1,48 @@
+# The Moodle LMS provider (vektra-stack ADR-0033). It lives in this repository under provider/,
+# beside the Moodle plugin, and is excluded from the plugin's release zip (.gitattributes,
+# asserted by the release-zip job). It depends on vektra-shared only; the platform loads it by name
+# through the entry point below (VEKTRA_ASSESS_LMS_PROVIDER=moodle), and vektra-stack's
+# `lms-moodle` image variant installs the wheel released from here, pinned by version and hash.
+#
+# Development and tests run inside a vektra-stack checkout (VEKTRA_STACK_ROOT): see README.md.
+[project]
+name = "vektra-lms-moodle"
+version = "0.9.0.dev2"
+description = "Moodle LMS provider for the Vektra assessment vertical (LmsProvider, ADR-0033)"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+dependencies = [
+    "vektra-shared",
+    "httpx>=0.27",
+    "pydantic>=2,<3",
+    "pydantic-settings>=2.0",
+    "structlog>=24.0",
+]
+
+[project.entry-points."vektra.lms_providers"]
+moodle = "vektra_lms_moodle.provider:build_provider"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vektra_lms_moodle"]
+
+# vektra-shared is not published on an index: it comes from the vektra-stack checkout the provider
+# is installed into (`uv pip install --no-deps -e provider` in that checkout's environment).
+
+# Was the vektra-stack root configuration while the provider lived there.
+[tool.pytest.ini_options]
+addopts = "--import-mode=importlib"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "module"
+markers = [
+    "integration: integration tests requiring Docker (real Postgres through testcontainers)",
+    "moodle: live contract tests against the seeded Moodle 4.3 / 5.2 dev envs",
+]
+
+[tool.coverage.report]
+show_missing = true
