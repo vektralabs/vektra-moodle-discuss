@@ -97,12 +97,7 @@ class teacher_api {
         array $fields
     ): assess_response {
         self::assert_type($type);
-        $body = [
-            'actor_userid' => $actorid,
-            'courseid' => $courseid,
-            'activity_type' => $type,
-            'expected_version' => $expectedversion,
-        ] + $fields;
+        $body = self::actor_body($courseid, $type, $actorid) + ['expected_version' => $expectedversion] + $fields;
         return $this->client->request('PUT', self::config_path($cmid), [], $body, 'teacher', ['timeout' => self::FORM_TIMEOUT]);
     }
 
@@ -118,22 +113,172 @@ class teacher_api {
      */
     public function put_opening_fallback(int $cmid, int $courseid, string $type, int $actorid, int $openingat): assess_response {
         self::assert_type($type);
-        $body = [
-            'actor_userid' => $actorid,
-            'courseid' => $courseid,
-            'activity_type' => $type,
+        $body = self::actor_body($courseid, $type, $actorid) + [
             'opening_at' => gmdate('Y-m-d\TH:i:s\Z', $openingat),
             'attestation' => true,
             'attestation_text_version' => self::ATTESTATION_TEXT_VERSION,
         ];
         return $this->client->request(
             'PUT',
-            '/api/v1/assess/activities/' . $cmid . '/opening-fallback',
+            self::activity_path($cmid) . '/opening-fallback',
             [],
             $body,
             'teacher',
             ['timeout' => self::FORM_TIMEOUT]
         );
+    }
+
+    /**
+     * GET one page of the sessions list (REQ-076): sessions, deliveries, resets, extra time, the gate panel.
+     *
+     * @param int $cmid
+     * @param int $courseid
+     * @param string $type quiz or assign
+     * @param int $actorid
+     * @param string $cursor The previous page's next_cursor, or ''.
+     * @return assess_response
+     */
+    public function list_sessions(int $cmid, int $courseid, string $type, int $actorid, string $cursor = ''): assess_response {
+        self::assert_type($type);
+        $headers = [
+            'X-Assess-Actor' => (string) $actorid,
+            'X-Assess-Course' => (string) $courseid,
+            'X-Assess-Activity-Type' => $type,
+        ];
+        if ($cursor !== '') {
+            $headers['X-Assess-Cursor'] = $cursor;
+        }
+        $path = self::activity_path($cmid) . '/sessions';
+        return $this->client->request('GET', $path, [], null, 'teacher', ['headers' => $headers]);
+    }
+
+    /**
+     * Grant a new session after a closed one (REQ-087).
+     *
+     * @param int $cmid
+     * @param int $courseid
+     * @param string $type
+     * @param int $actorid
+     * @param string $sessionid
+     * @param string $reason Mandatory, shown only in the list.
+     * @param bool|null $includeprevious The continuity choice; null leaves Vektra's default.
+     * @return assess_response
+     */
+    public function reset(
+        int $cmid,
+        int $courseid,
+        string $type,
+        int $actorid,
+        string $sessionid,
+        string $reason,
+        ?bool $includeprevious = null
+    ): assess_response {
+        self::assert_type($type);
+        if (!preg_match('/^[0-9a-f-]{36}$/', $sessionid)) {
+            throw new \coding_exception('A session id is a UUID.');
+        }
+        $body = self::actor_body($courseid, $type, $actorid) + ['reason' => $reason];
+        if ($includeprevious !== null) {
+            $body['include_previous_turns'] = $includeprevious;
+        }
+        $path = self::activity_path($cmid) . '/sessions/' . $sessionid . '/reset';
+        return $this->client->request('POST', $path, [], $body, 'teacher');
+    }
+
+    /**
+     * Close every running session of the activity (REQ-081), if their number is still the confirmed one.
+     *
+     * @param int $cmid
+     * @param int $courseid
+     * @param string $type
+     * @param int $actorid
+     * @param string $reason
+     * @param int $expectedactive The "N active sessions" the teacher confirmed.
+     * @param bool $alsodisable Disable the activity in the same step.
+     * @return assess_response
+     */
+    public function terminate(
+        int $cmid,
+        int $courseid,
+        string $type,
+        int $actorid,
+        string $reason,
+        int $expectedactive,
+        bool $alsodisable
+    ): assess_response {
+        self::assert_type($type);
+        $body = self::actor_body($courseid, $type, $actorid) + [
+            'reason' => $reason,
+            'expected_active_count' => $expectedactive,
+            'also_disable' => $alsodisable,
+        ];
+        return $this->client->request('POST', self::activity_path($cmid) . '/terminate', [], $body, 'teacher');
+    }
+
+    /**
+     * Set a student's extra time (REQ-078): minutes or percent of the cap, never both.
+     *
+     * @param int $cmid
+     * @param int $courseid
+     * @param string $type
+     * @param int $actorid
+     * @param int $studentid
+     * @param int|null $minutes
+     * @param int|null $percent
+     * @param bool $confirmover100 Required by Vektra above +100%.
+     * @return assess_response
+     */
+    public function extra_time(
+        int $cmid,
+        int $courseid,
+        string $type,
+        int $actorid,
+        int $studentid,
+        ?int $minutes,
+        ?int $percent,
+        bool $confirmover100
+    ): assess_response {
+        self::assert_type($type);
+        if (($minutes === null) === ($percent === null) || $studentid <= 0) {
+            throw new \coding_exception('Exactly one of minutes and percent, for a student.');
+        }
+        $body = self::actor_body($courseid, $type, $actorid) + [
+            'minutes' => $minutes,
+            'percent' => $percent,
+            'confirm_over_100' => $confirmover100,
+        ];
+        return $this->client->request(
+            'PUT',
+            self::activity_path($cmid) . '/students/' . $studentid . '/extra-time',
+            [],
+            $body,
+            'teacher'
+        );
+    }
+
+    /**
+     * The fields every teacher write carries.
+     *
+     * @param int $courseid
+     * @param string $type
+     * @param int $actorid
+     * @return array
+     */
+    private static function actor_body(int $courseid, string $type, int $actorid): array {
+        return ['actor_userid' => $actorid, 'courseid' => $courseid, 'activity_type' => $type];
+    }
+
+    /**
+     * The route of an activity.
+     *
+     * @param int $cmid
+     * @return string
+     */
+    private static function activity_path(int $cmid): string {
+        if ($cmid <= 0) {
+            throw new \coding_exception('A course module id is required.');
+        }
+        return '/api/v1/assess/activities/' . $cmid;
     }
 
     /**
@@ -143,10 +288,7 @@ class teacher_api {
      * @return string
      */
     private static function config_path(int $cmid): string {
-        if ($cmid <= 0) {
-            throw new \coding_exception('A course module id is required.');
-        }
-        return '/api/v1/assess/activities/' . $cmid . '/config';
+        return self::activity_path($cmid) . '/config';
     }
 
     /**

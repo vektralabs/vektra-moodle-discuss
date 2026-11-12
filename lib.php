@@ -74,3 +74,36 @@ function local_vektradiscuss_coursemodule_validation($formwrapper, $data): array
 function local_vektradiscuss_coursemodule_edit_post_actions($data, $course) {
     return \local_vektradiscuss\local\form\settings_section::save($data, $course);
 }
+
+/**
+ * Add the "Discussions" page to the settings of a quiz or an assignment, for teachers who see transcripts.
+ *
+ * @param settings_navigation $settingsnav
+ * @param context $context
+ */
+function local_vektradiscuss_extend_settings_navigation($settingsnav, $context): void {
+    global $PAGE;
+    if (!$context instanceof context_module || !get_config('local_vektradiscuss', 'enabled')) {
+        return;
+    }
+    $cm = $PAGE->cm;
+    if (
+        !$cm || (int) $cm->id !== (int) $context->instanceid
+            || !in_array($cm->modname, \local_vektradiscuss\local\teacher_api::ACTIVITY_TYPES, true)
+            || !has_capability('local/vektradiscuss:viewtranscripts', $context)
+    ) {
+        return;
+    }
+    $modulenode = $settingsnav->find('modulesettings', navigation_node::TYPE_SETTING);
+    if (!$modulenode) {
+        return;
+    }
+    $modulenode->add(
+        get_string('teacher_heading', 'local_vektradiscuss'),
+        new moodle_url('/local/vektradiscuss/teacher.php', ['cmid' => $cm->id]),
+        navigation_node::TYPE_SETTING,
+        null,
+        'local_vektradiscuss_teacher',
+        new pix_icon('i/report', '')
+    );
+}
