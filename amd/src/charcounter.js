@@ -76,7 +76,12 @@ export const init = (names, max) => {
             counter.textContent = text;
             counter.classList.toggle('text-danger', over);
             counter.classList.toggle('text-muted', !over);
-            const next = over ? 2 : (count >= max * 0.9 ? 1 : 0);
+            let next = 0;
+            if (over) {
+                next = 2;
+            } else if (count >= max * 0.9) {
+                next = 1;
+            }
             if (next > level) {
                 announcer.textContent = text;
             }
