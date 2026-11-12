@@ -104,10 +104,10 @@ export const open = async(container, config, onClosed, mode) => {
             case 'vektra-assess-ready':
                 // Once the session closed, the frame keeps its closing screen: a reload of that page must not
                 // mint a new pre-session token.
-                if (container.dataset.frameState === 'closing' || container.dataset.frameState === 'closed') {
+                if (isClosed(container)) {
                     break;
                 }
-                await handToken(iframe, origin, config, tokenmode);
+                await handToken(container, iframe, origin, config, tokenmode);
                 break;
             case 'vektra-assess-resize': {
                 const height = Number(data.height);
@@ -146,14 +146,23 @@ export const open = async(container, config, onClosed, mode) => {
 };
 
 /**
+ * Whether the frame's session closed (its closing screen stays, but takes no new pre-session token).
+ *
+ * @param {HTMLElement} container
+ * @returns {Boolean}
+ */
+const isClosed = (container) => container.dataset.frameState === 'closing' || container.dataset.frameState === 'closed';
+
+/**
  * Mint a pre-session token server-side and post it to the iframe.
  *
+ * @param {HTMLElement} container
  * @param {HTMLIFrameElement} iframe
  * @param {String} origin
  * @param {Object} config
  * @param {String} mode "start" or "resume".
  */
-const handToken = async(iframe, origin, config, mode) => {
+const handToken = async(container, iframe, origin, config, mode) => {
     let minted;
     try {
         minted = await post('mint', {cmid: config.cmid});
@@ -161,8 +170,9 @@ const handToken = async(iframe, origin, config, mode) => {
         minted = null;
     }
     const target = iframe.contentWindow;
-    if (!target) {
-        // The panel refreshed while the mint was pending, so the iframe is no longer in the page.
+    if (!target || isClosed(container)) {
+        // The panel refreshed while the mint was pending (the iframe is no longer in the page), or the session
+        // closed meanwhile: nothing is handed over.
         return;
     }
     if (!minted || minted.state !== 'ready' || minted.uiorigin !== origin || typeof minted.token !== 'string') {
