@@ -33,6 +33,9 @@ use Behat\Mink\Exception\ExpectationException;
  * Steps that configure the Vektra assess stub and read its request log.
  */
 class behat_local_vektradiscuss extends behat_base {
+    /** @var string Opening bytes of every stub transcript: no failure response may contain them. */
+    private const TRANSCRIPT_MARKER = '<!-- vektra-stub-transcript-';
+
     /** @var string Config name of the stub's request log (same as self::STUB_LOG). */
     private const STUB_LOG = 'behatstublog';
 
@@ -176,7 +179,7 @@ class behat_local_vektradiscuss extends behat_base {
         $headers = strtolower(implode("\n", (array) $response->headers));
         $body = (string) $response->results;
         if (
-            str_contains($headers, 'content-disposition: attachment') || str_contains($body, self::transcript_body($n))
+            str_contains($headers, 'content-disposition: attachment') || str_contains($body, self::TRANSCRIPT_MARKER)
                 || !str_contains($body, $text)
         ) {
             throw new ExpectationException(
@@ -263,7 +266,9 @@ class behat_local_vektradiscuss extends behat_base {
      * @return string
      */
     private static function transcript_body(int $n): string {
-        return "<!DOCTYPE html>\n<html lang=\"it\"><head><meta charset=\"utf-8\"><title>Trascrizione</title></head>"
+        // The marker opens the file, so even a few forwarded bytes are detected.
+        return self::TRANSCRIPT_MARKER . "{$n} -->\n<!DOCTYPE html>\n"
+            . "<html lang=\"it\"><head><meta charset=\"utf-8\"><title>Trascrizione</title></head>"
             . "<body><h1>Trascrizione, sessione {$n}</h1><p>stub-transcript-marker-{$n}</p></body></html>\n";
     }
 
