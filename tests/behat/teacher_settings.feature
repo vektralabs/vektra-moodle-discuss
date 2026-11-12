@@ -41,7 +41,10 @@ Feature: The discussion settings in the quiz form
     Then the Vektra assess stub received 0 PUT requests to "config" of "quiz1"
 
   Scenario: When Vektra cannot be reached the section is frozen and the save sends nothing
-    Given the Vektra assess stub answers GET "config" of "quiz1" with status 503 and:
+    # The plugin logs Vektra's refusals with debugging(); here they are expected, so not displayed.
+    Given the following config values are set as admin:
+      | debugdisplay | 0 |
+    And the Vektra assess stub answers GET "config" of "quiz1" with status 503 and:
       """
       {"error": {"code": "ERR-ASSESS-001", "message": "unavailable"}}
       """
@@ -51,7 +54,10 @@ Feature: The discussion settings in the quiz form
     Then the Vektra assess stub received 0 PUT requests to "config" of "quiz1"
 
   Scenario: An enable that Vektra refuses is explained after saving
-    Given the Vektra assess stub answers PUT "config" of "quiz1" with status 400 and:
+    # The plugin logs Vektra's refusals with debugging(); here they are expected, so not displayed.
+    Given the following config values are set as admin:
+      | debugdisplay | 0 |
+    And the Vektra assess stub answers PUT "config" of "quiz1" with status 400 and:
       """
       {"error": {"code": "ERR-ASSESS-022", "message": "fields",
         "details": {"fields": [{"field": "enabled", "code": "quiz_without_close_date"}]}}}
