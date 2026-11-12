@@ -153,7 +153,7 @@ class assess_client {
 
         if ($status === 0) {
             $message = self::redact('transport failure: ' . $result['error'], $secret);
-            debugging("Vektra assess {$method} {$path}: {$message}", DEBUG_DEVELOPER);
+            $this->log("Vektra assess {$method} {$path}: {$message}");
             return assess_response::failure('transport', $message);
         }
 
@@ -256,7 +256,7 @@ class assess_client {
         }
         if ($result['errno'] !== 0 || $state->status === 0) {
             $message = self::redact('transport failure: ' . $result['error'], $secret);
-            debugging("Vektra assess GET {$path}: {$message}", DEBUG_DEVELOPER);
+            $this->log("Vektra assess GET {$path}: {$message}");
             return assess_response::failure('transport', $message);
         }
         $announce();
@@ -273,6 +273,21 @@ class assess_client {
             );
         }
         return $this->build_response('GET', $path, $state->status, $state->errorbody, $state->headers, $secret);
+    }
+
+    /**
+     * Log a failed call for developers (debugging, already redacted by the caller).
+     *
+     * Silent with the in-site Behat stub: there the failures are the scenario's own fixtures, and a Behat site
+     * always displays debugging, which would fail the page that handles them.
+     *
+     * @param string $message
+     */
+    private function log(string $message): void {
+        if (is_a($this->transport, 'local_vektradiscuss\\tests\\behat_stub_transport')) {
+            return;
+        }
+        debugging($message, DEBUG_DEVELOPER);
     }
 
     /**
@@ -406,9 +421,8 @@ class assess_client {
         if ($errorcode === null && $status >= 300 && $status < 400) {
             $errorcode = 'redirect_refused';
         }
-        debugging(
-            self::redact("Vektra assess {$method} {$path} failed: HTTP {$status} - {$body}", $secret),
-            DEBUG_DEVELOPER
+        $this->log(
+            self::redact("Vektra assess {$method} {$path} failed: HTTP {$status} - {$body}", $secret)
         );
         return new assess_response($status, $json, $errorcode, $message, $details, $requestid, $headers);
     }
