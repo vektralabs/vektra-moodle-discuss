@@ -126,9 +126,12 @@ The Moodle privacy API works through Vektra:
 - **Export** writes each transcript exactly as Vektra stored it, after checking it against its hash.
   Transcripts of activities deleted from Moodle are exported in the person's own context.
 - **Deletion** asks Vektra to erase the data (per activity when the request names activities), and
-  reads back to verify that nothing is left. If a key is missing, Vektra fails, data is still found,
-  or the operator keeps the data as exam evidence, the request fails with an explanation and stays
-  visible to the administrator: it is never reported as done without the deletion.
+  reads back to verify that nothing is left. If a key is missing, Vektra fails or is still erasing,
+  data is still found, or the operator keeps the data as exam evidence, the plugin raises an error
+  with an explanation. Moodle sends it to the site's Data Protection Officers; note that Moodle then
+  completes the request anyway (a plugin cannot mark it as failed), so the DPO message is the signal
+  to act on. Vektra also alerts its operator when an erasure fails or stays pending. Privacy requests
+  keep working when the plugin is switched off.
 
 ## Continuous integration
 
