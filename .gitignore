@@ -53,3 +53,15 @@ test_curl.php
 
 # Subagent-driven development scratch
 .superpowers/
+
+# Python (provider/)
+__pycache__/
+*.py[cod]
+.venv/
+.coverage
+.coverage.*
+coverage.xml
+*.egg-info/
+provider/dist/
+provider/build/
+.pytest_cache/
