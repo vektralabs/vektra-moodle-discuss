@@ -105,9 +105,10 @@ class assess_client {
      * @param array $query Query-string parameters.
      * @param array|null $body JSON body.
      * @param string $keyrole Key role (mint or teacher): selects the secret.
-     * @param array $opts Options: timeout (seconds), bearer (a token replacing the key).
+     * @param array $opts Options: timeout (seconds), bearer (a token replacing the key), headers (name => value,
+     *     X-Assess-* names only, see {@see self::extra_headers()}).
      * @return assess_response
-     * @throws \coding_exception For an invalid method or path, or a body on a GET.
+     * @throws \coding_exception For an invalid method, path or header, or a body on a GET.
      */
     public function request(
         string $method,
@@ -127,12 +128,14 @@ class assess_client {
         if ($method === 'GET' && $body !== null) {
             throw new \coding_exception('A GET request cannot carry a body.');
         }
+        $extra = self::extra_headers($opts['headers'] ?? []);
 
         $prepared = $this->prepare($path, $query, $keyrole, $opts);
         if ($prepared instanceof assess_response) {
             return $prepared;
         }
         [$url, $headers, $secret, $timeout, $connecttimeout] = $prepared;
+        $headers = array_merge($headers, $extra);
 
         $payload = null;
         if ($body !== null) {
@@ -270,6 +273,31 @@ class assess_client {
             );
         }
         return $this->build_response('GET', $path, $state->status, $state->errorbody, $state->headers, $secret);
+    }
+
+    /**
+     * Header lines from an X-Assess-* map (the teacher routes' actor, course, activity type and cursor).
+     *
+     * Only X-Assess-* names, so a caller can never replace the Authorization or version header, and only
+     * printable ASCII values without CR or LF, so no header can be injected.
+     *
+     * @param array $headers name => value
+     * @return string[] Header lines.
+     * @throws \coding_exception For a name or value outside these rules.
+     */
+    private static function extra_headers(array $headers): array {
+        $lines = [];
+        foreach ($headers as $name => $value) {
+            $value = (string) $value;
+            if (!is_string($name) || !preg_match('/^X-Assess-[A-Za-z-]{1,40}$/', $name)) {
+                throw new \coding_exception('assess_client only sends X-Assess-* extra headers.');
+            }
+            if (!preg_match('/^[\x20-\x7E]{0,512}$/', $value)) {
+                throw new \coding_exception('Invalid value for the header ' . $name . '.');
+            }
+            $lines[] = $name . ': ' . $value;
+        }
+        return $lines;
     }
 
     /**
