@@ -1,6 +1,6 @@
 """Operator CLI: run the full setup check and the capability probes against a dev site.
 
-    uv run --group lms-moodle python adapters/vektra-lms-moodle/scripts/setup_spike.py \\
+    "$VEKTRA_STACK_ROOT"/.venv/bin/python provider/scripts/setup_spike.py \\
         --site http://localhost:8080 --manifest <seed manifest.json> \\
         --token-file <provision.json> --allow-http --allow-cidr 127.0.0.0/8 --resolve-ipv4
 

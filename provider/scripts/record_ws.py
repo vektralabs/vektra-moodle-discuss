@@ -21,7 +21,7 @@ Safety rules (the recorder REFUSES, it does not warn):
 
 Usage::
 
-    uv run python adapters/vektra-lms-moodle/scripts/record_ws.py --base-url http://localhost:8080 \\
+    "$VEKTRA_STACK_ROOT"/.venv/bin/python provider/scripts/record_ws.py --base-url http://localhost:8080 \\
         --token-file <dir>/provision-m43.json --manifest <dir>/manifest-m43.json
 """
 

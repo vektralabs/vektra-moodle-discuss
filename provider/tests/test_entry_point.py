@@ -13,6 +13,7 @@ what it declares, what it reads, and what it must not lose by leaving ``vektra_a
 from __future__ import annotations
 
 import asyncio
+import os
 import re
 from importlib.metadata import entry_points
 from pathlib import Path
@@ -26,7 +27,9 @@ from vektra_lms_moodle.config import MoodleSettings
 from vektra_lms_moodle.provider import MoodleLmsProvider, build_provider
 from vektra_shared.startup import StartupValidationError
 
-ROOT = Path(__file__).resolve().parents[3]
+# the vektra-stack checkout the suites run against (conftest.py checks it): the compose overlay,
+# the configuration reference and .env.example this distribution must stay consistent with
+ROOT = Path(os.environ.get("VEKTRA_STACK_ROOT", Path(__file__).resolve().parents[3]))
 SRC = Path(vektra_lms_moodle.__file__).resolve().parent
 CANARY = "CNRY-ws_token-0123456789abcdef"
 

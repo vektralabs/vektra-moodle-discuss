@@ -58,6 +58,15 @@ version is lower than the one in `version.php` `dependencies`. A release tag mus
 
 Targets Moodle **4.3 (403)** and **5.2 (502)**, matching the Vektra fleet.
 
+## Moodle LMS provider (`provider/`)
+
+The repository also hosts `vektra-lms-moodle`, the Python provider through which the Vektra
+backend reads Moodle (web-service client, response models, capability probes, setup-check
+items). It is a separate distribution, released as a wheel under `provider-v*` tags, and it is
+not part of the plugin zip. See [`provider/README.md`](provider/README.md).
+
 ## License
 
-GPL-3.0-or-later (required for Moodle plugins). See [LICENSE](LICENSE).
+The plugin is GPL-3.0-or-later (required for Moodle plugins). See [LICENSE](LICENSE).
+The provider in `provider/` keeps the Apache-2.0 license it had in vektra-stack
+([`provider/LICENSE`](provider/LICENSE)).

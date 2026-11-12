@@ -8,7 +8,7 @@ recordings is optional (Moodle omits ``VALUE_OPTIONAL`` keys); a key observed wi
 nullable. ``extra="forbid"`` makes any key a future point release adds an ``unknown_shape``
 on purpose (ARCH-070: fail closed, re-record, regenerate, review the diff).
 
-    uv run python adapters/vektra-lms-moodle/scripts/gen_ws_models.py
+    "$VEKTRA_STACK_ROOT"/.venv/bin/python provider/scripts/gen_ws_models.py
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parent.parent  # adapters/vektra-lms-moodle
+ROOT = Path(__file__).resolve().parent.parent  # provider/
 FIXTURES = ROOT / "tests" / "fixtures" / "moodle_ws"
 MODELS = ROOT / "src" / "vektra_lms_moodle" / "models"
 

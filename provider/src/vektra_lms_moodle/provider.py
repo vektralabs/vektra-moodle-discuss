@@ -12,8 +12,8 @@ the neutral types of ``vektra_shared.lms``, in one place:
   question text and response and the ones that carry what Moodle hides (BR-011, D4);
 - the re-resolution refusal is ``NOT_IN_USER_COURSES``.
 
-It is the distribution ``vektra-lms-moodle`` (``adapters/vektra-lms-moodle/`` until phase 2b moves
-it to its home repository). The platform reaches it only through the entry point
+It is the distribution ``vektra-lms-moodle``, maintained in the ``provider/`` tree of
+``vektra-moodle-discuss`` and released there as a wheel. The platform reaches it only through the entry point
 ``vektra.lms_providers: moodle`` (``build_provider``, which declares ``REQUIRED_SECRETS`` and is
 called with the composition root's ``development`` flag) and the Protocol; no platform package
 imports it.

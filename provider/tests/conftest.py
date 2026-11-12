@@ -4,7 +4,7 @@ The provider's own tests need only ``vektra_shared`` and the recordings. The joi
 vertical's capture, Part A, canary sinks and setup check over the recorded responses, ADR-0033
 D4) also need the vertical's test harness: its in-process parser, its real-Postgres fixture, its
 world and pre-flight support. They run with the platform installed beside the provider (the
-``test-lms-moodle`` CI job, ``make test-lms-moodle``), and this conftest makes the vertical's test
+``provider`` CI workflow of this repository), and this conftest makes the vertical's test
 directory importable and takes over its fixtures, so both suites run in the same environment.
 
 Phase 2b: in the provider's home repository the vertical's test directory comes from the pinned
