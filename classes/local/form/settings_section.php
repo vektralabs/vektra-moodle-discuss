@@ -244,11 +244,12 @@ class settings_section {
                     sleep(2);
                     $response = $api->put_config($cmid, (int) $course->id, $type, (int) $USER->id, $version, $fields);
                 }
-                if ($response->ok()) {
-                    \core\notification::success(get_string('form_saved', 'local_vektradiscuss'));
-                } else {
+                if (!$response->ok()) {
+                    // The opening fallback is checked against the configuration just saved: none was saved.
                     self::notify_failure($response);
+                    return $data;
                 }
+                \core\notification::success(get_string('form_saved', 'local_vektradiscuss'));
             }
             if (!empty($values[$p . 'attest']) && (int) ($values[$p . 'openingat'] ?? 0) > 0) {
                 $openingat = (int) $values[$p . 'openingat'];
@@ -548,7 +549,7 @@ class settings_section {
      */
     private static function field_error(array $item): string {
         $field = is_string($item['field'] ?? null) ? $item['field'] : '';
-        $code = is_string($item['code'] ?? null) && preg_match('/^[a-z_]{1,40}$/', $item['code']) ? $item['code'] : 'invalid';
+        $code = is_string($item['code'] ?? null) && preg_match('/^[a-z_]{1,40}\z/', $item['code']) ? $item['code'] : 'invalid';
         $label = get_string_manager()->string_exists('form_field_' . $field, 'local_vektradiscuss')
             ? get_string('form_field_' . $field, 'local_vektradiscuss') : s($field);
         $a = (object) [
