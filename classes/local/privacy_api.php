@@ -55,6 +55,13 @@ class privacy_api {
     /** @var int Largest userids list of one activity erasure. */
     public const MAX_USERIDS = 1000;
 
+    /** @var string[] Why a session's turns are not in the activities export (vektra-stack #215). */
+    public const TURNS_UNAVAILABLE = ['transcript_pending', 'transcript_failed', 'transcript_purged', 'transcript_missing'];
+
+    /** @var string[] Technical record counts of an activity. */
+    private const TECHNICAL = ['assess_start_attempts', 'assess_token_jti', 'assess_gate_inputs', 'assess_render_state',
+        'assess_render_checks'];
+
     /** @var assess_client Client. */
     private assess_client $client;
 
@@ -97,8 +104,10 @@ class privacy_api {
     }
 
     /**
-     * The activities (cmids) where a person has transcripts, without downloading or checking the files: for
-     * finding contexts and verifying an erasure, which a damaged transcript must never block.
+     * Every activity (cmid) where Vektra holds a row of the person that an erasure would remove: sessions,
+     * new sessions granted, extra time, retention tombstones, technical records (vektra-stack #215). For
+     * finding contexts and verifying an erasure: no transcript is downloaded, and the activities are not
+     * validated beyond their id.
      *
      * @param int $userid
      * @return int[]
@@ -106,15 +115,34 @@ class privacy_api {
      */
     public function subject_cmids(int $userid): array {
         $cmids = [];
-        foreach ($this->pages('/api/v1/assess/privacy/subjects/' . $userid . '/transcripts') as $json) {
+        foreach ($this->pages(self::activities_path($userid)) as $json) {
             foreach (self::list_of($json, 'items') as $item) {
-                if (!is_array($item) || !is_int($item['cmid'] ?? null) || $item['cmid'] <= 0) {
-                    throw new \moodle_exception('privacy_export_failed', self::C);
-                }
-                $cmids[] = $item['cmid'];
+                $cmids[] = self::cmid_of($item);
             }
         }
         return array_values(array_unique($cmids));
+    }
+
+    /**
+     * Every activity of a person with its data, validated (vektra-stack #215).
+     *
+     * @param int $userid
+     * @param callable|null $keep fn(int $cmid): bool, the activities to return (null: all).
+     * @return array[] {cmid, course_id, sessions[], resets[], extra_seconds, extra_granted_at, purged_sessions,
+     *     technical_records}; a session is {session_no, state, close_reason, created_at, deadline_at, closed_at,
+     *     transcript_id, turns (array|null), turns_unavailable (string|null)}.
+     * @throws \moodle_exception
+     */
+    public function subject_activities(int $userid, ?callable $keep = null): array {
+        $activities = [];
+        foreach ($this->pages(self::activities_path($userid)) as $json) {
+            foreach (self::list_of($json, 'items') as $item) {
+                if ($keep === null || $keep(self::cmid_of($item))) {
+                    $activities[] = self::activity($item);
+                }
+            }
+        }
+        return $activities;
     }
 
     /**
@@ -165,6 +193,143 @@ class privacy_api {
     }
 
     /**
+     * The path of a person's activities.
+     *
+     * @param int $userid
+     * @return string
+     */
+    private static function activities_path(int $userid): string {
+        return '/api/v1/assess/privacy/subjects/' . $userid . '/activities';
+    }
+
+    /**
+     * The activity id of a list entry: a malformed one fails the read, it never silently drops the entry.
+     *
+     * @param mixed $item
+     * @return int
+     * @throws \moodle_exception
+     */
+    private static function cmid_of($item): int {
+        if (!is_array($item) || !is_int($item['cmid'] ?? null) || $item['cmid'] <= 0) {
+            throw new \moodle_exception('privacy_export_failed', self::C);
+        }
+        return $item['cmid'];
+    }
+
+    /**
+     * A validated activity entry.
+     *
+     * @param mixed $item
+     * @return array
+     * @throws \moodle_exception
+     */
+    private static function activity($item): array {
+        $cmid = self::cmid_of($item);
+        $sessions = [];
+        foreach (self::list_of($item, 'sessions') as $session) {
+            $sessions[] = self::session($session);
+        }
+        $resets = [];
+        foreach (self::list_of($item, 'resets') as $reset) {
+            if (!is_array($reset) || !is_int($reset['after_session_no'] ?? null)) {
+                throw new \moodle_exception('privacy_export_failed', self::C);
+            }
+            $resets[] = [
+                'after_session_no' => $reset['after_session_no'],
+                'granted_at' => self::text($reset['granted_at'] ?? null),
+                'consumed_at' => self::text($reset['consumed_at'] ?? null),
+            ];
+        }
+        $technical = $item['technical_records'] ?? null;
+        if (!is_array($technical)) {
+            throw new \moodle_exception('privacy_export_failed', self::C);
+        }
+        $counts = [];
+        foreach (self::TECHNICAL as $name) {
+            if (!is_int($technical[$name] ?? null) || $technical[$name] < 0) {
+                throw new \moodle_exception('privacy_export_failed', self::C);
+            }
+            $counts[$name] = $technical[$name];
+        }
+        $extra = $item['extra_seconds'] ?? null;
+        $purged = $item['purged_sessions'] ?? null;
+        if (($extra !== null && !is_int($extra)) || !is_int($purged) || $purged < 0) {
+            throw new \moodle_exception('privacy_export_failed', self::C);
+        }
+        return [
+            'cmid' => $cmid,
+            'course_id' => is_int($item['course_id'] ?? null) ? $item['course_id'] : null,
+            'sessions' => $sessions,
+            'resets' => $resets,
+            'extra_seconds' => $extra,
+            'extra_granted_at' => self::text($item['extra_granted_at'] ?? null),
+            'purged_sessions' => $purged,
+            'technical_records' => $counts,
+        ];
+    }
+
+    /**
+     * A validated session: with a transcript id, with its turns, or with the reason its turns are missing.
+     *
+     * @param mixed $session
+     * @return array
+     * @throws \moodle_exception
+     */
+    private static function session($session): array {
+        if (
+            !is_array($session) || !is_int($session['session_no'] ?? null) || $session['session_no'] <= 0
+                || !is_string($session['state'] ?? null)
+        ) {
+            throw new \moodle_exception('privacy_export_failed', self::C);
+        }
+        $tid = $session['transcript_id'] ?? null;
+        $turns = $session['turns'] ?? null;
+        $unavailable = $session['turns_unavailable'] ?? null;
+        if ($tid !== null && !(is_string($tid) && transcript_proxy::valid_tid($tid))) {
+            throw new \moodle_exception('privacy_export_failed', self::C);
+        }
+        if ($tid === null && $turns === null && !in_array($unavailable, self::TURNS_UNAVAILABLE, true)) {
+            // Neither the transcript, nor the turns, nor a known reason: the content would silently be missing.
+            throw new \moodle_exception('privacy_export_failed', self::C);
+        }
+        $list = null;
+        if ($turns !== null) {
+            $list = [];
+            foreach (self::list_of($session, 'turns') as $turn) {
+                if (
+                    !is_array($turn) || !is_int($turn['turn_no'] ?? null) || !is_string($turn['role'] ?? null)
+                        || !is_string($turn['kind'] ?? null) || !is_string($turn['text'] ?? null)
+                ) {
+                    throw new \moodle_exception('privacy_export_failed', self::C);
+                }
+                $list[] = ['turn_no' => $turn['turn_no'], 'role' => $turn['role'], 'kind' => $turn['kind'],
+                    'text' => $turn['text']];
+            }
+        }
+        return [
+            'session_no' => $session['session_no'],
+            'state' => $session['state'],
+            'close_reason' => self::text($session['close_reason'] ?? null),
+            'created_at' => self::text($session['created_at'] ?? null),
+            'deadline_at' => self::text($session['deadline_at'] ?? null),
+            'closed_at' => self::text($session['closed_at'] ?? null),
+            'transcript_id' => $tid,
+            'turns' => $list,
+            'turns_unavailable' => $tid === null && $list === null ? $unavailable : null,
+        ];
+    }
+
+    /**
+     * A string field, or null.
+     *
+     * @param mixed $value
+     * @return string|null
+     */
+    private static function text($value): ?string {
+        return is_string($value) ? $value : null;
+    }
+
+    /**
      * Every page of a paged privacy read (export key).
      *
      * @param string $path
@@ -188,6 +353,15 @@ class privacy_api {
             }
         }
         throw new \moodle_exception('privacy_export_failed', self::C);
+    }
+
+    /**
+     * Throw when the erase key is not usable: checked before reading anything for an erasure.
+     *
+     * @throws \moodle_exception
+     */
+    public function require_erase_key(): void {
+        $this->require_key('privacy_erase');
     }
 
     /**
