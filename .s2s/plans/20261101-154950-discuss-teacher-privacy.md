@@ -402,3 +402,16 @@ tool_dataprivacy UI status alone.
   of the person on the site.
 - D6: an erase key Vektra refuses -> the provider throws, `tool_dataprivacy\manager_observer` notifies the
   DPO with the plugin's message ("Vektra could not erase..."), Vektra's rows unchanged.
+
+**Open points (2026-11-13).**
+- Privacy inventory: the provider sees a person's activities only through their transcripts, so it
+  erases per activity and never subject-wide (decided with vektra-stack). vektra-stack is adding
+  `GET /api/v1/assess/privacy/subjects/{userid}/activities` (sessions, resets, extra time, no reason
+  text); then the provider uses it for contexts, export of the non-transcript data, and erasure.
+  Until then, rows without a transcript in an activity the provider cannot see stay until Vektra's
+  retention.
+- `privacy_notice_version` in the mint (vektra-stack #211, merged): a follow-up PR sends the version
+  the pre-session screen showed; Start then refuses with `409 ERR-ASSESS-029 privacy_notice_changed`
+  if the notice changed. After that release, give vektra-stack the plugin version.
+- Grader download/resend ownership: switch to the `cmid` in the request bodies when vektra-stack
+  merges it.
