@@ -129,6 +129,9 @@ class curl_transport implements transport {
      * @return \curl
      */
     protected function new_curl(array $headers, int $timeout, int $connecttimeout): \curl {
+        global $CFG;
+        // The \curl class lives in filelib.php, which a web page loads but a CLI script or a task may not.
+        require_once($CFG->libdir . '/filelib.php');
         $curl = new \curl();
         $curl->setopt([
             // A redirect could carry the bearer to another host.

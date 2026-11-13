@@ -55,6 +55,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   transcript of another activity, so the plugin no longer pages the activity state or the sessions list
   to check ownership (release 0.2.0).
 
+### Fixed
+
+- The Vektra client loads Moodle's `filelib.php` itself: outside a web page (a CLI script, a task) the `curl`
+  class was not loaded and every call to Vektra failed.
+
 ### Security
 
 - Student requests are refused by Moodle (login, course access, sesskey, capability) before any request
