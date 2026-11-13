@@ -181,8 +181,8 @@ final class student_endpoint {
      * @param int $userid
      * @param int $cmid
      * @param int $courseid
-     * @param string $noticeversion The privacy notice version the student was shown ('' for none): sent only
-     *     when valid, and Vektra's Start refuses it if the notice changed since (409 ERR-ASSESS-029).
+     * @param string $noticeversion The privacy notice version the student was shown ('' for none). Vektra's
+     *     Start refuses it if the notice changed since (409 ERR-ASSESS-029); an invalid one refuses the mint.
      * @return array|null [token, expiresin], or null on any failure.
      */
     private function mint(int $userid, int $cmid, int $courseid, string $noticeversion = ''): ?array {
@@ -194,7 +194,12 @@ final class student_endpoint {
             'realuser_id' => null,
             'plugin_version' => $this->config->plugin_version(),
         ];
-        if (self::valid_notice_version($noticeversion)) {
+        if ($noticeversion !== '') {
+            // Never drop a version the student was shown: without it Vektra could not tell a changed notice.
+            if (!self::valid_notice_version($noticeversion)) {
+                debugging('Vektra assess mint: invalid privacy notice version', DEBUG_DEVELOPER);
+                return null;
+            }
             $body['privacy_notice_version'] = $noticeversion;
         }
         $response = $this->client->request('POST', self::PATH_TOKENS, [], $body, 'mint');

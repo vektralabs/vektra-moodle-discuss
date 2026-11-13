@@ -374,7 +374,8 @@ final class teacher_page_test extends \advanced_testcase {
         // A stale grader check is reported as such (the page retries), not as unavailable.
         $this->transport->respond(403, ['error' => ['code' => 'ERR-ASSESS-021', 'message' => 'stale',
             'details' => ['reason' => 'grader_check_stale']]]);
-        $this->assertSame([transcript_proxy::STALE, null], $proxy->mint_grader((int) $this->teacher->id, 'aaaa-1'));
+        $stale = $proxy->mint_grader((int) $this->teacher->id, 'aaaa-1', (int) $this->cm->id);
+        $this->assertSame([transcript_proxy::STALE, null], $stale);
         $this->assertDebuggingCalledCount(2);
 
         // The grader's fallback file name names the student.

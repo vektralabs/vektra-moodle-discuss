@@ -69,7 +69,6 @@ class teacher_page {
     /** @var \stdClass Course. */
     private \stdClass $course;
 
-
     /**
      * Constructor.
      *
@@ -284,7 +283,7 @@ class teacher_page {
                 'deliveries' => self::deliveries($session['deliveries'] ?? []),
                 'hasdeliveries' => !empty($session['deliveries']),
                 'tid' => $tid = $this->transcript_id($session),
-                'downloadurl' => $this->download_url($tid, (int) ($session['session_no'] ?? 1), (int) ($s['userid'] ?? 0)),
+                'downloadurl' => $this->download_url($tid, (int) ($session['session_no'] ?? 0), $userid),
                 // Vektra resends only a transcript that was delivered at least once (a new round of its deliveries).
                 'canresend' => $canmanage && $tid !== null && !empty($session['deliveries']),
             ], $sessions),

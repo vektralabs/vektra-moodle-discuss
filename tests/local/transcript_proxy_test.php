@@ -99,12 +99,12 @@ final class transcript_proxy_test extends \advanced_testcase {
      */
     public function test_mint_own(): void {
         $this->transport->respond(201, ['token' => self::TOKEN, 'expires_in' => 120]);
-        $this->assertSame([transcript_proxy::OK, self::TOKEN], $this->proxy()->mint_own(42, self::TID));
+        $this->assertSame([transcript_proxy::OK, self::TOKEN], $this->proxy()->mint_own(42, self::TID, 7));
 
         $call = $this->transport->calls[0];
         $this->assertSame('POST', $call['method']);
         $this->assertSame('https://vektra.example.test/api/v1/assess/transcripts/' . self::TID . '/download-token', $call['url']);
-        $this->assertSame(['sub' => 42], json_decode($call['body'], true));
+        $this->assertSame(['sub' => 42, 'cmid' => 7], json_decode($call['body'], true));
         $this->assertSame('Bearer test-mint-key-not-a-secret', $this->transport->header_map()['authorization']);
     }
 
@@ -113,19 +113,20 @@ final class transcript_proxy_test extends \advanced_testcase {
      */
     public function test_mint_failures(): void {
         $this->transport->respond(404, ['error' => ['code' => 'ERR-ASSESS-017', 'message' => 'not generated']]);
-        $this->assertSame([transcript_proxy::NOT_READY, null], $this->proxy()->mint_own(42, self::TID));
+        $this->assertSame([transcript_proxy::NOT_READY, null], $this->proxy()->mint_own(42, self::TID, 7));
         $this->assertDebuggingCalledCount(2);
 
         $this->transport->respond(403, ['error' => ['code' => 'ERR-AUTH-003', 'message' => 'not yours']]);
-        $this->assertSame([transcript_proxy::FAILED, null], $this->proxy()->mint_own(42, self::TID));
+        $this->assertSame([transcript_proxy::FAILED, null], $this->proxy()->mint_own(42, self::TID, 7));
         $this->assertDebuggingCalledCount(2);
 
         $this->transport->respond(201, ['token' => 'bad token with spaces', 'expires_in' => 120]);
-        $this->assertSame([transcript_proxy::FAILED, null], $this->proxy()->mint_own(42, self::TID));
+        $this->assertSame([transcript_proxy::FAILED, null], $this->proxy()->mint_own(42, self::TID, 7));
         $this->assertDebuggingCalled();
 
         $calls = count($this->transport->calls);
-        $this->assertSame([transcript_proxy::FAILED, null], $this->proxy()->mint_own(42, '../state'));
+        $this->assertSame([transcript_proxy::FAILED, null], $this->proxy()->mint_own(42, '../state', 7));
+        $this->assertSame([transcript_proxy::FAILED, null], $this->proxy()->mint_own(42, self::TID, 0));
         $this->assertCount($calls, $this->transport->calls);
     }
 

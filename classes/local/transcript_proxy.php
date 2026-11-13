@@ -94,8 +94,8 @@ final class transcript_proxy {
      * @param int $cmid The activity the request came through: Vektra refuses a transcript of another one.
      * @return array [result, token|null]: result OK with the token, NOT_READY or FAILED with null.
      */
-    public function mint_own(int $userid, string $tid, int $cmid = 0): array {
-        return $this->mint($tid, ['sub' => $userid] + ($cmid > 0 ? ['cmid' => $cmid] : []), 'mint');
+    public function mint_own(int $userid, string $tid, int $cmid): array {
+        return $this->mint($tid, ['sub' => $userid, 'cmid' => $cmid], 'mint');
     }
 
     /**
@@ -109,20 +109,20 @@ final class transcript_proxy {
      * @param int $cmid
      * @return array [result, token|null]: result OK with the token, NOT_READY or FAILED with null.
      */
-    public function mint_grader(int $actorid, string $tid, int $cmid = 0): array {
-        return $this->mint($tid, ['actor_userid' => $actorid] + ($cmid > 0 ? ['cmid' => $cmid] : []), 'teacher');
+    public function mint_grader(int $actorid, string $tid, int $cmid): array {
+        return $this->mint($tid, ['actor_userid' => $actorid, 'cmid' => $cmid], 'teacher');
     }
 
     /**
      * POST download-token with a key role and its body.
      *
      * @param string $tid
-     * @param array $body
+     * @param array $body With the cmid: the only binding of the transcript to the activity Moodle checked.
      * @param string $keyrole
      * @return array [result, token|null]
      */
     private function mint(string $tid, array $body, string $keyrole): array {
-        if (!self::valid_tid($tid)) {
+        if (!self::valid_tid($tid) || $body['cmid'] <= 0) {
             return [self::FAILED, null];
         }
         $response = $this->client->request(
