@@ -435,6 +435,29 @@ final class teacher_page_test extends \advanced_testcase {
     }
 
     /**
+     * Students without a session, for extra time before their first discussion: listed students left out, and
+     * a search by name.
+     */
+    public function test_other_students_search(): void {
+        $gen = $this->getDataGenerator();
+        $gen->create_and_enrol($this->course, 'student', ['firstname' => 'Wanda', 'lastname' => 'Waiting']);
+        $gen->create_and_enrol($this->course, 'student', ['firstname' => 'Zoe', 'lastname' => 'Zed']);
+        $list = ['students' => [['userid' => (int) $this->student->id, 'sessions' => [], 'resets' => [],
+            'reset_count' => 0, 'extra_seconds' => 0]], 'next_cursor' => null, 'terminations' => [], 'gate' => []];
+        $api = new teacher_api(new assess_client(null, $this->transport));
+        $this->transport->respond(200, $list);
+        $ctx = $this->page()->context($api->list_sessions((int) $this->cm->id, (int) $this->course->id, 'quiz', 1));
+        $names = array_column($ctx['otherstudents'], 'name');
+        $this->assertSame(['Wanda Waiting', 'Zoe Zed'], $names);
+        $this->assertNull($ctx['othersearch']);
+
+        $this->transport->respond(200, $list);
+        $ctx = $this->page()->context($api->list_sessions((int) $this->cm->id, (int) $this->course->id, 'quiz', 1), '', 'zed');
+        $this->assertSame(['Zoe Zed'], array_column($ctx['otherstudents'], 'name'));
+        $this->assertSame(['value' => 'zed', 'truncated' => false], $ctx['othersearch']);
+    }
+
+    /**
      * A failed list gives no context; a cursor outside the expected shape is dropped.
      */
     public function test_failed_list_and_cursor(): void {

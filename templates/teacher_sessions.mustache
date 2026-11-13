@@ -31,7 +31,7 @@
       hasresets, resets[{after, reason, by, at}], extra, canreset, resetsid, resetafter, continuitydefault,
       canextratime}]
     * hasotherstudents, otherstudents - [{userid, name}] students not in the list, for extra time before their
-      first discussion
+      first discussion; othersearch - null, or {value, truncated} for the search over them
     * firstpageurl, nexturl - paging
 
     Example context (json):
@@ -52,7 +52,7 @@
             "hasresets": false, "resets": [], "extra": null, "canreset": true,
             "resetsid": "0f8e7d6c-5b4a-4321-8fed-cba987654321", "resetafter": 1, "continuitydefault": false,
             "canextratime": true}],
-        "hasotherstudents": true, "otherstudents": [{"userid": 8, "name": "Student Two"}],
+        "hasotherstudents": true, "otherstudents": [{"userid": 8, "name": "Student Two"}], "othersearch": null,
         "firstpageurl": null, "nexturl": null
     }
 }}
@@ -202,6 +202,17 @@
         </table>
         </div>
         {{/hasstudents}}
+        {{#othersearch}}
+        <form method="get" action="{{actionurl}}" class="mb-2" role="search">
+            <input type="hidden" name="cmid" value="{{cmid}}">
+            <label for="local-vektradiscuss-extra-search-{{cmid}}" class="small">{{#str}}teacher_extratime_search, local_vektradiscuss{{/str}}</label>
+            <div class="input-group input-group-sm">
+                <input class="form-control" type="search" id="local-vektradiscuss-extra-search-{{cmid}}" name="q" value="{{value}}">
+                <button type="submit" class="btn btn-secondary">{{#str}}search{{/str}}</button>
+            </div>
+            {{#truncated}}<p class="small text-muted mb-0">{{#str}}teacher_extratime_truncated, local_vektradiscuss{{/str}}</p>{{/truncated}}
+        </form>
+        {{/othersearch}}
         {{#hasotherstudents}}
         <form method="post" action="{{actionurl}}" class="card card-body mb-3">
             <input type="hidden" name="sesskey" value="{{sesskey}}">

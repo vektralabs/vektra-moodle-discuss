@@ -98,7 +98,7 @@ if (teacher_api::role_refusal($response) === 'stale') {
     sleep(2);
     $response = $api->list_sessions((int) $cm->id, (int) $course->id, $cm->modname, (int) $USER->id, $cursor);
 }
-$context = $page->context($response, $cursor);
+$context = $page->context($response, $cursor, optional_param('q', '', PARAM_TEXT));
 if ($context === null) {
     $identifier = match (teacher_api::role_refusal($response)) {
         'stale' => 'teacher_check_stale',

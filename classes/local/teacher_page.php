@@ -41,6 +41,9 @@ class teacher_page {
     /** @var string[] Actions of the page. */
     public const ACTIONS = ['reset', 'terminate', 'extratime', 'resend'];
 
+    /** @var int Students offered at once for extra time before their first discussion. */
+    public const OTHER_LIMIT = 200;
+
     /** @var int Pages of the sessions list searched for a transcript (50 students each). */
     private const MAX_PAGES = 40;
 
@@ -48,7 +51,7 @@ class teacher_page {
     public const MAX_REASON = 1000;
 
     /** @var string Shape of a list cursor. */
-    private const CURSOR = '/^[A-Za-z0-9._~+\/=:-]{1,256}$/';
+    private const CURSOR = '/^[A-Za-z0-9._~+\/=:-]{1,256}\z/';
 
     /** @var string[] Session states with their own label. */
     private const STATES = ['STARTING', 'ACTIVE', 'OUTAGE', 'CLOSED'];
@@ -149,7 +152,7 @@ class teacher_page {
                 return $this->outcome($response, 'teacher_resend_done');
             case 'reset':
                 $sid = (string) ($params['sid'] ?? '');
-                if (!preg_match('/^[0-9a-f-]{36}$/', $sid)) {
+                if (!preg_match('/^[0-9a-f-]{36}\z/', $sid)) {
                     return [false, get_string('teacher_err_generic', self::C)];
                 }
                 $response = $this->api->reset(...[...$args, $sid, $reason, !empty($params['includeprevious'])]);
@@ -242,9 +245,10 @@ class teacher_page {
      *
      * @param assess_response $response
      * @param string $cursor The cursor of this page.
+     * @param string $search Filter of the students offered for extra time before their first discussion.
      * @return array|null
      */
-    public function context(assess_response $response, string $cursor = ''): ?array {
+    public function context(assess_response $response, string $cursor = '', string $search = ''): ?array {
         $this->cursor = self::clean_cursor($cursor);
         $json = $response->ok() ? $response->json : null;
         if (!is_array($json) || !is_array($json['students'] ?? null)) {
@@ -274,7 +278,8 @@ class teacher_page {
         $names = self::names($ids);
 
         $listed = array_map(fn(array $s): int => (int) ($s['userid'] ?? 0), $students);
-        $others = $canmanage ? $this->other_students($listed) : [];
+        $search = \core_text::substr(trim($search), 0, 100);
+        [$others, $truncated] = $canmanage ? $this->other_students($listed, $search) : [[], false];
         $url = new \moodle_url('/local/vektradiscuss/teacher.php', ['cmid' => $this->cm->id]);
         $next = self::next_cursor($json);
         return [
@@ -305,6 +310,8 @@ class teacher_page {
             'hasstudents' => (bool) $students,
             'otherstudents' => $others,
             'hasotherstudents' => (bool) $others,
+            // The search shows when the list is cut, or when a search is on.
+            'othersearch' => $canmanage && ($truncated || $search !== '') ? ['value' => $search, 'truncated' => $truncated] : null,
             'firstpageurl' => $cursor !== '' ? $url->out(false) : null,
             'nexturl' => $next !== '' ? (new \moodle_url($url, ['cursor' => $next]))->out(false) : null,
         ];
@@ -326,7 +333,7 @@ class teacher_page {
         $resetafter = array_map(fn(array $r): int => (int) ($r['after_session_no'] ?? 0), $resets);
         $canreset = $canmanage && $latest !== null && ($latest['state'] ?? '') === 'CLOSED'
             && !in_array((int) ($latest['session_no'] ?? 0), $resetafter, true)
-            && preg_match('/^[0-9a-f-]{36}$/', (string) ($latest['session_id'] ?? ''));
+            && preg_match('/^[0-9a-f-]{36}\z/', (string) ($latest['session_id'] ?? ''));
         $extra = is_int($s['extra_seconds'] ?? null) ? $s['extra_seconds'] : 0;
         return [
             'userid' => $userid,
@@ -367,29 +374,41 @@ class teacher_page {
 
     /**
      * Students of the activity who are not in the list (no session yet), for extra time before their first
-     * discussion (REQ-078 accommodations).
+     * discussion (REQ-078 accommodations): at most OTHER_LIMIT of them, filtered by name or email when the
+     * teacher searches, so a large course is reached through the search rather than cut off.
      *
      * @param int[] $listed
-     * @return array [{userid, name}]
+     * @param string $search
+     * @return array [students [{userid, name}], whether more match than are shown]
      */
-    private function other_students(array $listed): array {
-        $users = get_enrolled_users(
-            \context_module::instance($this->cm->id),
-            'local/vektradiscuss:start',
+    private function other_students(array $listed, string $search): array {
+        global $DB;
+        [$esql, $params] = get_enrolled_sql(\context_module::instance($this->cm->id), 'local/vektradiscuss:start', 0, true);
+        $where = '';
+        if ($search !== '') {
+            $q = '%' . $DB->sql_like_escape($search) . '%';
+            $where = ' AND (' . $DB->sql_like($DB->sql_fullname('u.firstname', 'u.lastname'), ':q1', false, false)
+                . ' OR ' . $DB->sql_like('u.email', ':q2', false, false) . ')';
+            $params += ['q1' => $q, 'q2' => $q];
+        }
+        if ($listed) {
+            [$notin, $nparams] = $DB->get_in_or_equal($listed, SQL_PARAMS_NAMED, 'listed', false);
+            $where .= ' AND u.id ' . $notin;
+            $params += $nparams;
+        }
+        $fields = \core_user\fields::for_name()->get_sql('u', false, '', '', false)->selects;
+        $users = $DB->get_records_sql(
+            "SELECT u.id, $fields FROM {user} u JOIN ($esql) e ON e.id = u.id
+              WHERE u.deleted = 0 $where ORDER BY u.lastname, u.firstname, u.id",
+            $params,
             0,
-            'u.*',
-            'u.lastname, u.firstname',
-            0,
-            500,
-            true
+            self::OTHER_LIMIT + 1
         );
         $out = [];
-        foreach ($users as $user) {
-            if (!in_array((int) $user->id, $listed, true)) {
-                $out[] = ['userid' => (int) $user->id, 'name' => fullname($user)];
-            }
+        foreach (array_slice($users, 0, self::OTHER_LIMIT) as $user) {
+            $out[] = ['userid' => (int) $user->id, 'name' => fullname($user)];
         }
-        return $out;
+        return [$out, count($users) > self::OTHER_LIMIT];
     }
 
     /**
@@ -445,7 +464,7 @@ class teacher_page {
                 $codes = [];
                 foreach (is_array($details['fields'] ?? null) ? $details['fields'] : [] as $item) {
                     $code = is_array($item) && is_string($item['code'] ?? null) ? $item['code'] : '';
-                    if (preg_match('/^[a-z_0-9]{1,40}$/', $code)) {
+                    if (preg_match('/^[a-z_0-9]{1,40}\z/', $code)) {
                         $codes[] = get_string_manager()->string_exists('teacher_code_' . $code, self::C)
                             ? get_string('teacher_code_' . $code, self::C) : get_string('teacher_err_generic', self::C);
                     }
