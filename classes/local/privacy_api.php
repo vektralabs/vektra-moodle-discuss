@@ -131,7 +131,11 @@ class privacy_api {
             foreach (self::list_of($json, 'items') as $item) {
                 // Only the selected activities' files are decoded and hash-checked: a damaged file of another
                 // activity must not block an export it is not part of.
-                if ($keep !== null && !(is_array($item) && is_int($item['cmid'] ?? null) && $keep($item['cmid']))) {
+                if (!is_array($item) || !is_int($item['cmid'] ?? null) || $item['cmid'] <= 0) {
+                    // A malformed entry fails the export; it never silently drops a file.
+                    throw new \moodle_exception('privacy_export_failed', self::C);
+                }
+                if ($keep !== null && !$keep($item['cmid'])) {
                     continue;
                 }
                 $items[] = self::transcript($item);

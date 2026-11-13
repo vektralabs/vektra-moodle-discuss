@@ -302,6 +302,17 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
     }
 
     /**
+     * A transcript entry with a malformed activity id fails the export rather than disappearing from it.
+     */
+    public function test_export_refuses_a_malformed_activity_id(): void {
+        $item = $this->item((int) $this->quiz->cmid);
+        $item['cmid'] = (string) $this->quiz->cmid;
+        $this->transport->respond(200, ['items' => [$item], 'next_cursor' => null]);
+        $this->expectException(\moodle_exception::class);
+        provider::export_user_data($this->quiz_contextlist());
+    }
+
+    /**
      * A site that used the plugin and then cleared its settings still answers (and fails loudly without keys).
      */
     public function test_used_site_with_cleared_settings_is_still_in_use(): void {
