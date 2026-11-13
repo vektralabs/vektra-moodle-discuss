@@ -122,20 +122,6 @@ final class student_endpoint_test extends \advanced_testcase {
     }
 
     /**
-     * Queue the ownership check of a download: a mint, then /state listing these transcripts.
-     *
-     * @param string[] $tids
-     */
-    private function respond_transcripts(array $tids): void {
-        $this->respond_mint();
-        $this->transport->respond(200, ['state' => 'closed', 'reason' => null, 'transcripts' => array_map(
-            fn(string $tid, int $i): array => ['tid' => $tid, 'n' => $i + 1, 'available' => true, 'purged' => false],
-            $tids,
-            array_keys($tids)
-        )]);
-    }
-
-    /**
      * Assert that nothing reached Vektra.
      */
     private function assert_no_vektra_call(): void {
@@ -309,20 +295,17 @@ final class student_endpoint_test extends \advanced_testcase {
      */
     public function test_download_mints_for_the_owner(): void {
         $this->as_student();
-        $this->respond_transcripts([self::TID]);
         $this->transport->respond(201, ['token' => self::TOKEN, 'expires_in' => 120]);
         $this->assertSame(
             ['state' => 'ready', 'tid' => self::TID, 'token' => self::TOKEN],
             $this->handle('download', (int) $this->quiz->cmid, 0, self::TID)
         );
-        // The ownership check (mint, /state of this activity), then the download token.
-        $this->assertStringEndsWith('/api/v1/assess/tokens', $this->transport->calls[0]['url']);
-        $this->assertStringEndsWith('/api/v1/assess/state', $this->transport->calls[1]['url']);
+        // One call: the download token, with the activity, which Vektra checks the transcript against.
         $path = '/api/v1/assess/transcripts/' . self::TID . '/download-token';
-        $this->assertStringEndsWith($path, $this->transport->calls[2]['url']);
-        $this->assertSame(['sub' => (int) $this->student->id], json_decode($this->transport->calls[2]['body'], true));
+        $this->assertStringEndsWith($path, $this->transport->calls[0]['url']);
+        $expected = ['sub' => (int) $this->student->id, 'cmid' => (int) $this->quiz->cmid];
+        $this->assertSame($expected, json_decode($this->transport->calls[0]['body'], true));
 
-        $this->respond_transcripts([self::TID]);
         $this->transport->respond(403, ['error' => ['code' => 'ERR-AUTH-003', 'message' => 'not yours']]);
         $refused = $this->handle('download', (int) $this->quiz->cmid, 0, self::TID);
         $this->assertSame(['state' => 'unavailable', 'reason' => null], $refused);
@@ -344,33 +327,21 @@ final class student_endpoint_test extends \advanced_testcase {
         role_assign($roleid, $this->student->id, $context->id);
         $this->as_student();
 
-        $this->respond_transcripts([self::TID]);
         $this->transport->respond(201, ['token' => self::TOKEN, 'expires_in' => 120]);
         $this->assertSame('ready', $this->handle('download', (int) $this->quiz->cmid, 0, self::TID)['state']);
     }
 
     /**
-     * A transcript of another activity is refused on this one: no download token is minted, so a student
-     * prohibited from viewing transcripts on activity A cannot fetch A's transcript through activity B.
+     * A transcript of another activity: Vektra, given the activity, answers like an unknown transcript, and the
+     * student gets the generic unavailable state without a token.
      */
     public function test_download_refuses_a_transcript_of_another_activity(): void {
         $this->as_student();
-        $this->respond_transcripts(['a1b2c3d4-0000-4000-8000-000000000001']);
-
+        $this->transport->respond(404, ['error' => ['code' => 'ERR-ASSESS-017', 'message' => 'not found']]);
         $refused = $this->handle('download', (int) $this->quiz->cmid, 0, self::TID);
         $this->assertSame(['state' => 'unavailable', 'reason' => null], $refused);
-        $this->assertCount(2, $this->transport->calls);
-        foreach ($this->transport->calls as $call) {
-            $this->assertStringNotContainsString('/download-token', $call['url']);
-        }
-        $this->assertSame(0, $this->transport->remaining());
-
-        // A failed ownership check refuses too, and mints no download token either.
-        $this->respond_mint();
-        $this->transport->respond(503, ['error' => ['code' => 'ERR-ASSESS-001', 'message' => 'down']]);
-        $refused = $this->handle('download', (int) $this->quiz->cmid, 0, self::TID);
-        $this->assertSame(['state' => 'unavailable', 'reason' => null], $refused);
-        $this->assertCount(4, $this->transport->calls);
+        $this->assertSame((int) $this->quiz->cmid, json_decode($this->transport->calls[0]['body'], true)['cmid']);
+        $this->assertCount(1, $this->transport->calls);
         $this->assertDebuggingCalledCount(2);
     }
 

@@ -286,9 +286,10 @@ class teacher_api {
      *
      * @param string $tid
      * @param int $actorid
+     * @param int $cmid The activity of the page: Vektra refuses a transcript of another one.
      * @return assess_response
      */
-    public function resend(string $tid, int $actorid): assess_response {
+    public function resend(string $tid, int $actorid, int $cmid): assess_response {
         if (!transcript_proxy::valid_tid($tid)) {
             throw new \coding_exception('Invalid transcript id.');
         }
@@ -296,7 +297,7 @@ class teacher_api {
             'POST',
             '/api/v1/assess/transcripts/' . $tid . '/resend',
             [],
-            ['actor_userid' => $actorid],
+            ['actor_userid' => $actorid, 'cmid' => $cmid],
             'teacher'
         );
     }
