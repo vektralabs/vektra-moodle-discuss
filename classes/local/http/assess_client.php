@@ -304,10 +304,11 @@ class assess_client {
         $lines = [];
         foreach ($headers as $name => $value) {
             $value = (string) $value;
-            if (!is_string($name) || !preg_match('/^X-Assess-[A-Za-z-]{1,40}$/', $name)) {
+            // Anchored with \z, not $, which also matches before a final newline.
+            if (!is_string($name) || !preg_match('/^X-Assess-[A-Za-z-]{1,40}\z/', $name)) {
                 throw new \coding_exception('assess_client only sends X-Assess-* extra headers.');
             }
-            if (!preg_match('/^[\x20-\x7E]{0,512}$/', $value)) {
+            if (!preg_match('/^[\x20-\x7E]{0,512}\z/', $value)) {
                 throw new \coding_exception('Invalid value for the header ' . $name . '.');
             }
             $lines[] = $name . ': ' . $value;
@@ -323,7 +324,7 @@ class assess_client {
      */
     private function assert_path(string $path): void {
         $valid = str_starts_with($path, self::PATH_PREFIX)
-            && preg_match('#^/api/v1/assess/[A-Za-z0-9._~%!$&\'()*+,;=:@/-]*$#', $path)
+            && preg_match('#^/api/v1/assess/[A-Za-z0-9._~%!$&\'()*+,;=:@/-]*\z#', $path)
             && !preg_match('#(^|/)(\.|%2e){2}(/|$)#i', $path)
             // Encoded dots, slashes and backslashes: a server that decodes them would leave the prefix.
             && !preg_match('#%(2e|2f|5c)#i', $path)
@@ -414,6 +415,10 @@ class assess_client {
         $requestid = isset($headers['x-request-id']) ? (string) $headers['x-request-id'] : null;
 
         if ($status >= 200 && $status < 300) {
+            // Durable marker for the privacy provider: Vektra may hold this site's data from now on.
+            if (empty(get_config(config::COMPONENT, 'everused'))) {
+                set_config('everused', 1, config::COMPONENT);
+            }
             return new assess_response($status, $json, null, null, null, $requestid, $headers);
         }
 

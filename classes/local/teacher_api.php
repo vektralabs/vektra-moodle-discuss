@@ -166,7 +166,7 @@ class teacher_api {
         ?bool $includeprevious = null
     ): assess_response {
         self::assert_type($type);
-        if (!preg_match('/^[0-9a-f-]{36}$/', $sessionid)) {
+        if (!preg_match('/^[0-9a-f-]{36}\z/', $sessionid)) {
             throw new \coding_exception('A session id is a UUID.');
         }
         $body = self::actor_body($courseid, $type, $actorid) + ['reason' => $reason];

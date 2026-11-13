@@ -253,7 +253,7 @@ final class state_dto {
      * @return string|null
      */
     private static function code($value): ?string {
-        return is_string($value) && preg_match('/^[a-z][a-z0-9_]{0,39}$/', $value) ? $value : null;
+        return is_string($value) && preg_match('/^[a-z][a-z0-9_]{0,39}\z/', $value) ? $value : null;
     }
 
     /**
@@ -306,7 +306,7 @@ final class state_dto {
      * @return int|null
      */
     private static function timestamp($value): ?int {
-        if (!is_string($value) || !preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/', $value)) {
+        if (!is_string($value) || !preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})\z/', $value)) {
             return null;
         }
         try {

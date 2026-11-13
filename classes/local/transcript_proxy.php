@@ -36,10 +36,10 @@ use local_vektradiscuss\local\http\assess_response;
  */
 final class transcript_proxy {
     /** @var string Transcript id: Vektra's session id (a UUID), checked loosely. */
-    public const TID_PATTERN = '/^[A-Za-z0-9-]{1,64}$/';
+    public const TID_PATTERN = '/^[A-Za-z0-9-]{1,64}\z/';
 
     /** @var string BR-016 file name: <course-shortname>_<activity-id>_<user-id>_s<N>_<yyyymmdd>.html. */
-    public const FILENAME_PATTERN = '/^[A-Za-z0-9-]+_\d+_\d+_s\d+_\d{8}\.html$/';
+    public const FILENAME_PATTERN = '/^[A-Za-z0-9-]+_\d+_\d+_s\d+_\d{8}\.html\z/';
 
     /** @var string Result: bytes forwarded. */
     public const OK = 'ok';
@@ -266,7 +266,7 @@ final class transcript_proxy {
         ];
         $length = (string) ($vektra['content-length'] ?? '');
         $encoding = strtolower(trim((string) ($vektra['content-encoding'] ?? 'identity')));
-        if (preg_match('/^\d{1,9}$/', $length) && ($encoding === '' || $encoding === 'identity')) {
+        if (preg_match('/^\d{1,9}\z/', $length) && ($encoding === '' || $encoding === 'identity')) {
             // Lets the browser tell a broken transfer from a complete one.
             $lines[] = 'Content-Length: ' . $length;
         }

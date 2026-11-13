@@ -164,6 +164,8 @@ final class assess_client_test extends \advanced_testcase {
             'other prefix' => [['X-Vektra-Plugin-Version' => '9.9']],
             'crlf value' => [['X-Assess-Actor' => "12\r\nX-Evil: 1"]],
             'numeric name' => [[0 => 'x']],
+            'final newline in a value' => [['X-Assess-Actor' => "12\n"]],
+            'final newline in a name' => [["X-Assess-Actor\n" => '12']],
         ];
     }
 
@@ -281,6 +283,7 @@ final class assess_client_test extends \advanced_testcase {
             'encoded traversal' => ['/api/v1/assess/%2e%2e/admin'],
             'query smuggled in path' => ['/api/v1/assess/x?token=1'],
             'newline' => ["/api/v1/assess/x\r\nX-Evil: 1"],
+            'final newline' => ["/api/v1/assess/x\n"],
             'double slash' => ['/api/v1/assess//x'],
             'encoded traversal 1' => ['/api/v1/assess/..%2f..%2fadmin'],
             'encoded traversal 2' => ['/api/v1/assess/%2e%2e%2fadmin'],

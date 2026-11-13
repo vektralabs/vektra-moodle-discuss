@@ -76,7 +76,7 @@ class setup_check {
             'teacher'
         );
         $id = $response->ok() ? ($response->json['report_id'] ?? null) : null;
-        if (is_string($id) && preg_match('/^[0-9a-f-]{36}$/', $id)) {
+        if (is_string($id) && preg_match('/^[0-9a-f-]{36}\z/', $id)) {
             return [$id, null];
         }
         return [null, self::error($response)];
@@ -90,7 +90,7 @@ class setup_check {
      */
     public function report(string $reportid): ?array {
         $site = $this->config->site_id();
-        if ($site === '' || !preg_match('/^[0-9a-f-]{36}$/', $reportid) || !$this->config->key_usable('teacher')) {
+        if ($site === '' || !preg_match('/^[0-9a-f-]{36}\z/', $reportid) || !$this->config->key_usable('teacher')) {
             return null;
         }
         $response = $this->client->request(
@@ -106,11 +106,11 @@ class setup_check {
         }
         $items = [];
         foreach (is_array($json['items'] ?? null) ? array_slice($json['items'], 0, 100) : [] as $item) {
-            if (!is_array($item) || !is_string($item['name'] ?? null) || !preg_match('/^[a-z0-9_]{1,64}$/', $item['name'])) {
+            if (!is_array($item) || !is_string($item['name'] ?? null) || !preg_match('/^[a-z0-9_]{1,64}\z/', $item['name'])) {
                 continue;
             }
             $result = in_array($item['result'] ?? null, self::RESULTS, true) ? $item['result'] : 'UNVERIFIABLE';
-            $reason = is_string($item['reason_code'] ?? null) && preg_match('/^[a-z0-9_]{1,64}$/', $item['reason_code'])
+            $reason = is_string($item['reason_code'] ?? null) && preg_match('/^[a-z0-9_]{1,64}\z/', $item['reason_code'])
                 ? $item['reason_code'] : null;
             $items[] = [
                 'name' => self::item_label($item['name']),
