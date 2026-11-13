@@ -123,10 +123,19 @@ basis, the retention period and the notice link on the screen before they start.
 
 The Moodle privacy API works through Vektra:
 
-- **Export** writes each transcript exactly as Vektra stored it, after checking it against its hash.
-  Transcripts of activities deleted from Moodle are exported in the person's own context.
-- **Deletion** asks Vektra to erase the data (per activity when the request names activities), and
-  reads back to verify that nothing is left. If a key is missing, Vektra fails or is still erasing,
+- **Contexts** come from Vektra's list of the person's activities: every activity where Vektra holds a
+  row that an erasure would remove (sessions, new sessions granted, extra time, retention tombstones,
+  technical records). Data of activities deleted from Moodle belongs to the person's own context.
+- **Export** writes, per activity, the sessions with their turns (for a session without a transcript yet),
+  the new sessions granted and the extra time (without the teacher's reasons or notes), the number of
+  sessions removed by retention and the technical record counts; and each transcript exactly as Vektra
+  stored it, after checking it against its hash. When some content cannot be exported (a transcript still
+  being generated, one that failed or is missing, or one whose bytes do not match its hash), everything
+  else is written and the plugin raises an error naming the problem: run the request again later for a
+  pending transcript.
+- **Deletion** asks Vektra to erase the data activity by activity (never the whole person at once, so that
+  an activity the request did not approve is never reached), then reads the list back to verify that
+  nothing is left. If a key is missing, Vektra fails or is still erasing,
   data is still found, or the operator keeps the data as exam evidence, the plugin raises an error
   with an explanation. Moodle sends it to the site's Data Protection Officers; note that Moodle then
   completes the request anyway (a plugin cannot mark it as failed), so the DPO message is the signal
