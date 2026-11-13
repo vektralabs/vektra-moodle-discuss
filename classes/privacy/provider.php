@@ -45,8 +45,8 @@ use local_vektradiscuss\local\privacy_api;
  * Protection Officers and completes the request anyway: a plugin cannot mark it as failed. The plugin keeps
  * no record of its own (COMP-001); Vektra alerts its operator when an erasure fails or stays pending.
  *
- * The person's user context is always listed: it holds the transcripts of activities deleted from Moodle,
- * and it lets an erasure reach the data that has no transcript (a session that never closed, a reset).
+ * The person's user context is always listed: it holds the transcripts of activities deleted from Moodle.
+ * Erasure runs activity by activity, never subject-wide (see erase_person()).
  */
 class provider implements
     \core_privacy\local\metadata\provider,
@@ -124,7 +124,11 @@ class provider implements
             return;
         }
         $userid = (int) $contextlist->get_user()->id;
-        $items = self::api()->subject_transcripts($userid);
+        $approved = $contextlist->get_contextids();
+        $items = self::api()->subject_transcripts(
+            $userid,
+            fn(int $cmid): bool => in_array(self::context_of($cmid, $userid)->id, $approved)
+        );
         foreach ($contextlist->get_contexts() as $context) {
             foreach ($items as $item) {
                 if (self::context_of((int) $item['cmid'], $userid)->id !== $context->id) {
@@ -227,8 +231,12 @@ class provider implements
 
     /**
      * Erase a person's data in the approved activities and, with the user context, in the activities deleted
-     * from Moodle; everything Vektra holds for them only when no existing activity of theirs was left out of
-     * the approval. Then verify.
+     * from Moodle (known from their transcripts), activity by activity; then verify each one.
+     *
+     * Never subject-wide: the plugin cannot list every activity where Vektra holds rows for the person (only
+     * those with transcripts), so a subject-wide erasure could reach an activity the request did not
+     * approve. Rows without a transcript in an activity the plugin cannot see stay until Vektra's retention
+     * (vektra-stack will add a per-person activity list).
      *
      * @param privacy_api $api
      * @param int $userid
@@ -236,30 +244,22 @@ class provider implements
      * @param bool $usercontext Whether the person's own context is approved.
      */
     private static function erase_person(privacy_api $api, int $userid, array $cmids, bool $usercontext): void {
-        $known = $api->subject_cmids($userid);
-        $deleted = array_values(array_filter($known, fn(int $cmid): bool =>
-            !\context_module::instance($cmid, IGNORE_MISSING)));
-        $existing = array_values(array_diff($known, $deleted));
-        $subjectwide = $usercontext && !array_diff($existing, $cmids);
-
-        if ($subjectwide) {
-            // Also reaches the rows without a transcript (sessions never closed, resets, extra time).
-            $api->erase_subject($userid);
-        } else {
-            $targets = array_values(array_unique(array_merge($cmids, $usercontext ? $deleted : [])));
-            foreach ($targets as $cmid) {
-                $api->erase_activity($cmid, [$userid]);
+        $targets = $cmids;
+        if ($usercontext) {
+            foreach ($api->subject_cmids($userid) as $cmid) {
+                if (!\context_module::instance($cmid, IGNORE_MISSING)) {
+                    $targets[] = $cmid;
+                }
             }
         }
-
-        foreach ($cmids as $cmid) {
+        $targets = array_values(array_unique($targets));
+        foreach ($targets as $cmid) {
+            $api->erase_activity($cmid, [$userid]);
+        }
+        foreach ($targets as $cmid) {
             if (in_array($userid, $api->activity_subjects($cmid), true)) {
                 throw new \moodle_exception('privacy_erase_unverified', 'local_vektradiscuss');
             }
-        }
-        $left = $api->subject_cmids($userid);
-        if (($subjectwide && $left) || ($usercontext && array_intersect($left, $deleted))) {
-            throw new \moodle_exception('privacy_erase_unverified', 'local_vektradiscuss');
         }
     }
 

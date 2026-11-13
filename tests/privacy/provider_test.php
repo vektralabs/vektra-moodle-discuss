@@ -167,27 +167,25 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
     }
 
     /**
-     * Deletion for a person in an activity: scoped to that activity, erase key, then verified.
+     * Deletion for a person in an activity: scoped to that activity, erase key, then verified with the activity's
+     * subjects.
      */
     public function test_delete_for_user_is_scoped_and_verified(): void {
-        $this->transport->respond(200, ['items' => [$this->item((int) $this->quiz->cmid)], 'next_cursor' => null]);
         $this->transport->respond(200, ['outcome' => 'erased', 'counts' => ['sessions' => 1, 'transcripts' => 1]]);
         $this->transport->respond(200, ['cmid' => (int) $this->quiz->cmid, 'userids' => [], 'next_cursor' => null]);
-        $this->transport->respond(200, ['items' => [], 'next_cursor' => null]);
         provider::delete_data_for_user($this->quiz_contextlist());
         $this->assertSame(0, $this->transport->remaining());
-        $call = $this->transport->calls[1];
+        $call = $this->transport->calls[0];
         $this->assertSame('DELETE', $call['method']);
         $this->assertStringEndsWith('/privacy/activities/' . $this->quiz->cmid . '/subjects', $call['url']);
         $this->assertSame(['userids' => [(int) $this->student->id]], json_decode($call['body'], true));
-        $this->assertSame('Bearer test-erase-key', $this->transport->header_map(1)['authorization']);
+        $this->assertSame('Bearer test-erase-key', $this->transport->header_map(0)['authorization']);
     }
 
     /**
-     * A verification that still finds a transcript of the activity throws.
+     * A verification that still finds the person in the activity throws.
      */
     public function test_delete_unverified_throws(): void {
-        $this->transport->respond(200, ['items' => [$this->item((int) $this->quiz->cmid)], 'next_cursor' => null]);
         $this->transport->respond(200, ['outcome' => 'erased', 'counts' => []]);
         $this->transport->respond(200, ['cmid' => (int) $this->quiz->cmid, 'userids' => [(int) $this->student->id],
             'next_cursor' => null]);
@@ -238,46 +236,81 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
      */
     public function test_missing_erase_key_throws_without_delete(): void {
         set_config('privacyerasekey', '', 'local_vektradiscuss');
-        $this->transport->respond(200, ['items' => [], 'next_cursor' => null]);
         try {
             provider::delete_data_for_user($this->quiz_contextlist());
             $this->fail('Exception expected');
         } catch (\moodle_exception $e) {
             $this->assertSame('privacy_key_missing', $e->errorcode);
         }
-        $this->assertSame([], array_filter($this->transport->calls, fn(array $c): bool => $c['method'] === 'DELETE'));
+        $this->assertSame([], $this->transport->calls);
     }
 
     /**
-     * The user context approved and no existing activity left out: everything Vektra holds for the person is
-     * erased (also the rows without a transcript), then verified.
+     * The user context and the quiz approved: the quiz and the activity deleted from Moodle are erased, each
+     * on its own; never subject-wide.
      */
-    public function test_user_context_erases_subject_wide(): void {
+    public function test_user_context_erases_per_activity(): void {
         $this->transport->respond(200, ['items' => [$this->item((int) $this->quiz->cmid), $this->item(999999)],
             'next_cursor' => null]);
-        $this->transport->respond(200, ['outcome' => 'erased', 'counts' => []]);
-        $this->transport->respond(200, ['cmid' => (int) $this->quiz->cmid, 'userids' => [], 'next_cursor' => null]);
-        $this->transport->respond(200, ['items' => [], 'next_cursor' => null]);
+        $erased = ['outcome' => 'erased', 'counts' => []];
+        $nobody = ['userids' => [], 'next_cursor' => null];
+        $this->transport->respond(200, $erased)->respond(200, $erased);
+        $this->transport->respond(200, $nobody)->respond(200, $nobody);
         provider::delete_data_for_user(new approved_contextlist($this->student, 'local_vektradiscuss', [
             \context_module::instance($this->quiz->cmid)->id, \context_user::instance($this->student->id)->id]));
-        $this->assertSame('DELETE', $this->transport->calls[1]['method']);
-        $this->assertStringEndsWith('/privacy/subjects/' . $this->student->id, $this->transport->calls[1]['url']);
+        $deletes = array_values(array_filter($this->transport->calls, fn(array $c): bool => $c['method'] === 'DELETE'));
+        $this->assertCount(2, $deletes);
+        foreach ($deletes as $delete) {
+            $this->assertStringContainsString('/privacy/activities/', $delete['url']);
+        }
+        $this->assertSame(0, $this->transport->remaining());
     }
 
     /**
-     * The user context approved but an existing activity left out: only the deleted activities are erased
-     * through the user context, never the activity that was not approved.
+     * The user context approved but not the quiz: only the activity deleted from Moodle is erased.
      */
     public function test_user_context_never_erases_an_unapproved_activity(): void {
         $this->transport->respond(200, ['items' => [$this->item((int) $this->quiz->cmid), $this->item(999999)],
             'next_cursor' => null]);
         $this->transport->respond(200, ['outcome' => 'erased', 'counts' => []]);
-        $this->transport->respond(200, ['items' => [$this->item((int) $this->quiz->cmid)], 'next_cursor' => null]);
+        $this->transport->respond(200, ['userids' => [], 'next_cursor' => null]);
         provider::delete_data_for_user(new approved_contextlist($this->student, 'local_vektradiscuss', [
             \context_user::instance($this->student->id)->id]));
         $deletes = array_values(array_filter($this->transport->calls, fn(array $c): bool => $c['method'] === 'DELETE'));
         $this->assertCount(1, $deletes);
         $this->assertStringEndsWith('/privacy/activities/999999/subjects', $deletes[0]['url']);
+    }
+
+    /**
+     * A page without its list proves nothing: it fails, rather than verifying an empty result.
+     */
+    public function test_malformed_page_throws(): void {
+        $this->transport->respond(200, ['outcome' => 'erased', 'counts' => []]);
+        $this->transport->respond(200, ['next_cursor' => null]);
+        $this->expectException(\moodle_exception::class);
+        provider::delete_data_for_user($this->quiz_contextlist());
+    }
+
+    /**
+     * A damaged file in an activity outside the export does not block it.
+     */
+    public function test_export_checks_only_the_selected_activities(): void {
+        $this->transport->respond(200, ['items' => [$this->item((int) $this->quiz->cmid),
+            $this->item(999999, self::BYTES, str_repeat('0', 64))], 'next_cursor' => null]);
+        provider::export_user_data($this->quiz_contextlist());
+        $this->assertTrue(writer::with_context(\context_module::instance($this->quiz->cmid))->has_any_data());
+    }
+
+    /**
+     * A site that used the plugin and then cleared its settings still answers (and fails loudly without keys).
+     */
+    public function test_used_site_with_cleared_settings_is_still_in_use(): void {
+        set_config('everused', 1, 'local_vektradiscuss');
+        foreach (['siteid', 'privacyexportkey', 'privacyerasekey'] as $name) {
+            set_config($name, '', 'local_vektradiscuss');
+        }
+        $this->expectException(\moodle_exception::class);
+        provider::get_contexts_for_userid((int) $this->student->id);
     }
 
     /**

@@ -83,7 +83,9 @@ class privacy_api {
      * @return bool
      */
     public function in_use(): bool {
-        if ($this->config->site_id() !== '') {
+        // A durable marker, set on the first successful call to Vektra: clearing the settings later does not
+        // mean that Vektra holds nothing.
+        if (!empty(get_config(config::COMPONENT, 'everused')) || $this->config->site_id() !== '') {
             return true;
         }
         foreach (array_keys(config::KEY_ROLES) as $role) {
@@ -105,10 +107,11 @@ class privacy_api {
     public function subject_cmids(int $userid): array {
         $cmids = [];
         foreach ($this->pages('/api/v1/assess/privacy/subjects/' . $userid . '/transcripts') as $json) {
-            foreach (is_array($json['items'] ?? null) ? $json['items'] : [] as $item) {
-                if (is_array($item) && is_int($item['cmid'] ?? null)) {
-                    $cmids[] = $item['cmid'];
+            foreach (self::list_of($json, 'items') as $item) {
+                if (!is_array($item) || !is_int($item['cmid'] ?? null) || $item['cmid'] <= 0) {
+                    throw new \moodle_exception('privacy_export_failed', self::C);
                 }
+                $cmids[] = $item['cmid'];
             }
         }
         return array_values(array_unique($cmids));
@@ -118,13 +121,19 @@ class privacy_api {
      * Every transcript of a person, across all pages.
      *
      * @param int $userid
+     * @param callable|null $keep fn(int $cmid): bool, the activities to export (null: all).
      * @return array[] {transcript_id, cmid, course_id, session_no, closed_at, filename, sha256, bytes}
      * @throws \moodle_exception
      */
-    public function subject_transcripts(int $userid): array {
+    public function subject_transcripts(int $userid, ?callable $keep = null): array {
         $items = [];
         foreach ($this->pages('/api/v1/assess/privacy/subjects/' . $userid . '/transcripts') as $json) {
-            foreach (is_array($json['items'] ?? null) ? $json['items'] : [] as $item) {
+            foreach (self::list_of($json, 'items') as $item) {
+                // Only the selected activities' files are decoded and hash-checked: a damaged file of another
+                // activity must not block an export it is not part of.
+                if ($keep !== null && !(is_array($item) && is_int($item['cmid'] ?? null) && $keep($item['cmid']))) {
+                    continue;
+                }
                 $items[] = self::transcript($item);
             }
         }
@@ -141,10 +150,11 @@ class privacy_api {
     public function activity_subjects(int $cmid): array {
         $ids = [];
         foreach ($this->pages('/api/v1/assess/privacy/activities/' . $cmid . '/subjects') as $json) {
-            foreach (is_array($json['userids'] ?? null) ? $json['userids'] : [] as $id) {
-                if (is_int($id) && $id > 0) {
-                    $ids[] = $id;
+            foreach (self::list_of($json, 'userids') as $id) {
+                if (!is_int($id) || $id <= 0) {
+                    throw new \moodle_exception('privacy_export_failed', self::C);
                 }
+                $ids[] = $id;
             }
         }
         return array_values(array_unique($ids));
@@ -273,6 +283,21 @@ class privacy_api {
     }
 
     /**
+     * The list a page must carry: a missing or malformed list never counts as "no data".
+     *
+     * @param array $json
+     * @param string $key
+     * @return array
+     * @throws \moodle_exception
+     */
+    private static function list_of(array $json, string $key): array {
+        if (!isset($json[$key]) || !is_array($json[$key]) || array_values($json[$key]) !== $json[$key]) {
+            throw new \moodle_exception('privacy_export_failed', self::C);
+        }
+        return $json[$key];
+    }
+
+    /**
      * A validated transcript item; the bytes are decoded and must match the reported sha256.
      *
      * @param mixed $item
@@ -321,7 +346,7 @@ class privacy_api {
         if (is_int($cursor) && $cursor > 0) {
             return (string) $cursor;
         }
-        if (is_string($cursor) && preg_match('/^[\x21-\x7E]{1,512}$/', $cursor)) {
+        if (is_string($cursor) && preg_match('/^[\x21-\x7E]{1,512}\z/', $cursor)) {
             return $cursor;
         }
         throw new \moodle_exception('privacy_export_failed', self::C);
