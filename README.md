@@ -146,6 +146,11 @@ version is lower than the one in `version.php` `dependencies`. A release tag mus
 
 Targets Moodle **4.3 (403)** and **5.2 (502)**, matching the Vektra fleet.
 
+Release 0.2.0 needs a Vektra that accepts `privacy_notice_version` in the mint body and `cmid` in the
+download-token and resend bodies, and checks the transcript against that activity (vektra-stack #211 and
+#212). Upgrade Vektra first: an older one refuses these fields, and the plugin no longer checks a
+transcript's activity itself.
+
 ## Moodle LMS provider (`provider/`)
 
 The repository also hosts `vektra-lms-moodle`, the Python provider through which the Vektra
