@@ -105,9 +105,10 @@ class assess_client {
      * @param array $query Query-string parameters.
      * @param array|null $body JSON body.
      * @param string $keyrole Key role (mint or teacher): selects the secret.
-     * @param array $opts Options: timeout (seconds), bearer (a token replacing the key).
+     * @param array $opts Options: timeout (seconds), bearer (a token replacing the key), headers (name => value,
+     *     X-Assess-* names only, see {@see self::extra_headers()}).
      * @return assess_response
-     * @throws \coding_exception For an invalid method or path, or a body on a GET.
+     * @throws \coding_exception For an invalid method, path or header, or a body on a GET.
      */
     public function request(
         string $method,
@@ -127,12 +128,14 @@ class assess_client {
         if ($method === 'GET' && $body !== null) {
             throw new \coding_exception('A GET request cannot carry a body.');
         }
+        $extra = self::extra_headers($opts['headers'] ?? []);
 
         $prepared = $this->prepare($path, $query, $keyrole, $opts);
         if ($prepared instanceof assess_response) {
             return $prepared;
         }
         [$url, $headers, $secret, $timeout, $connecttimeout] = $prepared;
+        $headers = array_merge($headers, $extra);
 
         $payload = null;
         if ($body !== null) {
@@ -150,7 +153,7 @@ class assess_client {
 
         if ($status === 0) {
             $message = self::redact('transport failure: ' . $result['error'], $secret);
-            debugging("Vektra assess {$method} {$path}: {$message}", DEBUG_DEVELOPER);
+            $this->log("Vektra assess {$method} {$path}: {$message}");
             return assess_response::failure('transport', $message);
         }
 
@@ -253,7 +256,7 @@ class assess_client {
         }
         if ($result['errno'] !== 0 || $state->status === 0) {
             $message = self::redact('transport failure: ' . $result['error'], $secret);
-            debugging("Vektra assess GET {$path}: {$message}", DEBUG_DEVELOPER);
+            $this->log("Vektra assess GET {$path}: {$message}");
             return assess_response::failure('transport', $message);
         }
         $announce();
@@ -273,6 +276,47 @@ class assess_client {
     }
 
     /**
+     * Log a failed call for developers (debugging, already redacted by the caller).
+     *
+     * Silent with the in-site Behat stub: there the failures are the scenario's own fixtures, and a Behat site
+     * always displays debugging, which would fail the page that handles them.
+     *
+     * @param string $message
+     */
+    private function log(string $message): void {
+        if (is_a($this->transport, 'local_vektradiscuss\\tests\\behat_stub_transport')) {
+            return;
+        }
+        debugging($message, DEBUG_DEVELOPER);
+    }
+
+    /**
+     * Header lines from an X-Assess-* map (the teacher routes' actor, course, activity type and cursor).
+     *
+     * Only X-Assess-* names, so a caller can never replace the Authorization or version header, and only
+     * printable ASCII values without CR or LF, so no header can be injected.
+     *
+     * @param array $headers name => value
+     * @return string[] Header lines.
+     * @throws \coding_exception For a name or value outside these rules.
+     */
+    private static function extra_headers(array $headers): array {
+        $lines = [];
+        foreach ($headers as $name => $value) {
+            $value = (string) $value;
+            // Anchored with \z, not $, which also matches before a final newline.
+            if (!is_string($name) || !preg_match('/^X-Assess-[A-Za-z-]{1,40}\z/', $name)) {
+                throw new \coding_exception('assess_client only sends X-Assess-* extra headers.');
+            }
+            if (!preg_match('/^[\x20-\x7E]{0,512}\z/', $value)) {
+                throw new \coding_exception('Invalid value for the header ' . $name . '.');
+            }
+            $lines[] = $name . ': ' . $value;
+        }
+        return $lines;
+    }
+
+    /**
      * Validate a path: assess prefix, no traversal, no scheme, no query or fragment.
      *
      * @param string $path
@@ -280,7 +324,7 @@ class assess_client {
      */
     private function assert_path(string $path): void {
         $valid = str_starts_with($path, self::PATH_PREFIX)
-            && preg_match('#^/api/v1/assess/[A-Za-z0-9._~%!$&\'()*+,;=:@/-]*$#', $path)
+            && preg_match('#^/api/v1/assess/[A-Za-z0-9._~%!$&\'()*+,;=:@/-]*\z#', $path)
             && !preg_match('#(^|/)(\.|%2e){2}(/|$)#i', $path)
             // Encoded dots, slashes and backslashes: a server that decodes them would leave the prefix.
             && !preg_match('#%(2e|2f|5c)#i', $path)
@@ -303,8 +347,9 @@ class assess_client {
      * @return array|assess_response [url, headers, secret, timeout, connecttimeout] or a refusal
      */
     private function prepare(string $path, array $query, string $keyrole, array $opts, bool $accept = true) {
-        // Site kill switch: disabled means nothing is sent to Vektra.
-        if (!$this->config->is_enabled()) {
+        // Site kill switch: disabled means nothing is sent to Vektra, except privacy requests: the data stays in
+        // Vektra after the plugin is turned off, and the site must still be able to export and erase it.
+        if (!$this->config->is_enabled() && !str_starts_with($keyrole, 'privacy_')) {
             return assess_response::failure('disabled', 'The assessment discussion is disabled on this site.');
         }
 
@@ -370,6 +415,10 @@ class assess_client {
         $requestid = isset($headers['x-request-id']) ? (string) $headers['x-request-id'] : null;
 
         if ($status >= 200 && $status < 300) {
+            // Durable marker for the privacy provider: Vektra may hold this site's data from now on.
+            if (empty(get_config(config::COMPONENT, 'everused'))) {
+                set_config('everused', 1, config::COMPONENT);
+            }
             return new assess_response($status, $json, null, null, null, $requestid, $headers);
         }
 
@@ -377,9 +426,8 @@ class assess_client {
         if ($errorcode === null && $status >= 300 && $status < 400) {
             $errorcode = 'redirect_refused';
         }
-        debugging(
-            self::redact("Vektra assess {$method} {$path} failed: HTTP {$status} - {$body}", $secret),
-            DEBUG_DEVELOPER
+        $this->log(
+            self::redact("Vektra assess {$method} {$path} failed: HTTP {$status} - {$body}", $secret)
         );
         return new assess_response($status, $json, $errorcode, $message, $details, $requestid, $headers);
     }

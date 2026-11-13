@@ -26,6 +26,7 @@
 
 require_once(__DIR__ . '/../../../../lib/behat/behat_base.php');
 
+use Behat\Gherkin\Node\PyStringNode;
 use Behat\Gherkin\Node\TableNode;
 use Behat\Mink\Exception\ExpectationException;
 
@@ -38,6 +39,12 @@ class behat_local_vektradiscuss extends behat_base {
 
     /** @var string Config name of the stub's request log (same as self::STUB_LOG). */
     private const STUB_LOG = 'behatstublog';
+
+    /** @var string Config name prefix of a teacher-route fixture (same as behat_stub_transport::ROUTE). */
+    private const STUB_ROUTE = 'behatstubroute_';
+
+    /** @var string Teacher routes the steps can name. */
+    private const ROUTES = 'config|opening-fallback|sessions|reset|terminate|extra-time';
 
     /** @var string Config name prefix of a state fixture (same as self::STUB_STATE). */
     private const STUB_STATE = 'behatstubstate_';
@@ -569,5 +576,137 @@ class behat_local_vektradiscuss extends behat_base {
         if (!$reason || trim($reason->getText()) === '') {
             throw new ExpectationException("\"{$label}\" exposes no reason", $this->getSession());
         }
+    }
+
+    /**
+     * Fix the answer of a teacher route for an activity (JSON body).
+     *
+     * @Given /^the Vektra assess stub answers (GET|PUT|POST) "([a-z-]+)" of "([^"]+)" with status (\d+) and:$/
+     * @param string $method
+     * @param string $route
+     * @param string $idnumber
+     * @param int $status
+     * @param PyStringNode $body
+     */
+    public function the_stub_answers_route(string $method, string $route, string $idnumber, int $status, PyStringNode $body): void {
+        $this->assert_route($route);
+        $json = json_decode($body->getRaw(), true);
+        if (!is_array($json)) {
+            throw new ExpectationException('The body is not JSON', $this->getSession());
+        }
+        $name = self::STUB_ROUTE . strtolower($method) . '_' . $route . '_' . $this->cm($idnumber)->id;
+        set_config($name, json_encode(['status' => $status, 'body' => $json]), 'local_vektradiscuss');
+    }
+
+    /**
+     * Count the requests the stub received on a teacher route of an activity.
+     *
+     * @Then /^the Vektra assess stub received (\d+) (GET|PUT|POST) requests? to "([a-z-]+)" of "([^"]+)"$/
+     * @param int $count
+     * @param string $method
+     * @param string $route
+     * @param string $idnumber
+     */
+    public function the_stub_received_route_requests(int $count, string $method, string $route, string $idnumber): void {
+        $found = count($this->route_requests($method, $route, $idnumber));
+        if ($found !== $count) {
+            throw new ExpectationException("Expected {$count} {$method} {$route} requests, got {$found}", $this->getSession());
+        }
+    }
+
+    /**
+     * Check a field of the body of the last request on a teacher route.
+     *
+     * @Then /^the last Vektra assess stub (PUT|POST) to "([a-z-]+)" of "([^"]+)" should (not |)have the field "([a-z_]+)"$/
+     * @param string $method
+     * @param string $route
+     * @param string $idnumber
+     * @param string $not
+     * @param string $field
+     */
+    public function the_last_route_body_field(string $method, string $route, string $idnumber, string $not, string $field): void {
+        $requests = $this->route_requests($method, $route, $idnumber);
+        if (!$requests) {
+            throw new ExpectationException("No {$method} {$route} request", $this->getSession());
+        }
+        $body = json_decode((string) end($requests)['body'], true);
+        $has = is_array($body) && array_key_exists($field, $body);
+        if ($has === ($not !== '')) {
+            throw new ExpectationException(
+                "The {$method} {$route} body " . ($has ? 'has' : 'lacks') . " {$field}",
+                $this->getSession()
+            );
+        }
+    }
+
+    /**
+     * The logged requests on a teacher route of an activity.
+     *
+     * @param string $method
+     * @param string $route
+     * @param string $idnumber
+     * @return array[]
+     */
+    private function route_requests(string $method, string $route, string $idnumber): array {
+        global $CFG;
+        require_once($CFG->dirroot . '/local/vektradiscuss/tests/fixtures/behat_stub_transport.php');
+        $this->assert_route($route);
+        $cmid = (int) $this->cm($idnumber)->id;
+        return array_values(array_filter(self::stub_log(), function (array $entry) use ($method, $route, $cmid): bool {
+            $found = \local_vektradiscuss\tests\behat_stub_transport::teacher_route((string) $entry['path']);
+            return $entry['method'] === $method && $found === [$route, $cmid];
+        }));
+    }
+
+    /**
+     * Refuse an unknown route name.
+     *
+     * @param string $route
+     */
+    private function assert_route(string $route): void {
+        if (!in_array($route, explode('|', self::ROUTES), true)) {
+            throw new ExpectationException("Unknown route {$route}", $this->getSession());
+        }
+    }
+
+    /**
+     * Fix the sessions list of an activity: one closed session of a student, with a delivered transcript, and
+     * the number of discussions in progress; the override holder is the student.
+     *
+     * @Given /^the Vektra assess stub lists a closed session of "([^"]+)" in "([^"]+)" with (\d+) active sessions?$/
+     * @param string $username
+     * @param string $idnumber
+     * @param int $active
+     */
+    public function the_stub_lists_a_closed_session(string $username, string $idnumber, int $active): void {
+        global $DB;
+        $userid = (int) $DB->get_field('user', 'id', ['username' => $username], MUST_EXIST);
+        $cmid = (int) $this->cm($idnumber)->id;
+        $list = ['students' => [[
+            'userid' => $userid,
+            'sessions' => [['session_id' => '0f8e7d6c-5b4a-4321-8fed-cba987654321', 'session_no' => 1, 'state' => 'CLOSED',
+                'close_reason' => 'finished', 'committed_at' => null, 'closed_at' => '2026-01-12T09:00:00+00:00',
+                'transcript_id' => self::tid($cmid, 1),
+                'deliveries' => [['round' => 1, 'recipient_kind' => 'recipient', 'status' => 'SENT', 'attempts' => 1,
+                    'smtp_code' => 250, 'error_class' => null, 'sent_at' => '2026-01-12T09:01:00+00:00']]]],
+            'resets' => [], 'reset_count' => 0, 'extra_seconds' => 0,
+        ]], 'next_cursor' => null, 'terminations' => [],
+            'gate' => ['opening' => ['at' => '2026-01-10T10:00:00+00:00', 'source' => 'activity_close',
+                'fallback_required' => false],
+                'fallback_reason' => null, 'fallback_date_missing' => false, 'active_sessions' => $active,
+                'override_holder' => $userid]];
+        $fixture = json_encode(['status' => 200, 'body' => $list]);
+        set_config(self::STUB_ROUTE . 'get_sessions_' . $cmid, $fixture, 'local_vektradiscuss');
+    }
+
+    /**
+     * Open the teacher's Discussions page of an activity.
+     *
+     * @When /^I am on the Vektra discussions page of "(?P<idnumber>[^"]+)"$/
+     * @param string $idnumber
+     */
+    public function i_am_on_the_discussions_page(string $idnumber): void {
+        $url = new moodle_url('/local/vektradiscuss/teacher.php', ['cmid' => $this->cm($idnumber)->id]);
+        $this->getSession()->visit($this->locate_path($url->out_as_local_url(false)));
     }
 }

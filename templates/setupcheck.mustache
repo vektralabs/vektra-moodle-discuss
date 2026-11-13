@@ -1,0 +1,84 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_vektradiscuss/setupcheck
+
+    The site administrator's setup check (REQ-079, REQ-089): the local configuration (keys configured, never
+    their values; the UI origin), the button that starts Vektra's check, and the latest report's items by
+    name and result.
+
+    Context variables required for this template:
+    * actionurl, sesskey - form target
+    * local - {enabled, siteid, keys[{name, ok, state}], uiorigin, uiorigintext}
+    * report - null, or {status, inprogress, done, allok, release, hasitems, items[{name, code, result, ok, reason}]}
+
+    Example context (json):
+    {
+        "actionurl": "https://moodle.example.org/local/vektradiscuss/admin/setupcheck.php", "sesskey": "x",
+        "local": {"enabled": true, "siteid": true, "uiorigin": true, "uiorigintext": "https://ui.example.org",
+            "keys": [{"name": "Mint key", "ok": true, "state": "configured"}]},
+        "report": {"status": "done", "inprogress": false, "done": true, "allok": false, "release": "4.3.11+",
+            "hasitems": true, "items": [{"name": "Token works", "code": "token_works", "result": "OK", "ok": true, "reason": null},
+            {"name": "Privacy settings", "code": "privacy_config", "result": "MISSING", "ok": false, "reason": "privacy_config_unset"}]}
+    }
+}}
+<div class="local-vektradiscuss-setupcheck">
+    <h3 class="h5">{{#str}}setupcheck_local_heading, local_vektradiscuss{{/str}}</h3>
+    <table class="table generaltable">
+        <tbody>
+            <tr><th scope="row">{{#str}}settings_enabled, local_vektradiscuss{{/str}}</th>
+                <td>{{#local.enabled}}{{#str}}yes{{/str}}{{/local.enabled}}{{^local.enabled}}{{#str}}no{{/str}}{{/local.enabled}}</td></tr>
+            <tr><th scope="row">{{#str}}settings_siteid, local_vektradiscuss{{/str}}</th>
+                <td>{{#local.siteid}}{{#str}}setupcheck_key_ok, local_vektradiscuss{{/str}}{{/local.siteid}}{{^local.siteid}}{{#str}}setupcheck_key_missing, local_vektradiscuss{{/str}}{{/local.siteid}}</td></tr>
+            {{#local.keys}}
+            <tr><th scope="row">{{name}}</th><td>{{state}}</td></tr>
+            {{/local.keys}}
+            <tr><th scope="row">{{#str}}settings_uiurl, local_vektradiscuss{{/str}}</th><td>{{local.uiorigintext}}</td></tr>
+        </tbody>
+    </table>
+
+    <form method="post" action="{{actionurl}}" class="mb-3">
+        <input type="hidden" name="sesskey" value="{{sesskey}}">
+        <input type="hidden" name="run" value="1">
+        <button type="submit" class="btn btn-primary">{{#str}}setupcheck_run, local_vektradiscuss{{/str}}</button>
+        <span class="text-muted ms-2 ml-2">{{#str}}setupcheck_run_note, local_vektradiscuss{{/str}}</span>
+    </form>
+
+    {{#report}}
+    <h3 class="h5">{{#str}}setupcheck_report_heading, local_vektradiscuss{{/str}}</h3>
+    <p role="status">{{status}}{{#release}} ({{release}}){{/release}}</p>
+    {{#done}}
+        {{#allok}}<p class="alert alert-success">{{#str}}setupcheck_all_ok, local_vektradiscuss{{/str}}</p>{{/allok}}
+        {{^allok}}<p class="alert alert-warning">{{#str}}setupcheck_not_ok, local_vektradiscuss{{/str}}</p>{{/allok}}
+    {{/done}}
+    {{#hasitems}}
+    <table class="table generaltable">
+        <thead><tr>
+            <th scope="col">{{#str}}setupcheck_col_item, local_vektradiscuss{{/str}}</th>
+            <th scope="col">{{#str}}setupcheck_col_result, local_vektradiscuss{{/str}}</th>
+            <th scope="col">{{#str}}setupcheck_col_reason, local_vektradiscuss{{/str}}</th>
+        </tr></thead>
+        <tbody>
+        {{#items}}
+            <tr data-item="{{code}}"><th scope="row">{{name}}</th>
+                <td class="{{#ok}}text-success{{/ok}}{{^ok}}text-danger{{/ok}}">{{result}}</td><td><code>{{reason}}</code></td></tr>
+        {{/items}}
+        </tbody>
+    </table>
+    {{/hasitems}}
+    {{/report}}
+</div>

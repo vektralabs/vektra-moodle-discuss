@@ -38,8 +38,8 @@ require_once($CFG->libdir . '/adminlib.php');
  * scopes), so this is the first, friendlier line of defence (ARCH-067, NFR-014).
  */
 class setting_assess_key extends \admin_setting_configpasswordunmask {
-    /** @var string The key role of the other key setting. */
-    private string $otherrole;
+    /** @var string The key role of this setting. */
+    private string $role;
 
     /**
      * Constructor.
@@ -47,11 +47,14 @@ class setting_assess_key extends \admin_setting_configpasswordunmask {
      * @param string $name Unique name (component/setting).
      * @param string $visiblename Display name.
      * @param string $description Description.
-     * @param string $otherrole Key role of the other key, to refuse a duplicate.
+     * @param string $role Key role of this setting: every other role's key must differ from it.
      */
-    public function __construct(string $name, string $visiblename, string $description, string $otherrole) {
+    public function __construct(string $name, string $visiblename, string $description, string $role) {
         parent::__construct($name, $visiblename, $description, '');
-        $this->otherrole = $otherrole;
+        if (!isset(config::KEY_ROLES[$role])) {
+            throw new \coding_exception('Unknown assess key role: ' . $role);
+        }
+        $this->role = $role;
     }
 
     /**
@@ -67,25 +70,28 @@ class setting_assess_key extends \admin_setting_configpasswordunmask {
             if ($value === $config->block_admin_key()) {
                 return get_string('error_key_is_adminkey', config::COMPONENT);
             }
-            if ($value === $this->other_key($config)) {
-                return get_string('error_key_duplicate', config::COMPONENT);
+            foreach (array_keys(config::KEY_ROLES) as $other) {
+                if ($other !== $this->role && $value === $this->key_of($config, $other)) {
+                    return get_string('error_key_duplicate', config::COMPONENT);
+                }
             }
         }
         return parent::write_setting($value);
     }
 
     /**
-     * The value the other key setting holds: what is being saved in the same form, else the stored one.
+     * The value another key setting holds: what is being saved in the same form, else the stored one.
      *
      * @param config $config
+     * @param string $role
      * @return string
      */
-    private function other_key(config $config): string {
-        $field = 's_' . config::COMPONENT . '_' . config::KEY_ROLES[$this->otherrole];
+    private function key_of(config $config, string $role): string {
+        $field = 's_' . config::COMPONENT . '_' . config::KEY_ROLES[$role];
         $submitted = optional_param($field, null, PARAM_RAW);
         if ($submitted !== null) {
             return trim($submitted);
         }
-        return $config->key($this->otherrole);
+        return $config->key($role);
     }
 }

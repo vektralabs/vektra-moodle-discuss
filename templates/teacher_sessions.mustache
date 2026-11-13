@@ -1,0 +1,251 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_vektradiscuss/teacher_sessions
+
+    The teacher's "Discussions" page: the activity's gate panel, the terminations, and one row per student
+    with their sessions, deliveries, resets and extra time (REQ-076). The actions are POST forms with the
+    session key; they are rendered only for teachers who may manage (REQ-081, REQ-087, REQ-078).
+
+    Context variables required for this template:
+    * cmid, actionurl, sesskey - form target
+    * canmanage, canterminate, expectedactive - actions
+    * gate - {opening, fallbackreason, fallbackmissing, settingsurl, activesessions, overrideholder}
+    * hasterminations, terminations - [{at, by, reason, closed, rolledback, disabled}]
+    * hasstudents, students - [{userid, name, sessions[{n, state, closereason, closedat, hasdeliveries, deliveries[],
+      tid, downloadurl, canresend, page}],
+      hasresets, resets[{after, reason, by, at}], extra, canreset, resetsid, resetafter, continuitydefault,
+      canextratime}]
+    * hasotherstudents, otherstudents - [{userid, name}] students not in the list, for extra time before their
+      first discussion; othersearch - null, or {value, truncated} for the search over them
+    * firstpageurl, nexturl - paging
+
+    Example context (json):
+    {
+        "cmid": 12, "actionurl": "https://moodle.example.org/local/vektradiscuss/teacher.php?cmid=12", "sesskey": "x",
+        "canmanage": true, "canterminate": true, "expectedactive": 1,
+        "gate": {"opening": "6 November 2026, 11:34 PM (from the activity's close date)", "fallbackreason": null,
+            "fallbackmissing": false, "settingsurl": "https://moodle.example.org/course/modedit.php?update=12",
+            "activesessions": 1, "overrideholder": null},
+        "hasterminations": false, "terminations": [],
+        "hasstudents": true,
+        "students": [{"userid": 7, "name": "Student One",
+            "sessions": [{"n": 1, "state": "Closed", "closereason": "Finished by the student",
+                "closedat": "7 November 2026, 9:00 AM", "hasdeliveries": true, "tid": "aaaa-1",
+                "downloadurl": "https://moodle.example.org/local/vektradiscuss/teacher_transcript.php?cmid=12&tid=aaaa-1&sesskey=x",
+                "canresend": true, "page": "",
+                "deliveries": ["Round 1: sent (7 November 2026, 9:01 AM)"]}],
+            "hasresets": false, "resets": [], "extra": null, "canreset": true,
+            "resetsid": "0f8e7d6c-5b4a-4321-8fed-cba987654321", "resetafter": 1, "continuitydefault": false,
+            "canextratime": true}],
+        "hasotherstudents": true, "otherstudents": [{"userid": 8, "name": "Student Two"}], "othersearch": null,
+        "firstpageurl": null, "nexturl": null
+    }
+}}
+<div class="local-vektradiscuss-teacher" data-region="local_vektradiscuss-teacher">
+    <section class="card mb-3" aria-labelledby="local-vektradiscuss-gate-{{cmid}}">
+        <div class="card-body">
+            <h3 class="h5 card-title" id="local-vektradiscuss-gate-{{cmid}}">{{#str}}teacher_gate_heading, local_vektradiscuss{{/str}}</h3>
+            <dl class="row mb-0">
+                <dt class="col-sm-4">{{#str}}form_opening, local_vektradiscuss{{/str}}</dt>
+                <dd class="col-sm-8">{{gate.opening}}</dd>
+                <dt class="col-sm-4">{{#str}}teacher_active_sessions, local_vektradiscuss{{/str}}</dt>
+                <dd class="col-sm-8">{{gate.activesessions}}</dd>
+                {{#gate.overrideholder}}
+                <dt class="col-sm-4">{{#str}}teacher_override_holder, local_vektradiscuss{{/str}}</dt>
+                <dd class="col-sm-8">{{gate.overrideholder}}</dd>
+                {{/gate.overrideholder}}
+            </dl>
+            {{#gate.fallbackreason}}
+                <p class="alert alert-warning mt-3 mb-0">{{gate.fallbackreason}}
+                {{#gate.fallbackmissing}}
+                    <a href="{{gate.settingsurl}}">{{#str}}teacher_set_opening, local_vektradiscuss{{/str}}</a>
+                {{/gate.fallbackmissing}}
+                </p>
+            {{/gate.fallbackreason}}
+            {{#canterminate}}
+            <form method="post" action="{{actionurl}}" class="mt-3 border-top pt-3">
+                <input type="hidden" name="sesskey" value="{{sesskey}}">
+                <input type="hidden" name="action" value="terminate">
+                <input type="hidden" name="expected" value="{{expectedactive}}">
+                <h4 class="h6">{{#str}}teacher_terminate_heading, local_vektradiscuss{{/str}}</h4>
+                <p>{{#str}}teacher_terminate_confirm, local_vektradiscuss, {{expectedactive}}{{/str}}</p>
+                <div class="mb-2">
+                    <label for="local-vektradiscuss-terminate-reason-{{cmid}}">{{#str}}teacher_reason, local_vektradiscuss{{/str}}</label>
+                    <textarea class="form-control" id="local-vektradiscuss-terminate-reason-{{cmid}}" name="reason" rows="2" maxlength="1000" required></textarea>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="alsodisable" value="1" id="local-vektradiscuss-alsodisable-{{cmid}}">
+                    <label class="form-check-label" for="local-vektradiscuss-alsodisable-{{cmid}}">{{#str}}teacher_also_disable, local_vektradiscuss{{/str}}</label>
+                </div>
+                <button type="submit" class="btn btn-danger">{{#str}}teacher_terminate_button, local_vektradiscuss, {{expectedactive}}{{/str}}</button>
+            </form>
+            {{/canterminate}}
+        </div>
+    </section>
+
+    {{#hasterminations}}
+    <section class="mb-3" aria-labelledby="local-vektradiscuss-terminations-{{cmid}}">
+        <h3 class="h5" id="local-vektradiscuss-terminations-{{cmid}}">{{#str}}teacher_terminations_heading, local_vektradiscuss{{/str}}</h3>
+        <ul>
+            {{#terminations}}
+            <li>{{at}}, {{by}}: {{reason}} ({{#str}}teacher_termination_counts, local_vektradiscuss, { "closed": {{closed}}, "rolledback": {{rolledback}} }{{/str}}{{#disabled}}; {{#str}}teacher_termination_disabled, local_vektradiscuss{{/str}}{{/disabled}})</li>
+            {{/terminations}}
+        </ul>
+    </section>
+    {{/hasterminations}}
+
+    <section aria-labelledby="local-vektradiscuss-students-{{cmid}}">
+        <h3 class="h5" id="local-vektradiscuss-students-{{cmid}}">{{#str}}teacher_students_heading, local_vektradiscuss{{/str}}</h3>
+        {{^hasstudents}}
+            <p>{{#str}}teacher_no_sessions, local_vektradiscuss{{/str}}</p>
+        {{/hasstudents}}
+        {{#hasstudents}}
+        <p class="text-muted">{{#str}}teacher_student_notice, local_vektradiscuss{{/str}}</p>
+        <div class="table-responsive">
+        <table class="table table-striped generaltable">
+            <thead>
+                <tr>
+                    <th scope="col">{{#str}}teacher_col_student, local_vektradiscuss{{/str}}</th>
+                    <th scope="col">{{#str}}teacher_col_sessions, local_vektradiscuss{{/str}}</th>
+                    <th scope="col">{{#str}}teacher_col_resets, local_vektradiscuss{{/str}}</th>
+                    {{#canmanage}}<th scope="col">{{#str}}teacher_col_actions, local_vektradiscuss{{/str}}</th>{{/canmanage}}
+                </tr>
+            </thead>
+            <tbody>
+            {{#students}}
+                <tr data-userid="{{userid}}">
+                    <th scope="row">{{name}}{{#extra}}<br><small class="text-muted">{{extra}}</small>{{/extra}}</th>
+                    <td>
+                        <ul class="list-unstyled mb-0">
+                        {{#sessions}}
+                            <li><strong>#{{n}}</strong> {{state}}{{#closereason}}: {{closereason}}{{/closereason}}{{#closedat}} ({{closedat}}){{/closedat}}
+                                {{#downloadurl}}<a href="{{downloadurl}}" class="ms-1 ml-1">{{#str}}teacher_download, local_vektradiscuss, {{n}}{{/str}}</a>{{/downloadurl}}
+                                {{#canresend}}
+                                <form method="post" action="{{actionurl}}" class="d-inline">
+                                    <input type="hidden" name="sesskey" value="{{sesskey}}">
+                                    <input type="hidden" name="action" value="resend">
+                                    <input type="hidden" name="tid" value="{{tid}}">
+                                    <input type="hidden" name="page" value="{{page}}">
+                                    <button type="submit" class="btn btn-link btn-sm p-0 ms-1 ml-1">{{#str}}teacher_resend, local_vektradiscuss, {{n}}{{/str}}</button>
+                                </form>
+                                {{/canresend}}
+                                {{#hasdeliveries}}
+                                <ul class="mb-1">{{#deliveries}}<li><small>{{.}}</small></li>{{/deliveries}}</ul>
+                                {{/hasdeliveries}}
+                            </li>
+                        {{/sessions}}
+                        </ul>
+                    </td>
+                    <td>
+                        {{#hasresets}}
+                        <ul class="list-unstyled mb-0">
+                            {{#resets}}<li>{{#str}}teacher_reset_line, local_vektradiscuss, { "after": {{after}} }{{/str}} {{at}}, {{by}}: {{reason}}</li>{{/resets}}
+                        </ul>
+                        {{/hasresets}}
+                    </td>
+                    {{#canmanage}}
+                    <td>
+                        {{#canreset}}
+                        <form method="post" action="{{actionurl}}" class="mb-2">
+                            <input type="hidden" name="sesskey" value="{{sesskey}}">
+                            <input type="hidden" name="action" value="reset">
+                            <input type="hidden" name="sid" value="{{resetsid}}">
+                            <label for="local-vektradiscuss-reset-{{userid}}" class="small">{{#str}}teacher_reset_reason, local_vektradiscuss, {{resetafter}}{{/str}}</label>
+                            <textarea class="form-control form-control-sm" id="local-vektradiscuss-reset-{{userid}}" name="reason" rows="2" maxlength="1000" required></textarea>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="includeprevious" value="1" id="local-vektradiscuss-continuity-{{userid}}" {{#continuitydefault}}checked{{/continuitydefault}}>
+                                <label class="form-check-label small" for="local-vektradiscuss-continuity-{{userid}}">{{#str}}teacher_reset_continuity, local_vektradiscuss{{/str}}</label>
+                            </div>
+                            <button type="submit" class="btn btn-secondary btn-sm mt-1">{{#str}}teacher_reset_button, local_vektradiscuss{{/str}}</button>
+                        </form>
+                        {{/canreset}}
+                        {{#canextratime}}
+                        <form method="post" action="{{actionurl}}">
+                            <input type="hidden" name="sesskey" value="{{sesskey}}">
+                            <input type="hidden" name="action" value="extratime">
+                            <input type="hidden" name="userid" value="{{userid}}">
+                            <label for="local-vektradiscuss-extra-{{userid}}" class="small">{{#str}}teacher_extratime, local_vektradiscuss{{/str}}</label>
+                            <div class="input-group input-group-sm">
+                                <input class="form-control" type="number" min="0" max="240" id="local-vektradiscuss-extra-{{userid}}" name="value" required>
+                                <select class="form-select custom-select" name="unit" aria-label="{{#str}}teacher_extratime_unit, local_vektradiscuss{{/str}}">
+                                    <option value="minutes">{{#str}}teacher_extratime_minutes, local_vektradiscuss{{/str}}</option>
+                                    <option value="percent">{{#str}}teacher_extratime_percent, local_vektradiscuss{{/str}}</option>
+                                </select>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="confirm" value="1" id="local-vektradiscuss-confirm-{{userid}}">
+                                <label class="form-check-label small" for="local-vektradiscuss-confirm-{{userid}}">{{#str}}teacher_extratime_confirm, local_vektradiscuss{{/str}}</label>
+                            </div>
+                            <button type="submit" class="btn btn-secondary btn-sm mt-1">{{#str}}teacher_extratime_button, local_vektradiscuss{{/str}}</button>
+                        </form>
+                        {{/canextratime}}
+                    </td>
+                    {{/canmanage}}
+                </tr>
+            {{/students}}
+            </tbody>
+        </table>
+        </div>
+        {{/hasstudents}}
+        {{#othersearch}}
+        <form method="get" action="{{actionurl}}" class="mb-2" role="search">
+            <input type="hidden" name="cmid" value="{{cmid}}">
+            <label for="local-vektradiscuss-extra-search-{{cmid}}" class="small">{{#str}}teacher_extratime_search, local_vektradiscuss{{/str}}</label>
+            <div class="input-group input-group-sm">
+                <input class="form-control" type="search" id="local-vektradiscuss-extra-search-{{cmid}}" name="q" value="{{value}}">
+                <button type="submit" class="btn btn-secondary">{{#str}}search{{/str}}</button>
+            </div>
+            {{#truncated}}<p class="small text-muted mb-0">{{#str}}teacher_extratime_truncated, local_vektradiscuss{{/str}}</p>{{/truncated}}
+        </form>
+        {{/othersearch}}
+        {{#hasotherstudents}}
+        <form method="post" action="{{actionurl}}" class="card card-body mb-3">
+            <input type="hidden" name="sesskey" value="{{sesskey}}">
+            <input type="hidden" name="action" value="extratime">
+            <h4 class="h6">{{#str}}teacher_extratime_before, local_vektradiscuss{{/str}}</h4>
+            <div class="row">
+                <div class="col-sm-5">
+                    <label for="local-vektradiscuss-extra-student-{{cmid}}" class="small">{{#str}}teacher_col_student, local_vektradiscuss{{/str}}</label>
+                    <select class="form-select custom-select" id="local-vektradiscuss-extra-student-{{cmid}}" name="userid">
+                        {{#otherstudents}}<option value="{{userid}}">{{name}}</option>{{/otherstudents}}
+                    </select>
+                </div>
+                <div class="col-sm-4">
+                    <label for="local-vektradiscuss-extra-value-{{cmid}}" class="small">{{#str}}teacher_extratime, local_vektradiscuss{{/str}}</label>
+                    <div class="input-group">
+                        <input class="form-control" type="number" min="0" max="240" id="local-vektradiscuss-extra-value-{{cmid}}" name="value" required>
+                        <select class="form-select custom-select" name="unit" aria-label="{{#str}}teacher_extratime_unit, local_vektradiscuss{{/str}}">
+                            <option value="minutes">{{#str}}teacher_extratime_minutes, local_vektradiscuss{{/str}}</option>
+                            <option value="percent">{{#str}}teacher_extratime_percent, local_vektradiscuss{{/str}}</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="form-check mt-2">
+                <input class="form-check-input" type="checkbox" name="confirm" value="1" id="local-vektradiscuss-extra-confirm-{{cmid}}">
+                <label class="form-check-label small" for="local-vektradiscuss-extra-confirm-{{cmid}}">{{#str}}teacher_extratime_confirm, local_vektradiscuss{{/str}}</label>
+            </div>
+            <div><button type="submit" class="btn btn-secondary btn-sm mt-2">{{#str}}teacher_extratime_button, local_vektradiscuss{{/str}}</button></div>
+        </form>
+        {{/hasotherstudents}}
+        <nav aria-label="{{#str}}teacher_paging, local_vektradiscuss{{/str}}">
+            {{#firstpageurl}}<a class="btn btn-link" href="{{firstpageurl}}">{{#str}}teacher_first_page, local_vektradiscuss{{/str}}</a>{{/firstpageurl}}
+            {{#nexturl}}<a class="btn btn-link" href="{{nexturl}}">{{#str}}teacher_next_page, local_vektradiscuss{{/str}}</a>{{/nexturl}}
+        </nav>
+    </section>
+</div>

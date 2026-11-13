@@ -123,6 +123,53 @@ final class assess_client_test extends \advanced_testcase {
     }
 
     /**
+     * Extra X-Assess-* headers (the teacher routes' actor, course and type) are sent as given, next to the key.
+     */
+    public function test_extra_assess_headers_are_sent(): void {
+        $this->transport->respond(200, ['ok' => true]);
+        $this->client()->request('GET', '/api/v1/assess/activities/5/config', [], null, 'teacher', [
+            'headers' => ['X-Assess-Actor' => 12, 'X-Assess-Course' => '2', 'X-Assess-Activity-Type' => 'quiz'],
+        ]);
+        $map = $this->transport->header_map(0);
+        $this->assertSame('12', $map['x-assess-actor']);
+        $this->assertSame('2', $map['x-assess-course']);
+        $this->assertSame('quiz', $map['x-assess-activity-type']);
+        $this->assertSame('Bearer ' . self::TEACHERKEY, $map['authorization']);
+    }
+
+    /**
+     * Only X-Assess-* names and single-line printable values: no header can be replaced or injected, and a
+     * refused header sends nothing.
+     *
+     * @dataProvider bad_header_provider
+     * @param array $headers
+     */
+    public function test_bad_extra_headers_are_refused_without_call(array $headers): void {
+        try {
+            $this->client()->request('GET', '/api/v1/assess/activities/5/config', [], null, 'teacher', ['headers' => $headers]);
+            $this->fail('coding_exception expected');
+        } catch (\coding_exception $e) {
+            $this->assertSame([], $this->transport->calls);
+        }
+    }
+
+    /**
+     * Headers that must be refused.
+     *
+     * @return array
+     */
+    public static function bad_header_provider(): array {
+        return [
+            'authorization' => [['Authorization' => 'Bearer other']],
+            'other prefix' => [['X-Vektra-Plugin-Version' => '9.9']],
+            'crlf value' => [['X-Assess-Actor' => "12\r\nX-Evil: 1"]],
+            'numeric name' => [[0 => 'x']],
+            'final newline in a value' => [['X-Assess-Actor' => "12\n"]],
+            'final newline in a name' => [["X-Assess-Actor\n" => '12']],
+        ];
+    }
+
+    /**
      * The X-Vektra-Plugin-Version header is on every request, with the release from version.php.
      */
     public function test_plugin_version_header_on_every_request(): void {
@@ -236,6 +283,7 @@ final class assess_client_test extends \advanced_testcase {
             'encoded traversal' => ['/api/v1/assess/%2e%2e/admin'],
             'query smuggled in path' => ['/api/v1/assess/x?token=1'],
             'newline' => ["/api/v1/assess/x\r\nX-Evil: 1"],
+            'final newline' => ["/api/v1/assess/x\n"],
             'double slash' => ['/api/v1/assess//x'],
             'encoded traversal 1' => ['/api/v1/assess/..%2f..%2fadmin'],
             'encoded traversal 2' => ['/api/v1/assess/%2e%2e%2fadmin'],

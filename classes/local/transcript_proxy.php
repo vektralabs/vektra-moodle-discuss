@@ -36,10 +36,10 @@ use local_vektradiscuss\local\http\assess_response;
  */
 final class transcript_proxy {
     /** @var string Transcript id: Vektra's session id (a UUID), checked loosely. */
-    public const TID_PATTERN = '/^[A-Za-z0-9-]{1,64}$/';
+    public const TID_PATTERN = '/^[A-Za-z0-9-]{1,64}\z/';
 
     /** @var string BR-016 file name: <course-shortname>_<activity-id>_<user-id>_s<N>_<yyyymmdd>.html. */
-    public const FILENAME_PATTERN = '/^[A-Za-z0-9-]+_\d+_\d+_s\d+_\d{8}\.html$/';
+    public const FILENAME_PATTERN = '/^[A-Za-z0-9-]+_\d+_\d+_s\d+_\d{8}\.html\z/';
 
     /** @var string Result: bytes forwarded. */
     public const OK = 'ok';
@@ -52,6 +52,9 @@ final class transcript_proxy {
 
     /** @var string Result: the transfer broke after the first byte (the browser sees a short download). */
     public const TRUNCATED = 'truncated';
+
+    /** @var string Vektra's role check of the grader was stale: a retry after a few seconds may pass. */
+    public const STALE = 'stale';
 
     /** @var int Upper bound of a token's length. */
     private const MAX_TOKEN_LENGTH = 4096;
@@ -91,6 +94,32 @@ final class transcript_proxy {
      * @return array [result, token|null]: result OK with the token, NOT_READY or FAILED with null.
      */
     public function mint_own(int $userid, string $tid): array {
+        return $this->mint($tid, ['sub' => $userid], 'mint');
+    }
+
+    /**
+     * Mint a single-use download token for a grader (assess:teacher key, actor_userid = the teacher).
+     *
+     * Vektra checks that the actor grades the transcript's activity; the caller has checked that the
+     * transcript belongs to the activity whose capability it checked.
+     *
+     * @param int $actorid The teacher.
+     * @param string $tid
+     * @return array [result, token|null]: result OK with the token, NOT_READY or FAILED with null.
+     */
+    public function mint_grader(int $actorid, string $tid): array {
+        return $this->mint($tid, ['actor_userid' => $actorid], 'teacher');
+    }
+
+    /**
+     * POST download-token with a key role and its body.
+     *
+     * @param string $tid
+     * @param array $body
+     * @param string $keyrole
+     * @return array [result, token|null]
+     */
+    private function mint(string $tid, array $body, string $keyrole): array {
         if (!self::valid_tid($tid)) {
             return [self::FAILED, null];
         }
@@ -98,11 +127,14 @@ final class transcript_proxy {
             'POST',
             '/api/v1/assess/transcripts/' . $tid . '/download-token',
             [],
-            ['sub' => $userid],
-            'mint'
+            $body,
+            $keyrole
         );
         if (!$response->ok()) {
             self::log_failure('download-token', $response);
+            if (teacher_api::role_refusal($response) === 'stale') {
+                return [self::STALE, null];
+            }
             return [$response->status === 404 && $response->errorcode === 'ERR-ASSESS-017' ? self::NOT_READY : self::FAILED, null];
         }
         $token = $response->json['token'] ?? null;
@@ -125,9 +157,18 @@ final class transcript_proxy {
      * @param callable $header fn(string $line): sends one response header.
      * @param callable $emit fn(string $chunk): sends body bytes.
      * @param int $maxbytes Body size limit (0: the client's limit); it can only lower that limit.
+     * @param string $label Added to the fallback file name ('' for none).
      * @return string OK, NOT_READY, FAILED or TRUNCATED.
      */
-    public function stream(string $tid, string $token, int $n, callable $header, callable $emit, int $maxbytes = 0): string {
+    public function stream(
+        string $tid,
+        string $token,
+        int $n,
+        callable $header,
+        callable $emit,
+        int $maxbytes = 0,
+        string $label = ''
+    ): string {
         if (!self::valid_tid($tid)) {
             return self::FAILED;
         }
@@ -135,8 +176,8 @@ final class transcript_proxy {
         $response = $this->client->stream(
             '/api/v1/assess/transcripts/' . $tid,
             $token,
-            function (int $status, array $headers) use (&$started, $header, $n): void {
-                foreach (self::headers($headers, $n) as $line) {
+            function (int $status, array $headers) use (&$started, $header, $n, $label): void {
+                foreach (self::headers($headers, $n, $label) as $line) {
                     $header($line);
                 }
                 $started = true;
@@ -159,16 +200,61 @@ final class transcript_proxy {
     }
 
     /**
+     * Stream a transcript to the browser.
+     *
+     * Once the transfer starts (a refusal page rendered afterwards still needs them otherwise), Moodle's output
+     * buffers and zlib compression are turned off, so the body goes out
+     * as it arrives with Vektra's Content-Length, and no debugging notice is written into the file (it still
+     * reaches the log). Inline because disable_output_buffering() is deprecated since Moodle 4.5.
+     *
+     * @param string $tid
+     * @param string $token
+     * @param int $n
+     * @param string $label Added to the fallback file name (a grader download: the student's user id).
+     * @return string OK, NOT_READY, FAILED or TRUNCATED.
+     */
+    public function send(string $tid, string $token, int $n, string $label = ''): string {
+        $started = false;
+        return $this->stream(
+            $tid,
+            $token,
+            $n,
+            function (string $line) use (&$started): void {
+                global $CFG;
+                if (!$started) {
+                    $started = true;
+                    if (ini_get_bool('zlib.output_compression')) {
+                        ini_set('zlib.output_compression', 'Off');
+                    }
+                    while (ob_get_level() > 0 && ob_end_clean()) {
+                        continue;
+                    }
+                    $CFG->debugdisplay = 0;
+                }
+                header($line);
+            },
+            function (string $chunk): void {
+                echo $chunk;
+                flush();
+            },
+            0,
+            $label
+        );
+    }
+
+    /**
      * The response headers the plugin sends: its own, never Vektra's, except a validated name and length.
      *
      * @param array $vektra Vektra's response headers, lower-case names.
      * @param int $n Session number, for the fallback file name.
+     * @param string $label Added to the fallback file name ('' for none).
      * @return string[]
      */
-    public static function headers(array $vektra, int $n): array {
+    public static function headers(array $vektra, int $n, string $label = ''): array {
         $name = self::filename((string) ($vektra['content-disposition'] ?? ''));
         if ($name === null) {
-            $name = 'transcript_s' . max(1, $n) . '.html';
+            // The label (a grader download: the student's user id) keeps files of different students apart.
+            $name = 'transcript_' . ($label !== '' ? $label . '_' : '') . 's' . max(1, $n) . '.html';
         }
         $lines = [
             'Content-Type: text/html; charset=utf-8',
@@ -180,7 +266,7 @@ final class transcript_proxy {
         ];
         $length = (string) ($vektra['content-length'] ?? '');
         $encoding = strtolower(trim((string) ($vektra['content-encoding'] ?? 'identity')));
-        if (preg_match('/^\d{1,9}$/', $length) && ($encoding === '' || $encoding === 'identity')) {
+        if (preg_match('/^\d{1,9}\z/', $length) && ($encoding === '' || $encoding === 'identity')) {
             // Lets the browser tell a broken transfer from a complete one.
             $lines[] = 'Content-Length: ' . $length;
         }

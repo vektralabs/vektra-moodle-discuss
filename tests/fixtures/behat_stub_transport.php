@@ -46,6 +46,9 @@ class behat_stub_transport implements transport {
     /** @var string Config name prefix of a transcript fixture (suffix: tid): {owner, filename, body}. */
     public const TRANSCRIPT = 'behatstubtranscript_';
 
+    /** @var string Config name prefix of a teacher-route fixture (suffix: method_route_cmid): {status, body}. */
+    public const ROUTE = 'behatstubroute_';
+
     /** @var string Download token prefix; the tid travels in it, as the binding does in Vektra. */
     private const DOWNLOAD_PREFIX = 'stubdl.';
 
@@ -126,7 +129,70 @@ class behat_stub_transport implements transport {
             }
             return self::json((int) ($fixture['status'] ?? 200), $fixture['body'] ?? []);
         }
+        $route = self::teacher_route($path);
+        if ($route !== null) {
+            [$name, $cmid] = $route;
+            $fixture = json_decode(
+                (string) get_config(self::COMPONENT, self::ROUTE . strtolower($method) . '_' . $name . '_' . $cmid),
+                true
+            );
+            if (is_array($fixture)) {
+                return self::json((int) ($fixture['status'] ?? 200), $fixture['body'] ?? []);
+            }
+            return self::json(200, self::teacher_default($method, $name, $cmid, $body));
+        }
         return self::json(404, ['error' => ['code' => 'ERR-STUB-404', 'message' => 'not stubbed']]);
+    }
+
+    /**
+     * The teacher route of a path: [name, cmid], or null.
+     *
+     * @param string $path
+     * @return array|null
+     */
+    public static function teacher_route(string $path): ?array {
+        $routes = [
+            'config' => '#^/api/v1/assess/activities/(\d+)/config$#',
+            'opening-fallback' => '#^/api/v1/assess/activities/(\d+)/opening-fallback$#',
+            'sessions' => '#^/api/v1/assess/activities/(\d+)/sessions$#',
+            'reset' => '#^/api/v1/assess/activities/(\d+)/sessions/[0-9a-f-]+/reset$#',
+            'terminate' => '#^/api/v1/assess/activities/(\d+)/terminate$#',
+            'extra-time' => '#^/api/v1/assess/activities/(\d+)/students/\d+/extra-time$#',
+        ];
+        foreach ($routes as $name => $pattern) {
+            if (preg_match($pattern, $path, $m)) {
+                return [$name, (int) $m[1]];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * What Vektra answers on a teacher route when the scenario fixed nothing.
+     *
+     * @param string $method
+     * @param string $name
+     * @param int $cmid
+     * @param string|null $body
+     * @return array
+     */
+    private static function teacher_default(string $method, string $name, int $cmid, ?string $body): array {
+        $view = ['cmid' => $cmid, 'activity_type' => 'quiz', 'version' => 1, 'configured' => true, 'enabled' => false,
+            'cap_minutes' => 30, 'rubric_source' => 'none', 'show_solution' => false, 'rag_enabled' => false,
+            'available_until' => null, 'solution_state' => 'impostata', 'pasted_rubric_state' => 'non impostata',
+            'transcript_recipients_state' => 'impostata', 'transcript_recipients_count' => 1,
+            'opening' => ['at' => '2026-01-10T10:00:00+00:00', 'source' => 'activity_close', 'fallback_required' => false],
+            'warnings' => ['available_until_not_after_opening' => false, 'review_options_hide_content' => false],
+            'active_sessions' => 0, 'updated_at' => null];
+        if ($name === 'config') {
+            return $method === 'PUT' ? ['version' => 2] + $view : $view;
+        }
+        if ($name === 'sessions') {
+            return ['students' => [], 'next_cursor' => null, 'terminations' => [],
+                'gate' => ['opening' => $view['opening'], 'fallback_reason' => null, 'fallback_date_missing' => false,
+                    'active_sessions' => 0]];
+        }
+        return [];
     }
 
     /**

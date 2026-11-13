@@ -23,7 +23,9 @@
     * items - statements, each with text
     * hasrecipients, recipients - transcript recipients (role, name)
     * hasfiles, files - submitted files (name, status)
-    * privacysummary, privacyurl, privacyversion - privacy summary and notice link
+    * privacysummary, privacymailbox, privacylegalbasis, privacyretention, privacyurl, privacyversion - Vektra's
+      privacy block (REQ-089): summary (or the plugin's sentence and the mailbox notice), legal basis, retention,
+      notice link and the version shown
     * startlabel, cancellabel - action labels
 
     Example context (json):
@@ -34,6 +36,9 @@
         "hasfiles": true,
         "files": [{"name": "report.pdf", "status": "readable"}],
         "privacysummary": "The conversation is processed by the Vektra assessment service.",
+        "privacymailbox": null,
+        "privacylegalbasis": "Legal basis: public interest task (assessment)",
+        "privacyretention": "Kept for 30 days",
         "privacyurl": "https://vektra.example.test/privacy",
         "privacyversion": "2026-11",
         "startlabel": "Start",
@@ -65,6 +70,11 @@
     {{/hasfiles}}
     <p>
         {{privacysummary}}
+        {{#privacymailbox}} {{privacymailbox}}{{/privacymailbox}}
+    </p>
+    {{#privacylegalbasis}}<p class="mb-1">{{privacylegalbasis}}</p>{{/privacylegalbasis}}
+    {{#privacyretention}}<p class="mb-1">{{privacyretention}}</p>{{/privacyretention}}
+    <p>
         {{#privacyurl}}
             <a href="{{privacyurl}}" target="_blank" rel="noopener noreferrer">{{#str}}pre_privacy_link, local_vektradiscuss{{/str}}</a>{{#privacyversion}} ({{#str}}pre_privacy_version, local_vektradiscuss, {{privacyversion}}{{/str}}){{/privacyversion}}
         {{/privacyurl}}

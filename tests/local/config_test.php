@@ -142,7 +142,7 @@ final class config_test extends \advanced_testcase {
      */
     public function test_unknown_role(): void {
         $this->expectException(\coding_exception::class);
-        (new config())->key('privacy_export');
+        (new config())->key('no_such_role');
     }
 
     /**
