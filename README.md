@@ -148,8 +148,13 @@ Targets Moodle **4.3 (403)** and **5.2 (502)**, matching the Vektra fleet.
 
 Release 0.2.0 needs a Vektra that accepts `privacy_notice_version` in the mint body and `cmid` in the
 download-token and resend bodies, and checks the transcript against that activity (vektra-stack #211 and
-#212). Upgrade Vektra first: an older one refuses these fields, and the plugin no longer checks a
-transcript's activity itself.
+#212). Deploy in this order:
+
+1. Vektra with #211 and #212: an older one refuses these fields, and the plugin no longer checks a
+   transcript's activity itself.
+2. This plugin, release 0.2.0.
+3. Vektra with #216, which requires plugin 0.2.0 or later (an older plugin gets `403 ERR-ASSESS-016` at
+   the mint) and refuses a download-token or resend body without `cmid` (`400 ERR-ASSESS-014`).
 
 ## Moodle LMS provider (`provider/`)
 
