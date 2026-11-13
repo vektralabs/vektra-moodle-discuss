@@ -146,15 +146,12 @@ version is lower than the one in `version.php` `dependencies`. A release tag mus
 
 Targets Moodle **4.3 (403)** and **5.2 (502)**, matching the Vektra fleet.
 
-Release 0.2.0 needs a Vektra that accepts `privacy_notice_version` in the mint body and `cmid` in the
-download-token and resend bodies, and checks the transcript against that activity (vektra-stack #211 and
-#212). Deploy in this order:
+Release 0.2.0 pairs with Vektra 0.9.0, the first Vektra release with the assessment discussion. For this
+first installation, install both: the order does not matter while no student has an active session.
 
-1. Vektra with #211 and #212: an older one refuses these fields, and the plugin no longer checks a
-   transcript's activity itself.
-2. This plugin, release 0.2.0.
-3. Vektra with #216, which requires plugin 0.2.0 or later (an older plugin gets `403 ERR-ASSESS-016` at
-   the mint) and refuses a download-token or resend body without `cmid` (`400 ERR-ASSESS-014`).
+Later releases follow one rule when Vektra makes a new request field mandatory: first a Vektra release that
+accepts it as optional, then the plugin release that sends it, then the Vektra release that requires it.
+Vektra refuses a plugin older than its minimum version at the mint (`403 ERR-ASSESS-016`).
 
 ## Moodle LMS provider (`provider/`)
 
