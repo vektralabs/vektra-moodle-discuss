@@ -137,12 +137,19 @@ class privacy_api {
         $activities = [];
         foreach ($this->pages(self::activities_path($userid)) as $json) {
             foreach (self::list_of($json, 'items') as $item) {
-                if ($keep === null || $keep(self::cmid_of($item))) {
-                    $activities[] = self::activity($item);
+                $cmid = self::cmid_of($item);
+                if (array_key_exists($cmid, $activities)) {
+                    // One entry per activity: a repeated one would overwrite the first in the export.
+                    throw new \moodle_exception('privacy_export_failed', self::C);
+                }
+                if ($keep === null || $keep($cmid)) {
+                    $activities[$cmid] = self::activity($item);
+                } else {
+                    $activities[$cmid] = null;
                 }
             }
         }
-        return $activities;
+        return array_values(array_filter($activities));
     }
 
     /**
@@ -150,23 +157,29 @@ class privacy_api {
      *
      * @param int $userid
      * @param callable|null $keep fn(int $cmid): bool, the activities to export (null: all).
+     * @param array|null $damaged When given, a transcript whose bytes do not match its hash is collected here
+     *     ({transcript_id, cmid}) instead of failing the read, so that the caller can export everything else.
      * @return array[] {transcript_id, cmid, course_id, session_no, closed_at, filename, sha256, bytes}
      * @throws \moodle_exception
      */
-    public function subject_transcripts(int $userid, ?callable $keep = null): array {
+    public function subject_transcripts(int $userid, ?callable $keep = null, ?array &$damaged = null): array {
         $items = [];
         foreach ($this->pages('/api/v1/assess/privacy/subjects/' . $userid . '/transcripts') as $json) {
             foreach (self::list_of($json, 'items') as $item) {
                 // Only the selected activities' files are decoded and hash-checked: a damaged file of another
-                // activity must not block an export it is not part of.
-                if (!is_array($item) || !is_int($item['cmid'] ?? null) || $item['cmid'] <= 0) {
-                    // A malformed entry fails the export; it never silently drops a file.
-                    throw new \moodle_exception('privacy_export_failed', self::C);
-                }
-                if ($keep !== null && !$keep($item['cmid'])) {
+                // activity must not block an export it is not part of. A malformed entry fails the read.
+                $cmid = self::cmid_of($item);
+                if ($keep !== null && !$keep($cmid)) {
                     continue;
                 }
-                $items[] = self::transcript($item);
+                try {
+                    $items[] = self::transcript($item);
+                } catch (\moodle_exception $e) {
+                    if ($damaged === null || $e->errorcode !== 'privacy_export_hash') {
+                        throw $e;
+                    }
+                    $damaged[] = ['transcript_id' => $item['transcript_id'], 'cmid' => $cmid];
+                }
             }
         }
         return $items;
@@ -253,12 +266,16 @@ class privacy_api {
         }
         $extra = $item['extra_seconds'] ?? null;
         $purged = $item['purged_sessions'] ?? null;
-        if (($extra !== null && !is_int($extra)) || !is_int($purged) || $purged < 0) {
+        $course = $item['course_id'] ?? null;
+        if (
+            ($extra !== null && (!is_int($extra) || $extra < 0)) || !is_int($purged) || $purged < 0
+                || ($course !== null && (!is_int($course) || $course <= 0))
+        ) {
             throw new \moodle_exception('privacy_export_failed', self::C);
         }
         return [
             'cmid' => $cmid,
-            'course_id' => is_int($item['course_id'] ?? null) ? $item['course_id'] : null,
+            'course_id' => $course,
             'sessions' => $sessions,
             'resets' => $resets,
             'extra_seconds' => $extra,
@@ -485,7 +502,8 @@ class privacy_api {
     private static function transcript($item): array {
         if (
             !is_array($item) || !is_int($item['cmid'] ?? null) || !is_string($item['sha256'] ?? null)
-                || !is_string($item['content_base64'] ?? null)
+                || !is_string($item['content_base64'] ?? null) || !is_string($item['transcript_id'] ?? null)
+                || !transcript_proxy::valid_tid($item['transcript_id'])
         ) {
             throw new \moodle_exception('privacy_export_failed', self::C);
         }
@@ -498,7 +516,7 @@ class privacy_api {
         $filename = is_string($item['filename'] ?? null) && preg_match(transcript_proxy::FILENAME_PATTERN, $item['filename'])
             ? $item['filename'] : 'transcript_' . $item['cmid'] . '_s' . $n . '.html';
         return [
-            'transcript_id' => is_string($item['transcript_id'] ?? null) ? $item['transcript_id'] : '',
+            'transcript_id' => $item['transcript_id'],
             'cmid' => $item['cmid'],
             'course_id' => is_int($item['course_id'] ?? null) ? $item['course_id'] : 0,
             'session_no' => $n,

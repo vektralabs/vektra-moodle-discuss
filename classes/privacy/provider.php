@@ -38,10 +38,9 @@ use local_vektradiscuss\local\privacy_api;
  * Vektra lists every activity where it holds a row of the person that an erasure would remove (vektra-stack
  * #215). Export writes, per activity, the sessions with their turns (or why they are missing), the new
  * sessions granted, the extra time, the retention tombstones and the technical record counts, and each
- * transcript's exact bytes, checked against the hash Vektra reports. Content that cannot be exported is
- * named in an exception after everything else is written. Deletion asks Vektra to erase (the whole person
- * when the request covers every listed activity, otherwise activity by activity), then reads the list back
- * to verify that nothing is left.
+ * transcript's exact bytes, checked against the hash Vektra reports. A damaged transcript, or content that
+ * cannot be exported, is named in an exception after everything else is written. Deletion asks Vektra to
+ * erase activity by activity (see erase_person()), then reads the list back to verify that nothing is left.
  *
  * Failures throw a moodle_exception with an explicit message (a missing key, Vektra failing or still
  * erasing, data still found, data kept as exam evidence). Moodle's privacy manager catches it
@@ -122,8 +121,11 @@ class provider implements
     /**
      * Export a person's data per context: each activity's record, and the transcripts' exact bytes.
      *
+     * Everything that can be exported is written first; then a damaged transcript, or content Vektra cannot
+     * export, fails the request with an explicit message (the DPO is notified).
+     *
      * @param approved_contextlist $contextlist
-     * @throws \moodle_exception After writing everything else, when some content could not be exported.
+     * @throws \moodle_exception
      */
     public static function export_user_data(approved_contextlist $contextlist): void {
         if (!$contextlist->count() || !self::api()->in_use()) {
@@ -131,44 +133,40 @@ class provider implements
         }
         $userid = (int) $contextlist->get_user()->id;
         $approved = array_map('intval', $contextlist->get_contextids());
-        $keep = fn(int $cmid): bool => in_array((int) self::context_of($cmid, $userid)->id, $approved, true);
+        $kept = [];
+        $keep = function (int $cmid) use (&$kept, $approved, $userid): bool {
+            return $kept[$cmid] ??= in_array((int) self::context_of($cmid, $userid)->id, $approved, true);
+        };
         $activities = self::api()->subject_activities($userid, $keep);
-        $wanted = [];
-        foreach ($activities as $activity) {
-            foreach ($activity['sessions'] as $session) {
-                if ($session['transcript_id'] !== null) {
-                    $wanted[$session['transcript_id']] = true;
-                }
-            }
-        }
+        $damaged = [];
+        // Every transcript of the approved activities, even one whose session is no longer listed.
         $transcripts = [];
-        if ($wanted) {
-            foreach (self::api()->subject_transcripts($userid, $keep) as $item) {
-                $transcripts[$item['transcript_id']] = $item;
-            }
+        foreach (self::api()->subject_transcripts($userid, $keep, $damaged) as $item) {
+            $transcripts[$item['transcript_id']] = $item;
         }
-        $missing = [];
         $path = get_string('privacy:path', 'local_vektradiscuss');
+        foreach ($transcripts as $item) {
+            $subcontext = [$path, get_string('privacy:session', 'local_vektradiscuss', (object) [
+                'cmid' => $item['cmid'],
+                'n' => $item['session_no'],
+            ])];
+            writer::with_context(self::context_of($item['cmid'], $userid))
+                ->export_data($subcontext, (object) [
+                    'cmid' => $item['cmid'],
+                    'courseid' => $item['course_id'],
+                    'session' => $item['session_no'],
+                    'closed' => $item['closed_at'],
+                    'sha256' => $item['sha256'],
+                ])
+                ->export_custom_file($subcontext, $item['filename'], $item['bytes']);
+        }
+        $damagedids = array_column($damaged, 'transcript_id');
+        $missing = [];
         foreach ($activities as $activity) {
-            $context = self::context_of($activity['cmid'], $userid);
             $sessions = [];
             foreach ($activity['sessions'] as $session) {
-                $transcript = $session['transcript_id'] !== null ? ($transcripts[$session['transcript_id']] ?? null) : null;
-                if ($transcript !== null) {
-                    $subcontext = [$path, get_string('privacy:session', 'local_vektradiscuss', (object) [
-                        'cmid' => $activity['cmid'],
-                        'n' => $session['session_no'],
-                    ])];
-                    writer::with_context($context)
-                        ->export_data($subcontext, (object) [
-                            'cmid' => $transcript['cmid'],
-                            'courseid' => $transcript['course_id'],
-                            'session' => $transcript['session_no'],
-                            'closed' => $transcript['closed_at'],
-                            'sha256' => $transcript['sha256'],
-                        ])
-                        ->export_custom_file($subcontext, $transcript['filename'], $transcript['bytes']);
-                } else if ($session['transcript_id'] !== null) {
+                $tid = $session['transcript_id'];
+                if ($tid !== null && !isset($transcripts[$tid]) && !in_array($tid, $damagedids, true)) {
                     $missing['transcript_missing'] = true;
                 }
                 if (!in_array($session['turns_unavailable'], [null, 'transcript_purged'], true)) {
@@ -181,12 +179,12 @@ class provider implements
                     'created' => $session['created_at'],
                     'deadline' => $session['deadline_at'],
                     'closed' => $session['closed_at'],
-                    'transcript' => $transcript['filename'] ?? null,
+                    'transcript' => $tid !== null ? ($transcripts[$tid]['filename'] ?? null) : null,
                     'turns' => $session['turns'],
                     'turnsunavailable' => $session['turns_unavailable'],
                 ];
             }
-            writer::with_context($context)->export_data(
+            writer::with_context(self::context_of($activity['cmid'], $userid))->export_data(
                 [$path, get_string('privacy:activity', 'local_vektradiscuss', $activity['cmid'])],
                 (object) [
                     'cmid' => $activity['cmid'],
@@ -200,8 +198,12 @@ class provider implements
                 ]
             );
         }
+        if ($damaged) {
+            // Never export bytes that are not the stored transcript; everything else is written.
+            throw new \moodle_exception('privacy_export_hash', 'local_vektradiscuss');
+        }
         if ($missing) {
-            // Everything else is written; the DPO is told what is missing (a pending transcript: run it again).
+            // The DPO is told what is missing (a pending transcript: run the request again later).
             $reasons = implode(', ', array_keys($missing));
             throw new \moodle_exception('privacy_export_incomplete', 'local_vektradiscuss', '', $reasons);
         }
@@ -286,8 +288,10 @@ class provider implements
      * Erase a person's data in the approved activities and, with the user context, in the activities deleted
      * from Moodle; then verify with the person's activity list.
      *
-     * When the targets cover every activity Vektra lists for the person, one subject-wide erasure; otherwise
-     * activity by activity, so that an activity the request did not approve is never reached.
+     * Always activity by activity, never subject-wide: Vektra's activity erasures remove the same rows, and a
+     * subject-wide erasure could reach an activity where the person started a session after the list was
+     * read, which the request did not approve. Every approved activity gets its erasure, even one the list
+     * does not show, so that data kept as exam evidence is reported rather than skipped.
      *
      * @param privacy_api $api
      * @param int $userid
@@ -296,24 +300,19 @@ class provider implements
      */
     private static function erase_person(privacy_api $api, int $userid, array $cmids, bool $usercontext): void {
         $api->require_erase_key();
-        $listed = $api->subject_cmids($userid);
         $targets = $cmids;
         if ($usercontext) {
-            foreach ($listed as $cmid) {
+            foreach ($api->subject_cmids($userid) as $cmid) {
                 if (!\context_module::instance($cmid, IGNORE_MISSING)) {
                     $targets[] = $cmid;
                 }
             }
         }
         $targets = array_values(array_unique($targets));
-        if ($listed && !array_diff($listed, $targets)) {
-            $api->erase_subject($userid);
-        } else {
-            foreach (array_intersect($targets, $listed) as $cmid) {
-                $api->erase_activity($cmid, [$userid]);
-            }
+        foreach ($targets as $cmid) {
+            $api->erase_activity($cmid, [$userid]);
         }
-        if (array_intersect($targets, $api->subject_cmids($userid))) {
+        if ($targets && array_intersect($targets, $api->subject_cmids($userid))) {
             throw new \moodle_exception('privacy_erase_unverified', 'local_vektradiscuss');
         }
     }

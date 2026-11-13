@@ -427,18 +427,25 @@ fb4fe9f, 2026-11-13, headless Chromium).**
   extra time (4.3 second student: 1200 s), new sessions granted and technical counts; transcript files
   sha256-equal to the earlier downloads (4.3 `846f007e...`, 5.2 `7a25fa64...`, `75a21034...`). A
   session exported while STARTING (`turns: []`), then ACTIVE (2 turns), then CLOSED with its transcript.
-- Deletion of the 4.3 second student (data in one activity, request covering it): one
-  `assess_erasure` with reason `subject`; before 1 session, 1 extra time, 10 start attempts, after 0;
-  the verification read listed 0 activities.
+- Deletion of the 4.3 second student (data in one activity, request covering it, first version with a
+  subject-wide erasure): one `assess_erasure` with reason `subject`; before 1 session, 1 extra time,
+  10 start attempts, after 0; the verification read listed 0 activities.
+- After the local review (per-activity erasure, transcripts always read): exports on 5.2 for both students
+  wrote all three transcripts (session 2 `c10dd506...`); deletion of the 5.2 second student: one
+  `assess_erasure` with reason `activity` (cmid 3, 1 session, 1 transcript), 0 sessions, start attempts
+  and extra time left, verification read listed 0 activities.
 
 **Open points (2026-11-13).**
 - Privacy inventory: done with vektra-stack #215 (follow-up after #13, version 2026111303). Contexts,
   export and erasure use `GET /privacy/subjects/{userid}/activities`, the same set Vektra's erasures
   remove. Decided: the export writes everything it can, then throws `privacy_export_incomplete` naming
   `transcript_pending` / `transcript_failed` / `transcript_missing` (the DPO is notified; `pending` means
-  run it again); `transcript_purged` is retention, not a failure. Erasure is subject-wide only when the
-  approved targets cover every listed activity, otherwise per activity; verification re-reads the list.
-  The erase key is checked before any read. Open for the DPO (OQ-020): reset reasons, teacher notes and
+  run it again); `transcript_purged` is retention, not a failure; a hash mismatch also fails only after the
+  rest is written; every transcript of an approved activity is exported, even without a listed session.
+  Erasure stays per activity (local review): Vektra's activity erasures remove the same rows, and a
+  subject-wide one could reach an activity where a session started after the list was read. Every
+  approved activity gets its erasure, even one not listed, so that retained data is reported.
+  Verification re-reads the list. The erase key is checked before any read. Open for the DPO (OQ-020): reset reasons, teacher notes and
   `granted_by` are not exported by Vektra; deleting a person while a transcript failed or is missing
   removes content that was never exportable.
 - `privacy_notice_version` in the mint (vektra-stack #211, merged): a follow-up PR sends the version

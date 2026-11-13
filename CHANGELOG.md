@@ -50,7 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Privacy provider on Vektra's per-person activity list (vektra-stack #215): contexts for every activity
   with data, export of the sessions (turns of a session without a transcript), new sessions granted,
   extra time, retention tombstones and technical record counts, a named error for content that cannot be
-  exported, and a subject-wide erasure when the request covers every listed activity.
+  exported (after writing everything else), and per-activity erasure verified against the list.
 - Transcript downloads (student and grader) and resends carry the activity id (`cmid`); Vektra refuses a
   transcript of another activity, so the plugin no longer pages the activity state or the sessions list
   to check ownership (release 0.2.0).

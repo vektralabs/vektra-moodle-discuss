@@ -130,11 +130,12 @@ The Moodle privacy API works through Vektra:
   the new sessions granted and the extra time (without the teacher's reasons or notes), the number of
   sessions removed by retention and the technical record counts; and each transcript exactly as Vektra
   stored it, after checking it against its hash. When some content cannot be exported (a transcript still
-  being generated, or one that failed or is missing), everything else is written and the plugin raises
-  an error naming what is missing: run the request again later for a pending transcript.
-- **Deletion** asks Vektra to erase the data: the whole person in one request when the request covers
-  every activity Vektra lists, otherwise activity by activity, so that an activity the request did not
-  approve is never reached. It then reads the list back to verify that nothing is left. If a key is missing, Vektra fails or is still erasing,
+  being generated, one that failed or is missing, or one whose bytes do not match its hash), everything
+  else is written and the plugin raises an error naming the problem: run the request again later for a
+  pending transcript.
+- **Deletion** asks Vektra to erase the data activity by activity (never the whole person at once, so that
+  an activity the request did not approve is never reached), then reads the list back to verify that
+  nothing is left. If a key is missing, Vektra fails or is still erasing,
   data is still found, or the operator keeps the data as exam evidence, the plugin raises an error
   with an explanation. Moodle sends it to the site's Data Protection Officers; note that Moodle then
   completes the request anyway (a plugin cannot mark it as failed), so the DPO message is the signal

@@ -192,8 +192,7 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
     }
 
     /**
-     * A live session, a new session granted and extra time: the turns are exported in the activity record, and
-     * no transcript is read when no session has one.
+     * A live session, a new session granted and extra time: the turns are exported in the activity record.
      */
     public function test_export_writes_live_turns_and_grants(): void {
         $live = ['session_no' => 2, 'state' => 'ACTIVE', 'close_reason' => null, 'created_at' => '2026-11-08T10:00:00+00:00',
@@ -205,8 +204,9 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
         $activity['extra_seconds'] = 600;
         $activity['purged_sessions'] = 1;
         $this->transport->respond(200, self::page([$activity]));
+        $this->transport->respond(200, self::page([]));
         provider::export_user_data($this->quiz_contextlist());
-        $this->assertCount(1, $this->transport->calls);
+        $this->assertCount(2, $this->transport->calls);
         $record = writer::with_context(\context_module::instance($this->quiz->cmid))->get_data([
             get_string('privacy:path', 'local_vektradiscuss'),
             get_string('privacy:activity', 'local_vektradiscuss', $this->quiz->cmid)]);
@@ -226,17 +226,47 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
         $purged = ['session_no' => 2, 'state' => 'CLOSED', 'close_reason' => 'finished', 'turns' => null,
             'turns_unavailable' => 'transcript_purged'];
         $this->transport->respond(200, self::page([$this->activity((int) $this->quiz->cmid, [$pending, $purged])]));
+        $this->transport->respond(200, self::page([]));
         try {
             provider::export_user_data($this->quiz_contextlist());
             $this->fail('Exception expected');
         } catch (\moodle_exception $e) {
             $this->assertSame('privacy_export_incomplete', $e->errorcode);
             $this->assertStringContainsString('transcript_pending', $e->getMessage());
-            $this->assertStringNotContainsString('transcript_purged)', $e->getMessage());
+            $this->assertStringNotContainsString('transcript_purged', $e->getMessage());
         }
         $this->assertTrue(writer::with_context(\context_module::instance($this->quiz->cmid))->has_any_data());
 
+        writer::reset();
         $this->transport->respond(200, self::page([$this->activity((int) $this->quiz->cmid, [$purged])]));
+        $this->transport->respond(200, self::page([]));
+        provider::export_user_data($this->quiz_contextlist());
+        $this->assertTrue(writer::with_context(\context_module::instance($this->quiz->cmid))->has_any_data());
+        $this->assertSame(0, $this->transport->remaining());
+    }
+
+    /**
+     * A transcript whose session is no longer listed (purged by retention) is still exported, with its bytes.
+     */
+    public function test_export_writes_a_transcript_without_its_session(): void {
+        $purged = ['session_no' => 2, 'state' => 'CLOSED', 'turns' => null, 'turns_unavailable' => 'transcript_purged'];
+        $this->transport->respond(200, self::page([$this->activity((int) $this->quiz->cmid, [$purged])]));
+        $this->transport->respond(200, ['items' => [$this->item((int) $this->quiz->cmid)], 'next_cursor' => null]);
+        provider::export_user_data($this->quiz_contextlist());
+        $subcontext = [get_string('privacy:path', 'local_vektradiscuss'),
+            get_string('privacy:session', 'local_vektradiscuss', (object) ['cmid' => $this->quiz->cmid, 'n' => 1])];
+        $files = writer::with_context(\context_module::instance($this->quiz->cmid))->get_custom_file($subcontext);
+        $this->assertSame(hash('sha256', self::BYTES), hash('sha256', reset($files)));
+    }
+
+    /**
+     * An activity listed twice fails the export: the second record would overwrite the first.
+     */
+    public function test_export_refuses_a_repeated_activity(): void {
+        $this->transport->respond(200, self::page([$this->activity((int) $this->quiz->cmid)], 'p2'));
+        $this->transport->respond(200, self::page([$this->activity((int) $this->quiz->cmid)]));
+        $this->expectException(\moodle_exception::class);
+        $this->expectExceptionMessage(get_string('privacy_export_failed', 'local_vektradiscuss'));
         provider::export_user_data($this->quiz_contextlist());
     }
 
@@ -253,15 +283,24 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
     }
 
     /**
-     * A transcript whose bytes do not match the reported hash is never exported.
+     * A transcript whose bytes do not match the reported hash is never exported; everything else is written
+     * first, then the request fails.
      */
     public function test_export_refuses_a_hash_mismatch(): void {
         $this->transport->respond(200, self::page([$this->activity((int) $this->quiz->cmid)]));
         $this->transport->respond(200, ['items' => [$this->item((int) $this->quiz->cmid, self::BYTES, str_repeat('0', 64))],
             'next_cursor' => null]);
-        $this->expectException(\moodle_exception::class);
-        $this->expectExceptionMessage(get_string('privacy_export_hash', 'local_vektradiscuss'));
-        provider::export_user_data($this->quiz_contextlist());
+        try {
+            provider::export_user_data($this->quiz_contextlist());
+            $this->fail('Exception expected');
+        } catch (\moodle_exception $e) {
+            $this->assertSame('privacy_export_hash', $e->errorcode);
+        }
+        $writer = writer::with_context(\context_module::instance($this->quiz->cmid));
+        $path = get_string('privacy:path', 'local_vektradiscuss');
+        $this->assertNotEmpty($writer->get_data([$path, get_string('privacy:activity', 'local_vektradiscuss', $this->quiz->cmid)]));
+        $this->assertSame([], $writer->get_custom_file([$path,
+            get_string('privacy:session', 'local_vektradiscuss', (object) ['cmid' => $this->quiz->cmid, 'n' => 1])]));
     }
 
     /**
@@ -269,26 +308,24 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
      * key, then verified with the person's activity list.
      */
     public function test_delete_for_user_is_scoped_and_verified(): void {
-        $this->transport->respond(200, self::page([$this->activity((int) $this->quiz->cmid), $this->activity(999999)]));
         $this->transport->respond(200, ['outcome' => 'erased', 'counts' => ['sessions' => 1, 'transcripts' => 1]]);
         $this->transport->respond(200, self::page([$this->activity(999999)]));
         provider::delete_data_for_user($this->quiz_contextlist());
         $this->assertSame(0, $this->transport->remaining());
-        $call = $this->transport->calls[1];
+        $call = $this->transport->calls[0];
         $this->assertSame('DELETE', $call['method']);
         $this->assertStringEndsWith('/privacy/activities/' . $this->quiz->cmid . '/subjects', $call['url']);
         $this->assertSame(['userids' => [(int) $this->student->id]], json_decode($call['body'], true));
-        $this->assertSame('Bearer test-erase-key', $this->transport->header_map(1)['authorization']);
+        $this->assertSame('Bearer test-erase-key', $this->transport->header_map(0)['authorization']);
+        $this->assertStringEndsWith('/activities', $this->transport->calls[1]['url']);
     }
 
     /**
      * A verification that still finds the person in the activity throws.
      */
     public function test_delete_unverified_throws(): void {
-        $both = self::page([$this->activity((int) $this->quiz->cmid), $this->activity(999999)]);
-        $this->transport->respond(200, $both);
         $this->transport->respond(200, ['outcome' => 'erased', 'counts' => []]);
-        $this->transport->respond(200, $both);
+        $this->transport->respond(200, self::page([$this->activity((int) $this->quiz->cmid), $this->activity(999999)]));
         $this->expectException(\moodle_exception::class);
         $this->expectExceptionMessage(get_string('privacy_erase_unverified', 'local_vektradiscuss'));
         provider::delete_data_for_user($this->quiz_contextlist());
@@ -346,32 +383,33 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
     }
 
     /**
-     * The user context and the quiz approved, covering every listed activity (the other one deleted from
-     * Moodle): one subject-wide erasure, then verified.
+     * The user context and the quiz approved: the quiz and the activity deleted from Moodle are erased, each on
+     * its own (never subject-wide), then verified.
      */
-    public function test_user_context_covering_everything_erases_the_subject(): void {
+    public function test_user_context_erases_per_activity(): void {
         $this->transport->respond(200, self::page([$this->activity((int) $this->quiz->cmid), $this->activity(999999)]));
-        $this->transport->respond(200, ['outcome' => 'erased', 'counts' => []]);
+        $erased = ['outcome' => 'erased', 'counts' => []];
+        $this->transport->respond(200, $erased)->respond(200, $erased);
         $this->transport->respond(200, self::page([]));
         provider::delete_data_for_user(new approved_contextlist($this->student, 'local_vektradiscuss', [
             \context_module::instance($this->quiz->cmid)->id, \context_user::instance($this->student->id)->id]));
         $deletes = array_values(array_filter($this->transport->calls, fn(array $c): bool => $c['method'] === 'DELETE'));
-        $this->assertCount(1, $deletes);
-        $this->assertStringEndsWith('/privacy/subjects/' . $this->student->id, $deletes[0]['url']);
-        $this->assertNull($deletes[0]['body']);
+        $this->assertCount(2, $deletes);
+        foreach ($deletes as $delete) {
+            $this->assertStringContainsString('/privacy/activities/', $delete['url']);
+        }
         $this->assertSame(0, $this->transport->remaining());
     }
 
     /**
-     * The whole user context deleted: the person's data in activities deleted from Moodle is erased subject-wide
-     * when that is all Vektra lists.
+     * The whole user context deleted: the person's data in activities deleted from Moodle is erased.
      */
     public function test_user_context_alone_erases_deleted_activities(): void {
         $this->transport->respond(200, self::page([$this->activity(999999)]));
         $this->transport->respond(200, ['outcome' => 'erased', 'counts' => []]);
         $this->transport->respond(200, self::page([]));
         provider::delete_data_for_all_users_in_context(\context_user::instance($this->student->id));
-        $this->assertStringEndsWith('/privacy/subjects/' . $this->student->id, $this->transport->calls[1]['url']);
+        $this->assertStringEndsWith('/privacy/activities/999999/subjects', $this->transport->calls[1]['url']);
         $this->assertSame(0, $this->transport->remaining());
     }
 
@@ -391,9 +429,10 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
     }
 
     /**
-     * A page without its list proves nothing: it fails, rather than reading as "no data".
+     * A page without its list proves nothing: it fails, rather than verifying an empty result.
      */
     public function test_malformed_page_throws(): void {
+        $this->transport->respond(200, ['outcome' => 'erased', 'counts' => []]);
         $this->transport->respond(200, ['next_cursor' => null]);
         $this->expectException(\moodle_exception::class);
         provider::delete_data_for_user($this->quiz_contextlist());
@@ -403,9 +442,9 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
      * A damaged entry or file in an activity outside the export does not block it.
      */
     public function test_export_checks_only_the_selected_activities(): void {
-        $damaged = $this->activity(999999);
-        unset($damaged['technical_records']);
-        $this->transport->respond(200, self::page([$this->activity((int) $this->quiz->cmid), $damaged]));
+        $broken = $this->activity(999999);
+        unset($broken['technical_records']);
+        $this->transport->respond(200, self::page([$this->activity((int) $this->quiz->cmid), $broken]));
         $this->transport->respond(200, ['items' => [$this->item((int) $this->quiz->cmid),
             $this->item(999999, self::BYTES, str_repeat('0', 64))], 'next_cursor' => null]);
         provider::export_user_data($this->quiz_contextlist());
