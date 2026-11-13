@@ -421,13 +421,26 @@ fb4fe9f, 2026-11-13, headless Chromium).**
 - D6: an erase key Vektra refuses -> the provider throws, `tool_dataprivacy\manager_observer` notifies the
   DPO with the plugin's message ("Vektra could not erase..."), Vektra's rows unchanged.
 
+**Live evidence for the activity list (F1 at vektra-stack develop 3a9684f8, plugin version 2026111303,
+2026-11-13, through `core_privacy\manager`).**
+- Export on both sites for both students: contexts user + quiz; per-activity records with sessions,
+  extra time (4.3 second student: 1200 s), new sessions granted and technical counts; transcript files
+  sha256-equal to the earlier downloads (4.3 `846f007e...`, 5.2 `7a25fa64...`, `75a21034...`). A
+  session exported while STARTING (`turns: []`), then ACTIVE (2 turns), then CLOSED with its transcript.
+- Deletion of the 4.3 second student (data in one activity, request covering it): one
+  `assess_erasure` with reason `subject`; before 1 session, 1 extra time, 10 start attempts, after 0;
+  the verification read listed 0 activities.
+
 **Open points (2026-11-13).**
-- Privacy inventory: the provider sees a person's activities only through their transcripts, so it
-  erases per activity and never subject-wide (decided with vektra-stack). vektra-stack is adding
-  `GET /api/v1/assess/privacy/subjects/{userid}/activities` (sessions, resets, extra time, no reason
-  text); then the provider uses it for contexts, export of the non-transcript data, and erasure.
-  Until then, rows without a transcript in an activity the provider cannot see stay until Vektra's
-  retention.
+- Privacy inventory: done with vektra-stack #215 (follow-up after #13, version 2026111303). Contexts,
+  export and erasure use `GET /privacy/subjects/{userid}/activities`, the same set Vektra's erasures
+  remove. Decided: the export writes everything it can, then throws `privacy_export_incomplete` naming
+  `transcript_pending` / `transcript_failed` / `transcript_missing` (the DPO is notified; `pending` means
+  run it again); `transcript_purged` is retention, not a failure. Erasure is subject-wide only when the
+  approved targets cover every listed activity, otherwise per activity; verification re-reads the list.
+  The erase key is checked before any read. Open for the DPO (OQ-020): reset reasons, teacher notes and
+  `granted_by` are not exported by Vektra; deleting a person while a transcript failed or is missing
+  removes content that was never exportable.
 - `privacy_notice_version` in the mint (vektra-stack #211, merged): a follow-up PR sends the version
   the pre-session screen showed; Start then refuses with `409 ERR-ASSESS-029 privacy_notice_changed`
   if the notice changed. After that release, give vektra-stack the plugin version.

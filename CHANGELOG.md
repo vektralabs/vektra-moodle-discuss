@@ -47,6 +47,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Setup check page for the site administrator (REQ-079).
 - The Start mint carries the privacy notice version the pre-session screen showed
   (`privacy_notice_version`); Vektra refuses the Start if the notice changed since (release 0.2.0).
+- Privacy provider on Vektra's per-person activity list (vektra-stack #215): contexts for every activity
+  with data, export of the sessions (turns of a session without a transcript), new sessions granted,
+  extra time, retention tombstones and technical record counts, a named error for content that cannot be
+  exported, and a subject-wide erasure when the request covers every listed activity.
 - Transcript downloads (student and grader) and resends carry the activity id (`cmid`); Vektra refuses a
   transcript of another activity, so the plugin no longer pages the activity state or the sessions list
   to check ownership (release 0.2.0).
