@@ -42,10 +42,12 @@ $action = required_param('action', PARAM_ALPHA);
 $cmid = required_param('cmid', PARAM_INT);
 $attemptid = optional_param('attemptid', 0, PARAM_INT);
 $tid = optional_param('tid', '', PARAM_ALPHANUMEXT);
+// The privacy notice version the pre-session screen showed (Start only); validated before it is sent.
+$noticeversion = optional_param('noticeversion', '', PARAM_RAW);
 
 $PAGE->set_url('/local/vektradiscuss/ajax.php');
 
-$result = (new student_endpoint())->handle($action, $cmid, $attemptid, $tid);
+$result = (new student_endpoint())->handle($action, $cmid, $attemptid, $tid, $noticeversion);
 if ($action === 'state') {
     $result = state_view::context($result, $cmid);
 }

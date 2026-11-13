@@ -133,7 +133,7 @@ final class assess_client_http_test extends \advanced_testcase {
         $seen = $this->seen();
         $this->assertCount(1, $seen);
         $this->assertSame('Bearer loopback-mint-key', $seen[0]['authorization']);
-        $this->assertSame('0.1.0', $seen[0]['version']);
+        $this->assertSame((new \local_vektradiscuss\local\config())->plugin_version(), $seen[0]['version']);
         $this->assertSame('application/json', $seen[0]['contenttype']);
         $this->assertSame('q=1', $seen[0]['query']);
     }

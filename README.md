@@ -20,7 +20,7 @@ The plugin holds **no** session state and re-resolves every identifier server-si
 
 ## Status
 
-Alpha (`0.1.0`). The foundation is in place (scaffold, capabilities, settings, assess HTTP
+Alpha (`0.2.0`). The foundation is in place (scaffold, capabilities, settings, assess HTTP
 client, CI, release packaging), and so is the student entry point (state panel, pre-session
 screen, discussion iframe). Transcript download and the teacher features follow. The plugin is
 disabled by default and sends nothing to Vektra until an administrator enables it.

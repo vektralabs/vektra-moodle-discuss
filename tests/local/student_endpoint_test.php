@@ -428,6 +428,26 @@ final class student_endpoint_test extends \advanced_testcase {
     }
 
     /**
+     * The Start mint carries the privacy notice version the student was shown, when it is valid (vektra-stack
+     * #211); an invalid one is left out rather than sent.
+     */
+    public function test_mint_carries_the_notice_version_shown(): void {
+        $this->as_student();
+        $this->respond_mint();
+        $GLOBALS['PAGE'] = new \moodle_page();
+        $this->endpoint()->handle('mint', (int) $this->quiz->cmid, 0, '', 'f1-dev-1');
+        $this->assertSame('f1-dev-1', json_decode($this->transport->calls[0]['body'], true)['privacy_notice_version']);
+
+        foreach ([str_repeat('v', 41), "v\x01", "v\x7F", "v\u{0085}", ' '] as $i => $bad) {
+            $this->respond_mint();
+            $GLOBALS['PAGE'] = new \moodle_page();
+            $this->endpoint()->handle('mint', (int) $this->quiz->cmid, 0, '', $bad);
+            $this->assertArrayNotHasKey('privacy_notice_version', json_decode($this->transport->calls[$i + 1]['body'], true));
+        }
+        $this->assertTrue(student_endpoint::valid_notice_version("2026-11\tv2"));
+    }
+
+    /**
      * State 9: the viewed attempt is not the selected one; the selected one is unaffected.
      */
     public function test_not_selected_attempt_pointer(): void {

@@ -102,9 +102,9 @@ const refresh = async(region, config, keepFrame = false) => {
     region.dataset.state = context.state;
 
     const frameRegion = () => region.querySelector('[data-region="local_vektradiscuss-frame"]');
-    const open = async(mode) => {
+    const open = async(mode, noticeversion = null) => {
         announce(region, await getString('preparing', 'local_vektradiscuss'));
-        await openFrame(frameRegion(), config, () => refresh(region, config, true), mode);
+        await openFrame(frameRegion(), {...config, noticeversion}, () => refresh(region, config, true), mode);
     };
 
     const resume = region.querySelector('[data-action="local_vektradiscuss-resume"]');
@@ -113,7 +113,10 @@ const refresh = async(region, config, keepFrame = false) => {
     }
     const startButton = region.querySelector('[data-action="local_vektradiscuss-start"]');
     if (startButton && context.presession) {
-        startButton.addEventListener('click', () => showPresession(context, () => open('start')));
+        // The privacy notice version the screen shows travels with the Start mint: Vektra refuses the Start if
+        // the notice changed since.
+        const shown = context.presession.privacyversion;
+        startButton.addEventListener('click', () => showPresession(context, () => open('start', shown || null)));
     }
 };
 
