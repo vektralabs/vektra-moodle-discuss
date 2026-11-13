@@ -376,6 +376,13 @@ tool_dataprivacy UI status alone.
   notice_version at Start waits for vektra-stack (`privacy_notice_version` in the mint body, its
   own PR; the mint is strict, so the plugin must not send it before the merge). Then: send it, and
   give vektra-stack the plugin version so it raises the minimum.
+- Follow-up after #9 (release 0.2.0, version 2026111302): the Start mint sends the notice version shown
+  (#211), and an invalid one refuses the mint rather than being dropped; downloads and resends send
+  `cmid` (#212) and the plugin's own ownership lookups are gone (one call per download). Decided: `cmid`
+  is a required argument of both mints, since it is now the only activity binding. Deploy order: Vektra
+  with #211/#212 first. By design: 404 ERR-ASSESS-017 for another activity's transcript shows "not ready",
+  as Vektra makes it indistinguishable from an unknown transcript; the grader fallback file name takes the
+  student id and session number from the link (a label only, the bytes come from Vektra).
 - Pending live checks, waiting for F1 after vektra-stack #209 (F1's 4.3 WS token was missing on
   2026-11-12: setup check `no_token`): D5, D6, E2, and the student plan's F1 and E3 (moved here when
   #3 merged).

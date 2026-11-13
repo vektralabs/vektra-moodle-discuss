@@ -20,7 +20,7 @@ The plugin holds **no** session state and re-resolves every identifier server-si
 
 ## Status
 
-Alpha (`0.1.0`). The foundation is in place (scaffold, capabilities, settings, assess HTTP
+Alpha (`0.2.0`). The foundation is in place (scaffold, capabilities, settings, assess HTTP
 client, CI, release packaging), and so is the student entry point (state panel, pre-session
 screen, discussion iframe). Transcript download and the teacher features follow. The plugin is
 disabled by default and sends nothing to Vektra until an administrator enables it.
@@ -145,6 +145,11 @@ version is lower than the one in `version.php` `dependencies`. A release tag mus
 ## Compatibility
 
 Targets Moodle **4.3 (403)** and **5.2 (502)**, matching the Vektra fleet.
+
+Release 0.2.0 needs a Vektra that accepts `privacy_notice_version` in the mint body and `cmid` in the
+download-token and resend bodies, and checks the transcript against that activity (vektra-stack #211 and
+#212). Upgrade Vektra first: an older one refuses these fields, and the plugin no longer checks a
+transcript's activity itself.
 
 ## Moodle LMS provider (`provider/`)
 

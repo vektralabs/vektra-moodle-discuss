@@ -44,9 +44,6 @@ class teacher_page {
     /** @var int Students offered at once for extra time before their first discussion. */
     public const OTHER_LIMIT = 200;
 
-    /** @var int Pages of the sessions list searched for a transcript (50 students each). */
-    private const MAX_PAGES = 40;
-
     /** @var int Upper bound of a reason, in characters (Vektra: 1-1000 code points). */
     public const MAX_REASON = 1000;
 
@@ -71,9 +68,6 @@ class teacher_page {
 
     /** @var \stdClass Course. */
     private \stdClass $course;
-
-    /** @var string Cursor of the list page being rendered (links carry it, so lookups start there). */
-    private string $cursor = '';
 
     /**
      * Constructor.
@@ -142,10 +136,11 @@ class teacher_page {
         switch ($action) {
             case 'resend':
                 $tid = (string) ($params['tid'] ?? '');
-                if ($this->find_transcript($tid, (string) ($params['page'] ?? '')) === null) {
+                if (!transcript_proxy::valid_tid($tid)) {
                     return [false, get_string('teacher_err_generic', self::C)];
                 }
-                $response = $this->api->resend($tid, (int) $USER->id);
+                // The cmid makes Vektra refuse a transcript of another activity.
+                $response = $this->api->resend($tid, (int) $USER->id, (int) $this->cm->id);
                 if ($response->status === 429) {
                     return [false, get_string('teacher_resend_too_soon', self::C)];
                 }
@@ -183,64 +178,6 @@ class teacher_page {
     }
 
     /**
-     * Where a transcript of this activity is: its session number and student, read from Vektra's sessions
-     * list, or null.
-     *
-     * Vektra checks that the actor grades the transcript's activity; this ties the transcript to the activity
-     * whose capability Moodle checked, so a teacher prohibited on another activity cannot reach its
-     * transcripts through this one. The links carry the list page of their row, so the search starts there.
-     *
-     * @param string $tid
-     * @param string $hint The cursor of the list page the link came from ('' = first page).
-     * @return array|null {n, userid}
-     */
-    public function find_transcript(string $tid, string $hint = ''): ?array {
-        if (!transcript_proxy::valid_tid($tid)) {
-            return null;
-        }
-        $hint = self::clean_cursor($hint);
-        $found = $hint !== '' ? $this->search_transcript($tid, $hint, 1) : null;
-        return $found ?? $this->search_transcript($tid, '', self::MAX_PAGES);
-    }
-
-    /**
-     * Search the sessions list for a transcript, from a cursor, over at most $pages pages.
-     *
-     * @param string $tid
-     * @param string $cursor
-     * @param int $pages
-     * @return array|null {n, userid}
-     */
-    private function search_transcript(string $tid, string $cursor, int $pages): ?array {
-        global $USER;
-        for ($page = 0; $page < $pages; $page++) {
-            $args = [(int) $this->cm->id, (int) $this->course->id, $this->cm->modname, (int) $USER->id, $cursor];
-            $response = $this->api->list_sessions(...$args);
-            if (teacher_api::role_refusal($response) === 'stale') {
-                // Vektra queued a fresh check of the teacher's role: one retry after it had time to land.
-                sleep(2);
-                $response = $this->api->list_sessions(...$args);
-            }
-            $students = $response->ok() && is_array($response->json['students'] ?? null) ? $response->json['students'] : null;
-            if ($students === null) {
-                return null;
-            }
-            foreach ($students as $student) {
-                foreach (is_array($student['sessions'] ?? null) ? $student['sessions'] : [] as $session) {
-                    if (is_array($session) && ($session['transcript_id'] ?? null) === $tid) {
-                        return ['n' => max(1, (int) ($session['session_no'] ?? 1)), 'userid' => (int) ($student['userid'] ?? 0)];
-                    }
-                }
-            }
-            $cursor = self::next_cursor($response->json);
-            if ($cursor === '') {
-                return null;
-            }
-        }
-        return null;
-    }
-
-    /**
      * The template context of the list, or null when Vektra did not answer with one.
      *
      * @param assess_response $response
@@ -249,7 +186,6 @@ class teacher_page {
      * @return array|null
      */
     public function context(assess_response $response, string $cursor = '', string $search = ''): ?array {
-        $this->cursor = self::clean_cursor($cursor);
         $json = $response->ok() ? $response->json : null;
         if (!is_array($json) || !is_array($json['students'] ?? null)) {
             return null;
@@ -347,10 +283,9 @@ class teacher_page {
                 'deliveries' => self::deliveries($session['deliveries'] ?? []),
                 'hasdeliveries' => !empty($session['deliveries']),
                 'tid' => $tid = $this->transcript_id($session),
-                'downloadurl' => $this->download_url($tid),
+                'downloadurl' => $this->download_url($tid, (int) ($session['session_no'] ?? 0), $userid),
                 // Vektra resends only a transcript that was delivered at least once (a new round of its deliveries).
                 'canresend' => $canmanage && $tid !== null && !empty($session['deliveries']),
-                'page' => $this->cursor,
             ], $sessions),
             'resets' => array_map(fn(array $r): array => [
                 'after' => (int) ($r['after_session_no'] ?? 0),
@@ -412,19 +347,19 @@ class teacher_page {
     }
 
     /**
-     * The grader download link of a transcript, or null; it carries the list page of its row.
+     * The grader download link of a transcript, or null. The session number and the student only name the
+     * file when Vektra's name is unusable; Vektra checks the transcript against the activity.
      *
      * @param string|null $tid
+     * @param int $n
+     * @param int $userid
      * @return string|null
      */
-    private function download_url(?string $tid): ?string {
+    private function download_url(?string $tid, int $n, int $userid): ?string {
         if ($tid === null) {
             return null;
         }
-        $params = ['cmid' => $this->cm->id, 'tid' => $tid, 'sesskey' => sesskey()];
-        if ($this->cursor !== '') {
-            $params['page'] = $this->cursor;
-        }
+        $params = ['cmid' => $this->cm->id, 'tid' => $tid, 'n' => max(1, $n), 'u' => $userid, 'sesskey' => sesskey()];
         return (new \moodle_url('/local/vektradiscuss/teacher_transcript.php', $params))->out(false);
     }
 

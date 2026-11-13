@@ -91,36 +91,38 @@ final class transcript_proxy {
      *
      * @param int $userid The student, as the transcript owner.
      * @param string $tid
+     * @param int $cmid The activity the request came through: Vektra refuses a transcript of another one.
      * @return array [result, token|null]: result OK with the token, NOT_READY or FAILED with null.
      */
-    public function mint_own(int $userid, string $tid): array {
-        return $this->mint($tid, ['sub' => $userid], 'mint');
+    public function mint_own(int $userid, string $tid, int $cmid): array {
+        return $this->mint($tid, ['sub' => $userid, 'cmid' => $cmid], 'mint');
     }
 
     /**
      * Mint a single-use download token for a grader (assess:teacher key, actor_userid = the teacher).
      *
-     * Vektra checks that the actor grades the transcript's activity; the caller has checked that the
-     * transcript belongs to the activity whose capability it checked.
+     * Vektra checks that the actor grades the transcript's activity and, with the cmid, that the transcript
+     * belongs to the activity whose capability Moodle checked (another one answers like an unknown transcript).
      *
      * @param int $actorid The teacher.
      * @param string $tid
+     * @param int $cmid
      * @return array [result, token|null]: result OK with the token, NOT_READY or FAILED with null.
      */
-    public function mint_grader(int $actorid, string $tid): array {
-        return $this->mint($tid, ['actor_userid' => $actorid], 'teacher');
+    public function mint_grader(int $actorid, string $tid, int $cmid): array {
+        return $this->mint($tid, ['actor_userid' => $actorid, 'cmid' => $cmid], 'teacher');
     }
 
     /**
      * POST download-token with a key role and its body.
      *
      * @param string $tid
-     * @param array $body
+     * @param array $body With the cmid: the only binding of the transcript to the activity Moodle checked.
      * @param string $keyrole
      * @return array [result, token|null]
      */
     private function mint(string $tid, array $body, string $keyrole): array {
-        if (!self::valid_tid($tid)) {
+        if (!self::valid_tid($tid) || $body['cmid'] <= 0) {
             return [self::FAILED, null];
         }
         $response = $this->client->request(

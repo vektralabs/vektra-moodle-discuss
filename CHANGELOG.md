@@ -45,6 +45,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   bytes (hash-checked) and deletes per activity with verification, failing loudly otherwise (OQ-033);
   the pre-session screen shows Vektra's privacy summary, legal basis, retention and notice version.
 - Setup check page for the site administrator (REQ-079).
+- The Start mint carries the privacy notice version the pre-session screen showed
+  (`privacy_notice_version`); Vektra refuses the Start if the notice changed since (release 0.2.0).
+- Transcript downloads (student and grader) and resends carry the activity id (`cmid`); Vektra refuses a
+  transcript of another activity, so the plugin no longer pages the activity state or the sessions list
+  to check ownership (release 0.2.0).
 
 ### Security
 

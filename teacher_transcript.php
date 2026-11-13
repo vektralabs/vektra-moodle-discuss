@@ -31,12 +31,13 @@ require(__DIR__ . '/../../config.php');
 use local_vektradiscuss\local\config;
 use local_vektradiscuss\local\student_endpoint;
 use local_vektradiscuss\local\teacher_api;
-use local_vektradiscuss\local\teacher_page;
 use local_vektradiscuss\local\transcript_proxy;
 
 $cmid = required_param('cmid', PARAM_INT);
 $tid = required_param('tid', PARAM_ALPHANUMEXT);
-$page = optional_param('page', '', PARAM_RAW_TRIMMED);
+// Only for the fallback file name; Vektra checks the transcript against the activity.
+$n = max(1, optional_param('n', 1, PARAM_INT));
+$student = optional_param('u', 0, PARAM_INT);
 
 [$course, $cm] = get_course_and_cm_from_cmid($cmid);
 require_login($course, false, $cm);
@@ -79,20 +80,16 @@ if (!$config->is_enabled() || !in_array($cm->modname, teacher_api::ACTIVITY_TYPE
 if (!$config->key_usable('teacher')) {
     local_vektradiscuss_teacher_transcript_refused('form_not_configured', $back);
 }
-$found = (new teacher_page($cm, $course))->find_transcript($tid, $page);
-if ($found === null) {
-    local_vektradiscuss_teacher_transcript_refused('transcript_unavailable', $back);
-}
 
 $proxy = new transcript_proxy($config);
-[$result, $token] = $proxy->mint_grader((int) $USER->id, $tid);
+[$result, $token] = $proxy->mint_grader((int) $USER->id, $tid, (int) $cm->id);
 if ($result === transcript_proxy::STALE) {
     // Vektra queued a fresh check of the teacher's role: one retry after it had time to land.
     sleep(2);
-    [$result, $token] = $proxy->mint_grader((int) $USER->id, $tid);
+    [$result, $token] = $proxy->mint_grader((int) $USER->id, $tid, (int) $cm->id);
 }
 if ($result === transcript_proxy::OK) {
-    $result = $proxy->send($tid, $token, $found['n'], (string) $found['userid']);
+    $result = $proxy->send($tid, $token, $n, $student > 0 ? (string) $student : '');
 }
 if ($result === transcript_proxy::OK || $result === transcript_proxy::TRUNCATED) {
     die();

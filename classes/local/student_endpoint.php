@@ -76,10 +76,11 @@ final class student_endpoint {
      * @param int $cmid Course module id.
      * @param int $attemptid Viewed quiz attempt id (review page only), used for the state 9 pointer.
      * @param string $tid Transcript id (download only): the iframe's closing screen asks for it.
+     * @param string $noticeversion The privacy notice version the pre-session screen showed (mint only).
      * @return array The response document.
      * @throws \moodle_exception On a Moodle refusal.
      */
-    public function handle(string $action, int $cmid, int $attemptid = 0, string $tid = ''): array {
+    public function handle(string $action, int $cmid, int $attemptid = 0, string $tid = '', string $noticeversion = ''): array {
         global $USER;
 
         if (!in_array($action, self::ACTIONS, true)) {
@@ -107,18 +108,15 @@ final class student_endpoint {
         }
 
         if ($action === 'download') {
-            // The capability was checked on this activity, so the transcript must belong to it: Vektra checks
-            // only the owner, and a tid of another activity (where the student may be prohibited) must not
-            // ride on this one's capability.
-            if (
-                !transcript_proxy::valid_tid($tid)
-                    || !$this->transcript_in_activity((int) $USER->id, $cm, (int) $course->id, $tid)
-            ) {
+            // The capability was checked on this activity; the cmid in the request makes Vektra refuse a transcript
+            // of another activity (where the student may be prohibited).
+            if (!transcript_proxy::valid_tid($tid)) {
                 return state_dto::bare(state_dto::UNAVAILABLE);
             }
             // A single-use download token for the student's own transcript (Vektra checks the ownership),
             // handed to the iframe that asked for it. Never cached.
-            [$result, $token] = (new transcript_proxy($this->config, $this->client))->mint_own((int) $USER->id, $tid);
+            $proxy = new transcript_proxy($this->config, $this->client);
+            [$result, $token] = $proxy->mint_own((int) $USER->id, $tid, (int) $cm->id);
             if ($result !== transcript_proxy::OK) {
                 return state_dto::bare(state_dto::UNAVAILABLE);
             }
@@ -130,7 +128,7 @@ final class student_endpoint {
             if ($uiorigin === '') {
                 return state_dto::bare(state_dto::UNAVAILABLE);
             }
-            $minted = $this->mint((int) $USER->id, (int) $cm->id, (int) $course->id);
+            $minted = $this->mint((int) $USER->id, (int) $cm->id, (int) $course->id, $noticeversion);
             if ($minted === null) {
                 return state_dto::bare(state_dto::UNAVAILABLE);
             }
@@ -152,33 +150,16 @@ final class student_endpoint {
     }
 
     /**
-     * Whether a transcript belongs to the student's discussions of this activity.
+     * Vektra's rule for a notice version: 1 to 40 characters, no control character except tab and newline
+     * (DEL and C1 included).
      *
-     * The list is the one Vektra builds for this student and activity (`/state` transcripts), read on every
-     * call, never cached. Any failure answers false.
-     *
-     * @param int $userid
-     * @param \cm_info $cm
-     * @param int $courseid
-     * @param string $tid
+     * @param string $version
      * @return bool
      */
-    public function transcript_in_activity(int $userid, \cm_info $cm, int $courseid, string $tid): bool {
-        $minted = $this->mint($userid, (int) $cm->id, $courseid);
-        if ($minted === null) {
-            return false;
-        }
-        $response = $this->client->request('GET', self::PATH_STATE, [], null, 'mint', ['bearer' => $minted['token']]);
-        if (!$response->ok()) {
-            self::log_failure('state', $response);
-            return false;
-        }
-        foreach (state_dto::from_vektra($response->json)['transcripts'] ?? [] as $transcript) {
-            if ($transcript['tid'] === $tid) {
-                return true;
-            }
-        }
-        return false;
+    public static function valid_notice_version(string $version): bool {
+        $length = \core_text::strlen($version);
+        return $length >= 1 && $length <= 40 && trim($version) !== ''
+            && !preg_match('/[\x00-\x08\x0B-\x1F\x7F]|\xC2[\x80-\x9F]/', $version) && mb_check_encoding($version, 'UTF-8');
     }
 
     /**
@@ -200,9 +181,11 @@ final class student_endpoint {
      * @param int $userid
      * @param int $cmid
      * @param int $courseid
+     * @param string $noticeversion The privacy notice version the student was shown ('' for none). Vektra's
+     *     Start refuses it if the notice changed since (409 ERR-ASSESS-029); an invalid one refuses the mint.
      * @return array|null [token, expiresin], or null on any failure.
      */
-    private function mint(int $userid, int $cmid, int $courseid): ?array {
+    private function mint(int $userid, int $cmid, int $courseid, string $noticeversion = ''): ?array {
         $body = [
             'sub' => $userid,
             'cmid' => $cmid,
@@ -211,6 +194,14 @@ final class student_endpoint {
             'realuser_id' => null,
             'plugin_version' => $this->config->plugin_version(),
         ];
+        if ($noticeversion !== '') {
+            // Never drop a version the student was shown: without it Vektra could not tell a changed notice.
+            if (!self::valid_notice_version($noticeversion)) {
+                debugging('Vektra assess mint: invalid privacy notice version', DEBUG_DEVELOPER);
+                return null;
+            }
+            $body['privacy_notice_version'] = $noticeversion;
+        }
         $response = $this->client->request('POST', self::PATH_TOKENS, [], $body, 'mint');
         if (!$response->ok()) {
             self::log_failure('mint', $response);

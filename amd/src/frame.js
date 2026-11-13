@@ -56,7 +56,7 @@ const listeners = new WeakMap();
  * Open the discussion in a container.
  *
  * @param {HTMLElement} container
- * @param {Object} config {cmid, uiorigin, siteid}
+ * @param {Object} config {cmid, uiorigin, siteid, noticeversion (Start: the privacy notice version shown)}
  * @param {Function} onClosed Called when the UI reports the session closed; may return a promise (the panel refresh).
  * @param {String} mode "start" (after the pre-session screen) or "resume" (an open session).
  */
@@ -165,7 +165,11 @@ const isClosed = (container) => container.dataset.frameState === 'closing' || co
 const handToken = async(container, iframe, origin, config, mode) => {
     let minted;
     try {
-        minted = await post('mint', {cmid: config.cmid});
+        const params = {cmid: config.cmid};
+        if (mode === 'start' && typeof config.noticeversion === 'string' && config.noticeversion !== '') {
+            params.noticeversion = config.noticeversion;
+        }
+        minted = await post('mint', params);
     } catch (e) {
         minted = null;
     }

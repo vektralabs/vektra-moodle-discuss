@@ -343,54 +343,21 @@ final class teacher_page_test extends \advanced_testcase {
     }
 
     /**
-     * A transcript is found in the activity's list, across pages; one of another activity is not.
-     */
-    public function test_find_transcript_pages(): void {
-        $where = ['n' => 2, 'userid' => (int) $this->student->id];
-        $this->transport->respond(200, $this->list_with('aaaa-1', 4711));
-        $this->transport->respond(200, $this->list_with('bbbb-2'));
-        $this->assertSame($where, $this->page()->find_transcript('bbbb-2'));
-        $this->assertSame('4711', $this->transport->header_map(1)['x-assess-cursor']);
-
-        $this->transport->respond(200, $this->list_with('aaaa-1'));
-        $this->assertNull($this->page()->find_transcript('cccc-3'));
-        $this->assertNull($this->page()->find_transcript('../x'));
-        $this->assertCount(3, $this->transport->calls);
-
-        // The link's page first: one call when the transcript is there.
-        $this->transport->respond(200, $this->list_with('bbbb-2'));
-        $this->assertSame($where, $this->page()->find_transcript('bbbb-2', '4711'));
-        $this->assertSame('4711', $this->transport->header_map(3)['x-assess-cursor']);
-        $this->assertCount(4, $this->transport->calls);
-    }
-
-    /**
-     * A stale role check during the lookup is retried once.
-     */
-    public function test_find_transcript_retries_a_stale_check(): void {
-        $this->transport->respond(403, ['error' => ['code' => 'ERR-ASSESS-021', 'message' => 'stale',
-            'details' => ['reason' => 'grader_check_stale']]]);
-        $this->transport->respond(200, $this->list_with('bbbb-2'));
-        $this->assertSame(2, $this->page()->find_transcript('bbbb-2')['n']);
-        $this->assertDebuggingCalled();
-    }
-
-    /**
-     * Resend: only a transcript of this activity, with the actor and nothing else in the body; a foreign one
-     * makes no resend call.
+     * Resend: the actor and the activity, nothing else; Vektra refuses a transcript of another activity.
      */
     public function test_resend(): void {
-        $this->transport->respond(200, $this->list_with('aaaa-1'));
         $this->transport->respond(202, ['transcript_id' => 'aaaa-1', 'round' => 2]);
         [$ok] = $this->page()->act('resend', ['tid' => 'aaaa-1']);
         $this->assertTrue($ok);
-        $this->assertStringEndsWith('/transcripts/aaaa-1/resend', $this->transport->calls[1]['url']);
-        $this->assertSame(['actor_userid' => (int) $this->teacher->id], $this->body(1));
+        $this->assertStringEndsWith('/transcripts/aaaa-1/resend', $this->transport->calls[0]['url']);
+        $this->assertSame(['actor_userid' => (int) $this->teacher->id, 'cmid' => (int) $this->cm->id], $this->body(0));
 
-        $this->transport->respond(200, $this->list_with('aaaa-1'));
+        $this->transport->respond(404, ['error' => ['code' => 'ERR-ASSESS-017', 'message' => 'not found']]);
         [$ok] = $this->page()->act('resend', ['tid' => 'zzzz-9']);
         $this->assertFalse($ok);
-        $this->assertCount(3, $this->transport->calls);
+        $this->assertDebuggingCalled();
+        $this->assertFalse($this->page()->act('resend', ['tid' => '../x'])[0]);
+        $this->assertCount(2, $this->transport->calls);
     }
 
     /**
@@ -399,14 +366,16 @@ final class teacher_page_test extends \advanced_testcase {
     public function test_mint_grader(): void {
         $this->transport->respond(201, ['token' => 'dl.token_1', 'expires_in' => 120]);
         $proxy = new transcript_proxy(null, new assess_client(null, $this->transport));
-        $this->assertSame([transcript_proxy::OK, 'dl.token_1'], $proxy->mint_grader((int) $this->teacher->id, 'aaaa-1'));
+        $minted = $proxy->mint_grader((int) $this->teacher->id, 'aaaa-1', (int) $this->cm->id);
+        $this->assertSame([transcript_proxy::OK, 'dl.token_1'], $minted);
         $this->assertSame('Bearer test-teacher-key-not-a-secret', $this->transport->header_map(0)['authorization']);
-        $this->assertSame(['actor_userid' => (int) $this->teacher->id], $this->body());
+        $this->assertSame(['actor_userid' => (int) $this->teacher->id, 'cmid' => (int) $this->cm->id], $this->body());
 
         // A stale grader check is reported as such (the page retries), not as unavailable.
         $this->transport->respond(403, ['error' => ['code' => 'ERR-ASSESS-021', 'message' => 'stale',
             'details' => ['reason' => 'grader_check_stale']]]);
-        $this->assertSame([transcript_proxy::STALE, null], $proxy->mint_grader((int) $this->teacher->id, 'aaaa-1'));
+        $stale = $proxy->mint_grader((int) $this->teacher->id, 'aaaa-1', (int) $this->cm->id);
+        $this->assertSame([transcript_proxy::STALE, null], $stale);
         $this->assertDebuggingCalledCount(2);
 
         // The grader's fallback file name names the student.
@@ -425,7 +394,7 @@ final class teacher_page_test extends \advanced_testcase {
         $api = new teacher_api(new assess_client(null, $this->transport));
         $ctx = $this->page()->context($api->list_sessions((int) $this->cm->id, (int) $this->course->id, 'quiz', 1));
         $this->assertTrue($ctx['students'][0]['sessions'][0]['canresend']);
-        $this->assertStringNotContainsString('&n=', $ctx['students'][0]['sessions'][0]['downloadurl']);
+        $this->assertStringContainsString('n=2', $ctx['students'][0]['sessions'][0]['downloadurl']);
 
         $list['students'][0]['sessions'][0]['deliveries'] = [];
         $this->transport->respond(200, $list);
