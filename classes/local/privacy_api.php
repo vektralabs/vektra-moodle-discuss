@@ -159,11 +159,11 @@ class privacy_api {
      * @param callable|null $keep fn(int $cmid): bool, the activities to export (null: all).
      * @param array|null $damaged When given, a transcript whose bytes do not match its hash is collected here
      *     ({transcript_id, cmid}) instead of failing the read, so that the caller can export everything else.
-     * @return array[] {transcript_id, cmid, course_id, session_no, closed_at, filename, sha256, bytes}
+     * @return \Generator Yields {transcript_id, cmid, course_id, session_no, closed_at, filename, sha256, bytes} as
+     *     each page is read, so that a later page failing does not lose the transcripts already read.
      * @throws \moodle_exception
      */
-    public function subject_transcripts(int $userid, ?callable $keep = null, ?array &$damaged = null): array {
-        $items = [];
+    public function subject_transcripts(int $userid, ?callable $keep = null, ?array &$damaged = null): \Generator {
         foreach ($this->pages('/api/v1/assess/privacy/subjects/' . $userid . '/transcripts') as $json) {
             foreach (self::list_of($json, 'items') as $item) {
                 // Only the selected activities' files are decoded and hash-checked: a damaged file of another
@@ -173,16 +173,17 @@ class privacy_api {
                     continue;
                 }
                 try {
-                    $items[] = self::transcript($item);
+                    $transcript = self::transcript($item);
                 } catch (\moodle_exception $e) {
                     if ($damaged === null || $e->errorcode !== 'privacy_export_hash') {
                         throw $e;
                     }
                     $damaged[] = ['transcript_id' => $item['transcript_id'], 'cmid' => $cmid];
+                    continue;
                 }
+                yield $transcript;
             }
         }
-        return $items;
     }
 
     /**
@@ -350,12 +351,11 @@ class privacy_api {
      * Every page of a paged privacy read (export key).
      *
      * @param string $path
-     * @return array[] The pages' JSON.
+     * @return \Generator Yields each page's JSON as soon as it is read.
      * @throws \moodle_exception
      */
-    private function pages(string $path): array {
+    private function pages(string $path): \Generator {
         $this->require_key('privacy_export');
-        $pages = [];
         $cursor = '';
         for ($page = 0; $page < self::MAX_PAGES; $page++) {
             $opts = ['timeout' => self::READ_TIMEOUT];
@@ -363,10 +363,10 @@ class privacy_api {
                 $opts['headers'] = ['X-Assess-Cursor' => $cursor];
             }
             $json = $this->ok($this->client->request('GET', $path, [], null, 'privacy_export', $opts), 'privacy_export_failed');
-            $pages[] = $json;
+            yield $json;
             $cursor = self::cursor($json['next_cursor'] ?? null);
             if ($cursor === '') {
-                return $pages;
+                return;
             }
         }
         throw new \moodle_exception('privacy_export_failed', self::C);

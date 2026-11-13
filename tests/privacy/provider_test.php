@@ -279,6 +279,26 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
     }
 
     /**
+     * A transcripts page read before a failing one: its transcript is written, then the request fails.
+     */
+    public function test_export_keeps_the_transcripts_of_the_pages_read(): void {
+        $this->transport->respond(200, self::page([$this->activity((int) $this->quiz->cmid)]));
+        $this->transport->respond(200, ['items' => [$this->item((int) $this->quiz->cmid)], 'next_cursor' => 'aaaa-1']);
+        $this->transport->respond(503, ['error' => ['code' => 'ERR-ASSESS-001', 'message' => 'down']]);
+        try {
+            provider::export_user_data($this->quiz_contextlist());
+            $this->fail('Exception expected');
+        } catch (\moodle_exception $e) {
+            $this->assertSame('privacy_export_failed', $e->errorcode);
+        }
+        $files = writer::with_context(\context_module::instance($this->quiz->cmid))->get_custom_file([
+            get_string('privacy:path', 'local_vektradiscuss'),
+            get_string('privacy:session', 'local_vektradiscuss', (object) ['cmid' => $this->quiz->cmid, 'n' => 1])]);
+        $this->assertSame(hash('sha256', self::BYTES), hash('sha256', reset($files)));
+        $this->assertDebuggingCalled();
+    }
+
+    /**
      * A session listed as pending whose transcript was generated before the transcripts read: exported, and not
      * reported as missing.
      */
