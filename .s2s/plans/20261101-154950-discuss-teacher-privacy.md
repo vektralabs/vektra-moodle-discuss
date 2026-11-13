@@ -383,6 +383,17 @@ tool_dataprivacy UI status alone.
   with #211/#212 first. By design: 404 ERR-ASSESS-017 for another activity's transcript shows "not ready",
   as Vektra makes it indistinguishable from an unknown transcript; the grader fallback file name takes the
   student id and session number from the link (a label only, the bytes come from Vektra).
+
+**Live evidence for release 0.2.0 (F1 at vektra-stack develop aa4f2fd4 with #209/#211/#212/#214, plugin develop
+fb4fe9f, 2026-11-13, headless Chromium).**
+- Notice version: a live Start on each site audited `assess_start` with `presented_notice_version` equal to
+  `notice_version` (`f1-dev-1`): 5.2 cmid 3 (second student, session #1); 4.3 cmid 2 (first student,
+  session #2 after a new session granted from the Discussions page). Both finished, transcripts generated
+  and delivered.
+- Activity id: student (owner) and grader downloads on both sites, copies sha256-equal (5.2 `75a21034...`,
+  4.3 `846f007e...`). The grader link of the 5.2 cmid 3 transcript replayed through cmid 2 (another quiz
+  the grader grades): Vektra 404 with `assess_ownership_mismatch_rejected` / `transcript_download_token_cmid`,
+  no token, no bytes; the page says "not ready" (by design, above).
 - Pending live checks, waiting for F1 after vektra-stack #209 (F1's 4.3 WS token was missing on
   2026-11-12: setup check `no_token`): D5, D6, E2, and the student plan's F1 and E3 (moved here when
   #3 merged).
