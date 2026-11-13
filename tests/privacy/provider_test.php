@@ -260,6 +260,41 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
     }
 
     /**
+     * The transcripts read fails after the activities read: the activity records are written, then the request
+     * fails.
+     */
+    public function test_export_writes_the_records_when_the_transcripts_read_fails(): void {
+        $this->transport->respond(200, self::page([$this->activity((int) $this->quiz->cmid)]));
+        $this->transport->respond(503, ['error' => ['code' => 'ERR-ASSESS-001', 'message' => 'down']]);
+        try {
+            provider::export_user_data($this->quiz_contextlist());
+            $this->fail('Exception expected');
+        } catch (\moodle_exception $e) {
+            $this->assertSame('privacy_export_failed', $e->errorcode);
+        }
+        $this->assertNotEmpty(writer::with_context(\context_module::instance($this->quiz->cmid))->get_data([
+            get_string('privacy:path', 'local_vektradiscuss'),
+            get_string('privacy:activity', 'local_vektradiscuss', $this->quiz->cmid)]));
+        $this->assertDebuggingCalled();
+    }
+
+    /**
+     * A session listed as pending whose transcript was generated before the transcripts read: exported, and not
+     * reported as missing.
+     */
+    public function test_export_reconciles_a_transcript_generated_between_the_reads(): void {
+        $pending = ['session_no' => 1, 'state' => 'CLOSED', 'turns' => null, 'turns_unavailable' => 'transcript_pending'];
+        $this->transport->respond(200, self::page([$this->activity((int) $this->quiz->cmid, [$pending])]));
+        $this->transport->respond(200, ['items' => [$this->item((int) $this->quiz->cmid)], 'next_cursor' => null]);
+        provider::export_user_data($this->quiz_contextlist());
+        $record = writer::with_context(\context_module::instance($this->quiz->cmid))->get_data([
+            get_string('privacy:path', 'local_vektradiscuss'),
+            get_string('privacy:activity', 'local_vektradiscuss', $this->quiz->cmid)]);
+        $this->assertNull($record->sessions[0]->turnsunavailable);
+        $this->assertStringEndsWith('_s1_20261107.html', $record->sessions[0]->transcript);
+    }
+
+    /**
      * An activity listed twice fails the export: the second record would overwrite the first.
      */
     public function test_export_refuses_a_repeated_activity(): void {

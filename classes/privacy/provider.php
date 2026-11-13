@@ -139,10 +139,18 @@ class provider implements
         };
         $activities = self::api()->subject_activities($userid, $keep);
         $damaged = [];
-        // Every transcript of the approved activities, even one whose session is no longer listed.
+        // Every transcript of the approved activities, even one whose session is no longer listed. A failed
+        // read is raised after the activity records are written.
         $transcripts = [];
-        foreach (self::api()->subject_transcripts($userid, $keep, $damaged) as $item) {
-            $transcripts[$item['transcript_id']] = $item;
+        $bysession = [];
+        $readerror = null;
+        try {
+            foreach (self::api()->subject_transcripts($userid, $keep, $damaged) as $item) {
+                $transcripts[$item['transcript_id']] = $item;
+                $bysession[$item['cmid'] . ':' . $item['session_no']] = $item;
+            }
+        } catch (\moodle_exception $e) {
+            $readerror = $e;
         }
         $path = get_string('privacy:path', 'local_vektradiscuss');
         foreach ($transcripts as $item) {
@@ -166,11 +174,17 @@ class provider implements
             $sessions = [];
             foreach ($activity['sessions'] as $session) {
                 $tid = $session['transcript_id'];
-                if ($tid !== null && !isset($transcripts[$tid]) && !in_array($tid, $damagedids, true)) {
+                $unavailable = $session['turns_unavailable'];
+                if ($tid === null && $unavailable !== null) {
+                    // A transcript generated between the two reads is exported: its session is not missing.
+                    $tid = $bysession[$activity['cmid'] . ':' . $session['session_no']]['transcript_id'] ?? null;
+                    $unavailable = $tid !== null ? null : $unavailable;
+                }
+                if ($readerror === null && $tid !== null && !isset($transcripts[$tid]) && !in_array($tid, $damagedids, true)) {
                     $missing['transcript_missing'] = true;
                 }
-                if (!in_array($session['turns_unavailable'], [null, 'transcript_purged'], true)) {
-                    $missing[$session['turns_unavailable']] = true;
+                if (!in_array($unavailable, [null, 'transcript_purged'], true)) {
+                    $missing[$unavailable] = true;
                 }
                 $sessions[] = (object) [
                     'session' => $session['session_no'],
@@ -181,7 +195,7 @@ class provider implements
                     'closed' => $session['closed_at'],
                     'transcript' => $tid !== null ? ($transcripts[$tid]['filename'] ?? null) : null,
                     'turns' => $session['turns'],
-                    'turnsunavailable' => $session['turns_unavailable'],
+                    'turnsunavailable' => $unavailable,
                 ];
             }
             writer::with_context(self::context_of($activity['cmid'], $userid))->export_data(
@@ -197,6 +211,9 @@ class provider implements
                     'technicalrecords' => $activity['technical_records'],
                 ]
             );
+        }
+        if ($readerror !== null) {
+            throw $readerror;
         }
         if ($damaged) {
             // Never export bytes that are not the stored transcript; everything else is written.
