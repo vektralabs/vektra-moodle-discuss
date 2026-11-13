@@ -43,6 +43,10 @@ if (optional_param('run', 0, PARAM_BOOL) && data_submitted()) {
 }
 
 $reportid = optional_param('report', '', PARAM_ALPHANUMEXT);
+// The periodic refresh reloads $PAGE->url: keep the report there, or the next load would forget it.
+if ($reportid !== '') {
+    $PAGE->set_url(new moodle_url($url, ['report' => $reportid]));
+}
 $report = $reportid !== '' ? $check->report($reportid) : null;
 if ($report !== null && $report['inprogress']) {
     // The worker runs the check in the background: look again shortly.
