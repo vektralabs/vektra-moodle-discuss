@@ -65,15 +65,20 @@ final class transcript_proxy {
     /** @var assess_client Vektra client. */
     private assess_client $client;
 
+    /** @var callable Waits a number of seconds before a retry (tests replace it). */
+    private $sleep;
+
     /**
      * Constructor.
      *
      * @param config|null $config
      * @param assess_client|null $client
+     * @param callable|null $sleep fn(int $seconds) (default: sleep()).
      */
-    public function __construct(?config $config = null, ?assess_client $client = null) {
+    public function __construct(?config $config = null, ?assess_client $client = null, ?callable $sleep = null) {
         $this->config = $config ?? new config();
         $this->client = $client ?? new assess_client($this->config);
+        $this->sleep = $sleep ?? 'sleep';
     }
 
     /**
@@ -125,13 +130,15 @@ final class transcript_proxy {
         if (!self::valid_tid($tid) || $body['cmid'] <= 0) {
             return [self::FAILED, null];
         }
-        $response = $this->client->request(
+        $request = fn(): assess_response => $this->client->request(
             'POST',
             '/api/v1/assess/transcripts/' . $tid . '/download-token',
             [],
             $body,
             $keyrole
         );
+        // A grader's token is a teacher call: retried once when Vektra refused on facts it is refreshing.
+        $response = $keyrole === 'teacher' ? teacher_api::retry_once($request, $this->sleep) : $request();
         if (!$response->ok()) {
             self::log_failure('download-token', $response);
             if (teacher_api::role_refusal($response) === 'stale') {

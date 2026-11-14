@@ -277,6 +277,7 @@ $string['student_heading'] = 'Assessment discussion';
 $string['teacher_active_sessions'] = 'Discussions in progress';
 $string['teacher_also_disable'] = 'Also disable the discussion for this activity (no new discussion can start)';
 $string['teacher_check_stale'] = 'Vektra is checking your role in this activity. Try again in a few seconds.';
+$string['teacher_checking'] = 'Checking…';
 $string['teacher_close_access_revoked'] = 'ended: access to the activity revoked';
 $string['teacher_close_budget_exhausted'] = 'ended: usage limit reached';
 $string['teacher_close_finished'] = 'finished by the student';

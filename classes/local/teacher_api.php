@@ -33,6 +33,10 @@ use local_vektradiscuss\local\http\assess_response;
  * Every call names the acting teacher, the course and the activity type: Vektra re-checks that the
  * actor edits this activity (ERR-ASSESS-021) and uses the course and type to queue a fresh check when
  * its facts are stale. Nothing is cached: each call reads or writes Vektra's current state.
+ *
+ * A refusal decided on LMS facts Vektra is still refreshing carries `error.details.retry_after_s`: every call
+ * here waits that long and sends the same request once more ({@see self::retry_once()}); a second refusal is
+ * final, even with the hint again.
  */
 class teacher_api {
     /** @var string[] The activity types of the assessment discussion. */
@@ -41,19 +45,106 @@ class teacher_api {
     /** @var int Total timeout of a call made while a form renders or saves, in seconds. */
     public const FORM_TIMEOUT = 4;
 
+    /** @var int Total timeout of the gate refresh, in seconds: it must never hold a page. */
+    public const REFRESH_TIMEOUT = 2;
+
+    /** @var int Longest wait before the retry, in seconds: a longer hint is not a refresh in progress. */
+    public const MAX_RETRY_AFTER = 5;
+
+    /** @var int Wait before the retry of a stale role check from a Vektra that sends no hint, in seconds. */
+    public const LEGACY_RETRY_AFTER = 2;
+
+
     /** @var string Version of the attestation text the opening-date form shows (audited by Vektra). */
     public const ATTESTATION_TEXT_VERSION = 'discuss-opening-1';
 
     /** @var assess_client Client. */
     private assess_client $client;
 
+    /** @var callable Waits a number of seconds (tests replace it). */
+    private $sleep;
+
     /**
      * Constructor.
      *
      * @param assess_client|null $client
+     * @param callable|null $sleep fn(int $seconds): waits before a retry (default: sleep()).
      */
-    public function __construct(?assess_client $client = null) {
+    public function __construct(?assess_client $client = null, ?callable $sleep = null) {
         $this->client = $client ?? new assess_client();
+        $this->sleep = $sleep ?? 'sleep';
+    }
+
+    /**
+     * Ask Vektra to refresh its LMS facts of the activity (the teacher's role, the dates) as a teacher page
+     * opens, so the first action finds them fresh. Fire and forget: a failure or a timeout is ignored, logs
+     * nothing (a download may already be streaming) and the page opens anyway. Nothing is kept in Moodle
+     * (ARCH-065): Vektra coalesces the refreshes of one activity.
+     *
+     * @param int $cmid
+     * @param int $courseid
+     * @param string $type quiz or assign
+     * @param int $actorid
+     */
+    public function refresh_gate(int $cmid, int $courseid, string $type, int $actorid): void {
+        self::assert_type($type);
+        $path = self::activity_path($cmid) . '/gate-refresh';
+        $body = self::actor_body($courseid, $type, $actorid);
+        $this->client->request('POST', $path, [], $body, 'teacher', ['timeout' => self::REFRESH_TIMEOUT, 'quiet' => true]);
+    }
+
+    /**
+     * How long to wait before sending a refused request once more, or null when the refusal is final.
+     *
+     * The hint is `error.details.retry_after_s` (whole seconds, at most MAX_RETRY_AFTER) on a refusal (4xx):
+     * Vektra decided on LMS facts it is refreshing and did nothing. A stale role check without a valid hint
+     * gets the legacy wait. A rate limit, a server error or any other refusal is final.
+     *
+     * @param assess_response $response
+     * @return int|null
+     */
+    public static function retry_after(assess_response $response): ?int {
+        if ($response->status < 400 || $response->status >= 500 || $response->status === 429) {
+            return null;
+        }
+        $seconds = is_array($response->details) ? ($response->details['retry_after_s'] ?? null) : null;
+        if (is_int($seconds) && $seconds >= 1 && $seconds <= self::MAX_RETRY_AFTER) {
+            return $seconds;
+        }
+        return self::role_refusal($response) === 'stale' ? self::LEGACY_RETRY_AFTER : null;
+    }
+
+    /**
+     * Send a request, and once more after the wait Vektra asks for when it refused on facts it is refreshing.
+     *
+     * @param callable $call fn(): assess_response, the same request each time.
+     * @param callable $sleep fn(int $seconds).
+     * @return assess_response The second answer when there was a retry.
+     */
+    public static function retry_once(callable $call, callable $sleep): assess_response {
+        $response = $call();
+        $wait = self::retry_after($response);
+        if ($wait === null) {
+            return $response;
+        }
+        $sleep($wait);
+        return $call();
+    }
+
+    /**
+     * A teacher call with the one retry.
+     *
+     * @param string $method
+     * @param string $path
+     * @param array|null $body
+     * @param array $opts
+     * @return assess_response
+     */
+    private function send(string $method, string $path, ?array $body, array $opts = []): assess_response {
+        return self::retry_once(
+            fn(): assess_response => $this->client->request($method, $path, [], $body, 'teacher', $opts),
+            $this->sleep
+        );
     }
 
     /**
@@ -67,7 +158,7 @@ class teacher_api {
      */
     public function get_config(int $cmid, int $courseid, string $type, int $actorid): assess_response {
         self::assert_type($type);
-        return $this->client->request('GET', self::config_path($cmid), [], null, 'teacher', [
+        return $this->send('GET', self::config_path($cmid), null, [
             'timeout' => self::FORM_TIMEOUT,
             'headers' => self::actor_headers($courseid, $type, $actorid),
         ]);
@@ -94,7 +185,7 @@ class teacher_api {
     ): assess_response {
         self::assert_type($type);
         $body = self::actor_body($courseid, $type, $actorid) + ['expected_version' => $expectedversion] + $fields;
-        return $this->client->request('PUT', self::config_path($cmid), [], $body, 'teacher', ['timeout' => self::FORM_TIMEOUT]);
+        return $this->send('PUT', self::config_path($cmid), $body, ['timeout' => self::FORM_TIMEOUT]);
     }
 
     /**
@@ -114,14 +205,7 @@ class teacher_api {
             'attestation' => true,
             'attestation_text_version' => self::ATTESTATION_TEXT_VERSION,
         ];
-        return $this->client->request(
-            'PUT',
-            self::activity_path($cmid) . '/opening-fallback',
-            [],
-            $body,
-            'teacher',
-            ['timeout' => self::FORM_TIMEOUT]
-        );
+        return $this->send('PUT', self::activity_path($cmid) . '/opening-fallback', $body, ['timeout' => self::FORM_TIMEOUT]);
     }
 
     /**
@@ -141,7 +225,7 @@ class teacher_api {
             $headers['X-Assess-Cursor'] = $cursor;
         }
         $path = self::activity_path($cmid) . '/sessions';
-        return $this->client->request('GET', $path, [], null, 'teacher', ['headers' => $headers]);
+        return $this->send('GET', $path, null, ['headers' => $headers]);
     }
 
     /**
@@ -174,7 +258,7 @@ class teacher_api {
             $body['include_previous_turns'] = $includeprevious;
         }
         $path = self::activity_path($cmid) . '/sessions/' . $sessionid . '/reset';
-        return $this->client->request('POST', $path, [], $body, 'teacher');
+        return $this->send('POST', $path, $body);
     }
 
     /**
@@ -204,7 +288,7 @@ class teacher_api {
             'expected_active_count' => $expectedactive,
             'also_disable' => $alsodisable,
         ];
-        return $this->client->request('POST', self::activity_path($cmid) . '/terminate', [], $body, 'teacher');
+        return $this->send('POST', self::activity_path($cmid) . '/terminate', $body);
     }
 
     /**
@@ -239,13 +323,7 @@ class teacher_api {
             'percent' => $percent,
             'confirm_over_100' => $confirmover100,
         ];
-        return $this->client->request(
-            'PUT',
-            self::activity_path($cmid) . '/students/' . $studentid . '/extra-time',
-            [],
-            $body,
-            'teacher'
-        );
+        return $this->send('PUT', self::activity_path($cmid) . '/students/' . $studentid . '/extra-time', $body);
     }
 
     /**
@@ -293,13 +371,7 @@ class teacher_api {
         if (!transcript_proxy::valid_tid($tid)) {
             throw new \coding_exception('Invalid transcript id.');
         }
-        return $this->client->request(
-            'POST',
-            '/api/v1/assess/transcripts/' . $tid . '/resend',
-            [],
-            ['actor_userid' => $actorid, 'cmid' => $cmid],
-            'teacher'
-        );
+        return $this->send('POST', '/api/v1/assess/transcripts/' . $tid . '/resend', ['actor_userid' => $actorid, 'cmid' => $cmid]);
     }
 
     /**

@@ -54,6 +54,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Transcript downloads (student and grader) and resends carry the activity id (`cmid`); Vektra refuses a
   transcript of another activity, so the plugin no longer pages the activity state or the sessions list
   to check ownership (release 0.2.0).
+- Teacher pages ask Vektra to refresh the activity's LMS facts as they open (`POST
+  /activities/{cmid}/gate-refresh` on the Discussions page, the activity settings and the grader download):
+  fire and forget and silent, after the page's own read, so the first teacher action no longer meets a stale role check (vektra-stack #221).
+- Every teacher call is sent once more when Vektra refuses on LMS facts it is still refreshing: the
+  refusal carries `error.details.retry_after_s` (at most 5 seconds), the plugin waits that long and repeats
+  the same request, and shows the second refusal as final. The forms say "Checking…" while the server
+  waits. A Vektra without the hint keeps the previous one retry of a stale role check.
 
 ### Fixed
 

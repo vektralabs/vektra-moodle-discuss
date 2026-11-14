@@ -32,11 +32,14 @@ Feature: The teacher's Discussions page
     And I should see "Round 1: sent"
     And I should see "End 2 discussion(s) now"
     And I should see "Students are not notified by email when a new session is granted."
+    And the Vektra assess stub received 1 POST request to "gate-refresh" of "quiz1"
     When I set the field "Reason for a new session after #1" to "Connection lost during the session"
     And I press "Grant a new session"
     Then I should see "A new session was granted. The student is not notified by email."
     And the Vektra assess stub received 1 POST request to "reset" of "quiz1"
     And the last Vektra assess stub POST to "reset" of "quiz1" should have the field "reason"
+    # The page shown after the action opens again: Vektra coalesces refreshes of one activity.
+    And the Vektra assess stub received 2 POST requests to "gate-refresh" of "quiz1"
 
   Scenario: A non-editing teacher sees the list without actions and without the override holder
     Given I log in as "teacher2"

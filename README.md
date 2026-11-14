@@ -102,6 +102,8 @@ the activity's settings from Vektra when the form opens, and saves only what you
   beyond it.
 - If Vektra cannot be reached while you edit the activity, the section is locked and nothing is
   sent: the rest of the activity saves as usual.
+- Opening the form asks Vektra to refresh what it reads from Moodle (your role, the dates). If Vektra
+  is still refreshing when you save, the plugin waits a few seconds and tries once more ("Checking…").
 
 **Discussions page.** The activity's *Discussions* entry (teachers who can see transcripts) lists
 each student's sessions, how their transcripts were delivered, the new sessions granted and the extra
@@ -114,6 +116,9 @@ time. Teachers who can manage discussions can:
   session was granted (more than +100% needs a confirmation; time limit plus extra time at most 240
   minutes);
 - download any transcript, and send a delivered transcript again to the current recipients.
+
+The page asks Vektra to refresh what it reads from Moodle as it opens. An action refused because Vektra
+is still refreshing is tried once more after a few seconds ("Checking…"); a second refusal is shown.
 
 ## Privacy
 
