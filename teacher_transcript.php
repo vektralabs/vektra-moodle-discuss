@@ -29,6 +29,7 @@
 require(__DIR__ . '/../../config.php');
 
 use local_vektradiscuss\local\config;
+use local_vektradiscuss\local\http\assess_client;
 use local_vektradiscuss\local\student_endpoint;
 use local_vektradiscuss\local\teacher_api;
 use local_vektradiscuss\local\transcript_proxy;
@@ -82,7 +83,7 @@ if (!$config->key_usable('teacher')) {
 }
 
 // Vektra refreshes its LMS facts of the activity before the grader's token is asked for.
-(new teacher_api())->refresh_gate((int) $cm->id, (int) $course->id, $cm->modname, (int) $USER->id);
+(new teacher_api(new assess_client($config)))->refresh_gate((int) $cm->id, (int) $course->id, $cm->modname, (int) $USER->id);
 $proxy = new transcript_proxy($config);
 // Retried once inside the proxy when Vektra asks for it.
 [$result, $token] = $proxy->mint_grader((int) $USER->id, $tid, (int) $cm->id);

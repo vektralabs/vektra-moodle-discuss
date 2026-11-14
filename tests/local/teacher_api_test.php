@@ -99,17 +99,37 @@ final class teacher_api_test extends \advanced_testcase {
     }
 
     /**
-     * A failed refresh is ignored: no exception, no retry, nothing waited.
+     * A failed refresh is ignored: no exception, no retry, nothing waited, nothing logged (a download may be
+     * streaming).
      */
     public function test_refresh_gate_failure_is_ignored(): void {
+        global $SESSION;
         $this->transport->respond(0);
         $this->api()->refresh_gate(42, 7, 'quiz', 5);
+        unset($SESSION->local_vektradiscuss_gaterefresh);
         $this->transport->respond(403, ['error' => ['code' => 'ERR-ASSESS-007', 'message' => 'no',
             'details' => ['retry_after_s' => 3]]]);
         $this->api()->refresh_gate(42, 7, 'quiz', 5);
-        $this->assertDebuggingCalledCount(2);
+        $this->assertDebuggingNotCalled();
         $this->assertCount(2, $this->transport->calls);
         $this->assertSame([], $this->slept);
+    }
+
+    /**
+     * One refresh per activity per interval in the session: another activity, or the same one later, sends again.
+     */
+    public function test_refresh_gate_is_throttled_per_activity(): void {
+        global $SESSION;
+        $this->transport->respond(202, [])->respond(202, [])->respond(202, []);
+        $this->api()->refresh_gate(42, 7, 'quiz', 5);
+        $this->api()->refresh_gate(42, 7, 'quiz', 5);
+        $this->assertCount(1, $this->transport->calls);
+        $this->api()->refresh_gate(43, 7, 'quiz', 5);
+        $this->assertCount(2, $this->transport->calls);
+        $SESSION->local_vektradiscuss_gaterefresh[42] = time() - teacher_api::REFRESH_INTERVAL;
+        $this->api()->refresh_gate(42, 7, 'quiz', 5);
+        $this->assertCount(3, $this->transport->calls);
+        $this->assertStringEndsWith('/activities/42/gate-refresh', $this->transport->calls[2]['url']);
     }
 
     /**
@@ -123,8 +143,9 @@ final class teacher_api_test extends \advanced_testcase {
         foreach ([0, 6, 600, '3', 3.0, null, true] as $invalid) {
             $this->assertNull(teacher_api::retry_after(self::refusal(409, 'ERR-ASSESS-024', ['retry_after_s' => $invalid])));
         }
-        // A rate limit is never a refresh in progress.
+        // A rate limit or a server error is never a refresh in progress.
         $this->assertNull(teacher_api::retry_after(self::refusal(429, 'ERR-ASSESS-030', ['retry_after_s' => 3])));
+        $this->assertNull(teacher_api::retry_after(self::refusal(503, 'ERR-ASSESS-099', ['retry_after_s' => 3])));
         $this->assertNull(teacher_api::retry_after(self::refusal(409, 'ERR-ASSESS-024', ['reason' => 'gate_inputs_stale'])));
         $this->assertNull(teacher_api::retry_after(self::refusal(409, 'ERR-ASSESS-024', null)));
         $this->assertNull(teacher_api::retry_after(new assess_response(200, ['retry_after_s' => 3])));
@@ -133,6 +154,9 @@ final class teacher_api_test extends \advanced_testcase {
         $stale = self::refusal(403, 'ERR-ASSESS-021', ['reason' => 'editor_check_stale']);
         $this->assertSame(teacher_api::LEGACY_RETRY_AFTER, teacher_api::retry_after($stale));
         $this->assertNull(teacher_api::retry_after(self::refusal(403, 'ERR-ASSESS-021', ['reason' => 'not_an_editor'])));
+        // A stale role check with an unusable hint still gets the legacy wait.
+        $badhint = self::refusal(403, 'ERR-ASSESS-021', ['reason' => 'editor_check_stale', 'retry_after_s' => 6]);
+        $this->assertSame(teacher_api::LEGACY_RETRY_AFTER, teacher_api::retry_after($badhint));
         // An explicit hint wins, also over the legacy wait.
         $hinted = self::refusal(403, 'ERR-ASSESS-021', ['reason' => 'editor_check_stale', 'retry_after_s' => 4]);
         $this->assertSame(4, teacher_api::retry_after($hinted));

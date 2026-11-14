@@ -106,7 +106,8 @@ class assess_client {
      * @param array|null $body JSON body.
      * @param string $keyrole Key role (mint or teacher): selects the secret.
      * @param array $opts Options: timeout (seconds), bearer (a token replacing the key), headers (name => value,
-     *     X-Assess-* names only, see {@see self::extra_headers()}).
+     *     X-Assess-* names only, see {@see self::extra_headers()}), quiet (no debugging on failure: a call whose
+     *     outcome is ignored, made where output may already be a file).
      * @return assess_response
      * @throws \coding_exception For an invalid method, path or header, or a body on a GET.
      */
@@ -151,9 +152,12 @@ class assess_client {
         $result = $this->transport->send($method, $url, $headers, $payload, $timeout, $connecttimeout);
         $status = (int) $result['status'];
 
+        $quiet = !empty($opts['quiet']);
         if ($status === 0) {
             $message = self::redact('transport failure: ' . $result['error'], $secret);
-            $this->log("Vektra assess {$method} {$path}: {$message}");
+            if (!$quiet) {
+                $this->log("Vektra assess {$method} {$path}: {$message}");
+            }
             return assess_response::failure('transport', $message);
         }
 
@@ -163,7 +167,8 @@ class assess_client {
             $status,
             (string) $result['body'],
             (array) $result['headers'],
-            $secret
+            $secret,
+            $quiet
         );
     }
 
@@ -400,6 +405,7 @@ class assess_client {
      * @param string $body
      * @param array $headers
      * @param string $secret
+     * @param bool $quiet No debugging on failure.
      * @return assess_response
      */
     private function build_response(
@@ -408,7 +414,8 @@ class assess_client {
         int $status,
         string $body,
         array $headers,
-        string $secret
+        string $secret,
+        bool $quiet = false
     ): assess_response {
         $json = json_decode($body, true);
         $json = is_array($json) ? $json : null;
@@ -426,9 +433,9 @@ class assess_client {
         if ($errorcode === null && $status >= 300 && $status < 400) {
             $errorcode = 'redirect_refused';
         }
-        $this->log(
-            self::redact("Vektra assess {$method} {$path} failed: HTTP {$status} - {$body}", $secret)
-        );
+        if (!$quiet) {
+            $this->log(self::redact("Vektra assess {$method} {$path} failed: HTTP {$status} - {$body}", $secret));
+        }
         return new assess_response($status, $json, $errorcode, $message, $details, $requestid, $headers);
     }
 

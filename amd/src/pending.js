@@ -17,7 +17,9 @@
  * "Checking…" under a teacher form's button while the server waits for Vektra.
  *
  * When Vektra refuses on LMS facts it is still refreshing, the server waits a few seconds and sends the same
- * request once more. A normal answer comes before the notice shows; a retry shows it until the page changes.
+ * request once more. The notice shows when the page has not changed after a short wait, only for a submission
+ * that calls Vektra: a POST, not the cancel button, and, when the selector names a section of a larger form
+ * (the activity settings), only after a field of that section changed.
  *
  * @module     local_vektradiscuss/pending
  * @copyright  2026 VektraLabs
@@ -55,21 +57,33 @@ const show = (form, submitter, text) => {
 /**
  * Watch the forms holding the matched elements.
  *
- * @param {String} selector A form, or an element inside one.
+ * @param {String} selector A form, or a section inside one (then only a changed section counts).
  * @param {String} text The notice, already translated.
  */
 export const init = (selector, text) => {
     document.querySelectorAll(selector).forEach((element) => {
         const form = element.closest('form');
-        if (!form || form.dataset.vektraPending) {
+        if (!form || form.dataset.vektraPending || form.method.toLowerCase() !== 'post') {
             return;
         }
         form.dataset.vektraPending = '1';
+        let changed = element === form;
+        if (!changed) {
+            const mark = () => {
+                changed = true;
+            };
+            element.addEventListener('input', mark);
+            element.addEventListener('change', mark);
+        }
         form.addEventListener('submit', (event) => {
+            const submitter = event.submitter || null;
+            if (!changed || (submitter && submitter.name === 'cancel')) {
+                return;
+            }
             window.setTimeout(() => {
                 // Checked late: a listener added after this one (form validation) may have stopped the submission.
                 if (!event.defaultPrevented) {
-                    show(form, event.submitter || null, text);
+                    show(form, submitter, text);
                 }
             }, DELAY);
         });

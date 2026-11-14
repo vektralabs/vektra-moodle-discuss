@@ -54,6 +54,9 @@ class teacher_api {
     /** @var int Wait before the retry of a stale role check from a Vektra that sends no hint, in seconds. */
     public const LEGACY_RETRY_AFTER = 2;
 
+    /** @var int Seconds during which a teacher's pages of one activity send no second gate refresh. */
+    public const REFRESH_INTERVAL = 60;
+
     /** @var string Version of the attestation text the opening-date form shows (audited by Vektra). */
     public const ATTESTATION_TEXT_VERSION = 'discuss-opening-1';
 
@@ -76,8 +79,10 @@ class teacher_api {
 
     /**
      * Ask Vektra to refresh its LMS facts of the activity (the teacher's role, the dates) as a teacher page
-     * opens, so the first action finds them fresh. Fire and forget: a failure or a timeout is ignored and the
-     * page opens anyway.
+     * opens, so the first action finds them fresh. Fire and forget: a failure or a timeout is ignored, logs
+     * nothing (a download may already be streaming) and the page opens anyway. At most one per activity every
+     * REFRESH_INTERVAL seconds in the teacher's session: paging, searching and the page after an action do not
+     * send another one.
      *
      * @param int $cmid
      * @param int $courseid
@@ -85,34 +90,38 @@ class teacher_api {
      * @param int $actorid
      */
     public function refresh_gate(int $cmid, int $courseid, string $type, int $actorid): void {
+        global $SESSION;
         self::assert_type($type);
-        $this->client->request(
-            'POST',
-            self::activity_path($cmid) . '/gate-refresh',
-            [],
-            self::actor_body($courseid, $type, $actorid),
-            'teacher',
-            ['timeout' => self::REFRESH_TIMEOUT]
-        );
+        $path = self::activity_path($cmid) . '/gate-refresh';
+        $sent = $SESSION->local_vektradiscuss_gaterefresh ?? [];
+        $now = time();
+        if (is_array($sent) && isset($sent[$cmid]) && $now - (int) $sent[$cmid] < self::REFRESH_INTERVAL) {
+            return;
+        }
+        $sent = is_array($sent) ? array_filter($sent, fn($at): bool => $now - (int) $at < self::REFRESH_INTERVAL) : [];
+        $sent[$cmid] = $now;
+        $SESSION->local_vektradiscuss_gaterefresh = $sent;
+        $body = self::actor_body($courseid, $type, $actorid);
+        $this->client->request('POST', $path, [], $body, 'teacher', ['timeout' => self::REFRESH_TIMEOUT, 'quiet' => true]);
     }
 
     /**
      * How long to wait before sending a refused request once more, or null when the refusal is final.
      *
-     * The hint is `error.details.retry_after_s` (whole seconds, at most MAX_RETRY_AFTER): Vektra decided on
-     * LMS facts it is refreshing. A stale role check from a Vektra that sends no hint gets the legacy wait. A
-     * rate limit or a longer hint is never retried.
+     * The hint is `error.details.retry_after_s` (whole seconds, at most MAX_RETRY_AFTER) on a refusal (4xx):
+     * Vektra decided on LMS facts it is refreshing and did nothing. A stale role check without a valid hint
+     * gets the legacy wait. A rate limit, a server error or any other refusal is final.
      *
      * @param assess_response $response
      * @return int|null
      */
     public static function retry_after(assess_response $response): ?int {
-        if ($response->ok() || $response->status === 429) {
+        if ($response->status < 400 || $response->status >= 500 || $response->status === 429) {
             return null;
         }
-        if (is_array($response->details) && array_key_exists('retry_after_s', $response->details)) {
-            $seconds = $response->details['retry_after_s'];
-            return is_int($seconds) && $seconds >= 1 && $seconds <= self::MAX_RETRY_AFTER ? $seconds : null;
+        $seconds = is_array($response->details) ? ($response->details['retry_after_s'] ?? null) : null;
+        if (is_int($seconds) && $seconds >= 1 && $seconds <= self::MAX_RETRY_AFTER) {
+            return $seconds;
         }
         return self::role_refusal($response) === 'stale' ? self::LEGACY_RETRY_AFTER : null;
     }

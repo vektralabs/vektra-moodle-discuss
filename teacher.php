@@ -91,10 +91,10 @@ if ($refusal !== null) {
 
 $cursor = teacher_page::clean_cursor(optional_param('cursor', '', PARAM_RAW_TRIMMED));
 $api = new teacher_api();
-// Vektra refreshes its LMS facts while the teacher reads the list, so the first action finds them fresh.
-$api->refresh_gate((int) $cm->id, (int) $course->id, $cm->modname, (int) $USER->id);
 // Retried once inside teacher_api when Vektra asks for it.
 $response = $api->list_sessions((int) $cm->id, (int) $course->id, $cm->modname, (int) $USER->id, $cursor);
+// Vektra refreshes its LMS facts while the teacher reads the list, so the first action finds them fresh.
+$api->refresh_gate((int) $cm->id, (int) $course->id, $cm->modname, (int) $USER->id);
 $context = $page->context($response, $cursor, optional_param('q', '', PARAM_TEXT));
 if ($context === null) {
     $identifier = match (teacher_api::role_refusal($response)) {

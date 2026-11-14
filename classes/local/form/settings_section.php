@@ -106,10 +106,10 @@ class settings_section {
         $view = self::posted_view();
         if ($view === null) {
             $api = $api ?? new teacher_api();
-            // Vektra refreshes its LMS facts while the teacher edits, so the save finds them fresh.
-            $api->refresh_gate((int) $cm->id, (int) $course->id, $type, (int) $USER->id);
             // Retried once inside teacher_api when Vektra asks for it.
             $response = $api->get_config((int) $cm->id, (int) $course->id, $type, (int) $USER->id);
+            // Vektra refreshes its LMS facts while the teacher edits, so the save finds them fresh.
+            $api->refresh_gate((int) $cm->id, (int) $course->id, $type, (int) $USER->id);
             $view = self::view($response);
             if ($view === null) {
                 self::note($mform, self::refusal($response, 'form_unreachable'));
