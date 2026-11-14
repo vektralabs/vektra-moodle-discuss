@@ -103,33 +103,14 @@ final class teacher_api_test extends \advanced_testcase {
      * streaming).
      */
     public function test_refresh_gate_failure_is_ignored(): void {
-        global $SESSION;
         $this->transport->respond(0);
         $this->api()->refresh_gate(42, 7, 'quiz', 5);
-        unset($SESSION->local_vektradiscuss_gaterefresh);
         $this->transport->respond(403, ['error' => ['code' => 'ERR-ASSESS-007', 'message' => 'no',
             'details' => ['retry_after_s' => 3]]]);
         $this->api()->refresh_gate(42, 7, 'quiz', 5);
         $this->assertDebuggingNotCalled();
         $this->assertCount(2, $this->transport->calls);
         $this->assertSame([], $this->slept);
-    }
-
-    /**
-     * One refresh per activity per interval in the session: another activity, or the same one later, sends again.
-     */
-    public function test_refresh_gate_is_throttled_per_activity(): void {
-        global $SESSION;
-        $this->transport->respond(202, [])->respond(202, [])->respond(202, []);
-        $this->api()->refresh_gate(42, 7, 'quiz', 5);
-        $this->api()->refresh_gate(42, 7, 'quiz', 5);
-        $this->assertCount(1, $this->transport->calls);
-        $this->api()->refresh_gate(43, 7, 'quiz', 5);
-        $this->assertCount(2, $this->transport->calls);
-        $SESSION->local_vektradiscuss_gaterefresh[42] = time() - teacher_api::REFRESH_INTERVAL;
-        $this->api()->refresh_gate(42, 7, 'quiz', 5);
-        $this->assertCount(3, $this->transport->calls);
-        $this->assertStringEndsWith('/activities/42/gate-refresh', $this->transport->calls[2]['url']);
     }
 
     /**

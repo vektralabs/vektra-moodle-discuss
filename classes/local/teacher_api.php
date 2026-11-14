@@ -54,8 +54,6 @@ class teacher_api {
     /** @var int Wait before the retry of a stale role check from a Vektra that sends no hint, in seconds. */
     public const LEGACY_RETRY_AFTER = 2;
 
-    /** @var int Seconds during which a teacher's pages of one activity send no second gate refresh. */
-    public const REFRESH_INTERVAL = 60;
 
     /** @var string Version of the attestation text the opening-date form shows (audited by Vektra). */
     public const ATTESTATION_TEXT_VERSION = 'discuss-opening-1';
@@ -80,9 +78,8 @@ class teacher_api {
     /**
      * Ask Vektra to refresh its LMS facts of the activity (the teacher's role, the dates) as a teacher page
      * opens, so the first action finds them fresh. Fire and forget: a failure or a timeout is ignored, logs
-     * nothing (a download may already be streaming) and the page opens anyway. At most one per activity every
-     * REFRESH_INTERVAL seconds in the teacher's session: paging, searching and the page after an action do not
-     * send another one.
+     * nothing (a download may already be streaming) and the page opens anyway. Nothing is kept in Moodle
+     * (ARCH-065): Vektra coalesces the refreshes of one activity.
      *
      * @param int $cmid
      * @param int $courseid
@@ -90,17 +87,8 @@ class teacher_api {
      * @param int $actorid
      */
     public function refresh_gate(int $cmid, int $courseid, string $type, int $actorid): void {
-        global $SESSION;
         self::assert_type($type);
         $path = self::activity_path($cmid) . '/gate-refresh';
-        $sent = $SESSION->local_vektradiscuss_gaterefresh ?? [];
-        $now = time();
-        if (is_array($sent) && isset($sent[$cmid]) && $now - (int) $sent[$cmid] < self::REFRESH_INTERVAL) {
-            return;
-        }
-        $sent = is_array($sent) ? array_filter($sent, fn($at): bool => $now - (int) $at < self::REFRESH_INTERVAL) : [];
-        $sent[$cmid] = $now;
-        $SESSION->local_vektradiscuss_gaterefresh = $sent;
         $body = self::actor_body($courseid, $type, $actorid);
         $this->client->request('POST', $path, [], $body, 'teacher', ['timeout' => self::REFRESH_TIMEOUT, 'quiet' => true]);
     }

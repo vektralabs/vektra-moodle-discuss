@@ -38,8 +38,8 @@ Feature: The teacher's Discussions page
     Then I should see "A new session was granted. The student is not notified by email."
     And the Vektra assess stub received 1 POST request to "reset" of "quiz1"
     And the last Vektra assess stub POST to "reset" of "quiz1" should have the field "reason"
-    # The page after the action is in the same minute: no second refresh.
-    And the Vektra assess stub received 1 POST request to "gate-refresh" of "quiz1"
+    # The page shown after the action opens again: Vektra coalesces refreshes of one activity.
+    And the Vektra assess stub received 2 POST requests to "gate-refresh" of "quiz1"
 
   Scenario: A non-editing teacher sees the list without actions and without the override holder
     Given I log in as "teacher2"
