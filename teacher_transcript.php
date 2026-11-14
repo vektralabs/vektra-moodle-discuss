@@ -81,13 +81,11 @@ if (!$config->key_usable('teacher')) {
     local_vektradiscuss_teacher_transcript_refused('form_not_configured', $back);
 }
 
+// Vektra refreshes its LMS facts of the activity before the grader's token is asked for.
+(new teacher_api())->refresh_gate((int) $cm->id, (int) $course->id, $cm->modname, (int) $USER->id);
 $proxy = new transcript_proxy($config);
+// Retried once inside the proxy when Vektra asks for it.
 [$result, $token] = $proxy->mint_grader((int) $USER->id, $tid, (int) $cm->id);
-if ($result === transcript_proxy::STALE) {
-    // Vektra queued a fresh check of the teacher's role: one retry after it had time to land.
-    sleep(2);
-    [$result, $token] = $proxy->mint_grader((int) $USER->id, $tid, (int) $cm->id);
-}
 if ($result === transcript_proxy::OK) {
     $result = $proxy->send($tid, $token, $n, $student > 0 ? (string) $student : '');
 }

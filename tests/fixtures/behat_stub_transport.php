@@ -139,6 +139,9 @@ class behat_stub_transport implements transport {
             if (is_array($fixture)) {
                 return self::json((int) ($fixture['status'] ?? 200), $fixture['body'] ?? []);
             }
+            if ($name === 'gate-refresh') {
+                return self::json(202, ['cmid' => $cmid, 'queued' => true, 'refreshed_at' => null]);
+            }
             return self::json(200, self::teacher_default($method, $name, $cmid, $body));
         }
         return self::json(404, ['error' => ['code' => 'ERR-STUB-404', 'message' => 'not stubbed']]);
@@ -153,6 +156,7 @@ class behat_stub_transport implements transport {
     public static function teacher_route(string $path): ?array {
         $routes = [
             'config' => '#^/api/v1/assess/activities/(\d+)/config$#',
+            'gate-refresh' => '#^/api/v1/assess/activities/(\d+)/gate-refresh$#',
             'opening-fallback' => '#^/api/v1/assess/activities/(\d+)/opening-fallback$#',
             'sessions' => '#^/api/v1/assess/activities/(\d+)/sessions$#',
             'reset' => '#^/api/v1/assess/activities/(\d+)/sessions/[0-9a-f-]+/reset$#',

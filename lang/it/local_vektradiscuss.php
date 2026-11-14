@@ -277,6 +277,7 @@ $string['student_heading'] = 'Discussione della valutazione';
 $string['teacher_active_sessions'] = 'Discussioni in corso';
 $string['teacher_also_disable'] = 'Disabilita anche la discussione per questa attività (non se ne possono avviare di nuove)';
 $string['teacher_check_stale'] = 'Vektra sta verificando il tuo ruolo in questa attività. Riprova tra qualche secondo.';
+$string['teacher_checking'] = 'Verifica in corso…';
 $string['teacher_close_access_revoked'] = 'terminata: accesso all\'attività revocato';
 $string['teacher_close_budget_exhausted'] = 'terminata: limite di utilizzo raggiunto';
 $string['teacher_close_finished'] = 'conclusa dallo studente';

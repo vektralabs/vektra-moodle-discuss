@@ -106,12 +106,10 @@ class settings_section {
         $view = self::posted_view();
         if ($view === null) {
             $api = $api ?? new teacher_api();
+            // Vektra refreshes its LMS facts while the teacher edits, so the save finds them fresh.
+            $api->refresh_gate((int) $cm->id, (int) $course->id, $type, (int) $USER->id);
+            // Retried once inside teacher_api when Vektra asks for it.
             $response = $api->get_config((int) $cm->id, (int) $course->id, $type, (int) $USER->id);
-            if (self::stale_check($response)) {
-                // Vektra queued a fresh check of the teacher's role: one retry after it had time to land.
-                sleep(2);
-                $response = $api->get_config((int) $cm->id, (int) $course->id, $type, (int) $USER->id);
-            }
             $view = self::view($response);
             if ($view === null) {
                 self::note($mform, self::refusal($response, 'form_unreachable'));
@@ -123,6 +121,11 @@ class settings_section {
         $PAGE->requires->js_call_amd('local_vektradiscuss/charcounter', 'init', [
             [self::PREFIX . 'solution', self::PREFIX . 'rubric'],
             self::MAX_TEXT,
+        ]);
+        // A save Vektra asks to retry waits a few seconds on the server: say so under the button.
+        $PAGE->requires->js_call_amd('local_vektradiscuss/pending', 'init', [
+            '#id_' . self::PREFIX . 'header',
+            get_string('teacher_checking', 'local_vektradiscuss'),
         ]);
     }
 
@@ -238,12 +241,9 @@ class settings_section {
             $fields = self::changes($values, $type);
             if ($fields) {
                 $version = (int) $values[$p . 'version'];
+                // Retried once inside teacher_api when Vektra asks for it: otherwise the teacher's changes would be
+                // lost with the submission.
                 $response = $api->put_config($cmid, (int) $course->id, $type, (int) $USER->id, $version, $fields);
-                if (self::stale_check($response)) {
-                    // One retry: otherwise the teacher's changes would be lost with the submission.
-                    sleep(2);
-                    $response = $api->put_config($cmid, (int) $course->id, $type, (int) $USER->id, $version, $fields);
-                }
                 if (!$response->ok()) {
                     // The opening fallback is checked against the configuration just saved: none was saved.
                     self::notify_failure($response);
@@ -634,16 +634,6 @@ class settings_section {
         $raw = optional_param(self::PREFIX . 'view', '', PARAM_RAW);
         $view = $raw !== '' ? json_decode($raw, true) : null;
         return is_array($view) && is_int($view['version'] ?? null) && $view['version'] >= 0 ? $view : null;
-    }
-
-    /**
-     * Whether Vektra refused because its check of the teacher's role was stale (a retry may pass).
-     *
-     * @param assess_response $response
-     * @return bool
-     */
-    private static function stale_check(assess_response $response): bool {
-        return teacher_api::role_refusal($response) === 'stale';
     }
 
     /**

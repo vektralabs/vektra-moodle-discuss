@@ -52,6 +52,12 @@ final class settings_section_test extends \advanced_testcase {
     /** @var scripted_transport Transport. */
     private scripted_transport $transport;
 
+    /** @var int[] Waits before a retry, in seconds. */
+    private array $slept = [];
+
+    /** @var int[] Activities whose gate refresh was asked for. */
+    private array $refreshes = [];
+
     /** @var \stdClass Course. */
     private \stdClass $course;
 
@@ -86,7 +92,42 @@ final class settings_section_test extends \advanced_testcase {
      * @return teacher_api
      */
     private function api(): teacher_api {
-        return new teacher_api(new assess_client(null, $this->transport));
+        $sleep = function (int $seconds): void {
+            $this->slept[] = $seconds;
+        };
+        $record = function (int $cmid): void {
+            $this->refreshes[] = $cmid;
+        };
+        // The gate refresh is recorded, not sent: its request is tested in teacher_api_test, and the scripted
+        // responses of these tests stay in the order of the configuration calls.
+        return new class (new assess_client(null, $this->transport), $sleep, $record) extends teacher_api {
+            /** @var callable Records a refresh. */
+            private $record;
+
+            /**
+             * Constructor.
+             *
+             * @param assess_client $client
+             * @param callable $sleep
+             * @param callable $record
+             */
+            public function __construct(assess_client $client, callable $sleep, callable $record) {
+                parent::__construct($client, $sleep);
+                $this->record = $record;
+            }
+
+            /**
+             * Record the refresh.
+             *
+             * @param int $cmid
+             * @param int $courseid
+             * @param string $type
+             * @param int $actorid
+             */
+            public function refresh_gate(int $cmid, int $courseid, string $type, int $actorid): void {
+                ($this->record)($cmid);
+            }
+        };
     }
 
     /**
@@ -352,7 +393,59 @@ final class settings_section_test extends \advanced_testcase {
         $this->save($this->submitted([$p . 'enabled' => 1]));
         $this->assertDebuggingCalled();
         $this->assertCount(2, $this->transport->calls);
+        // A Vektra that sends no hint gets the legacy wait.
+        $this->assertSame([teacher_api::LEGACY_RETRY_AFTER], $this->slept);
         $this->assertSame(get_string('form_saved', 'local_vektradiscuss'), \core\notification::fetch()[0]->get_message());
+    }
+
+    /**
+     * A save refused on LMS facts Vektra is refreshing (retry_after_s) waits as asked and is sent again once,
+     * the same body; a second refusal is shown even when it carries the hint again.
+     */
+    public function test_save_refused_on_refreshing_facts_is_retried_once(): void {
+        $p = settings_section::PREFIX;
+        $refused = ['error' => ['code' => 'ERR-ASSESS-022', 'message' => 'invalid', 'details' => [
+            'fields' => [['field' => 'enabled', 'code' => 'assignment_without_cutoff']], 'retry_after_s' => 3]]];
+        $this->transport->respond(400, $refused, ['Retry-After' => '3']);
+        $this->transport->respond(200, self::view(['version' => 4]));
+        $this->save($this->submitted([$p . 'enabled' => 1]));
+        $this->assertDebuggingCalled();
+        $this->assertSame([3], $this->slept);
+        $this->assertCount(2, $this->transport->calls);
+        $this->assertSame($this->transport->calls[0]['body'], $this->transport->calls[1]['body']);
+        $this->assertSame(get_string('form_saved', 'local_vektradiscuss'), \core\notification::fetch()[0]->get_message());
+
+        $this->slept = [];
+        $this->transport->respond(400, $refused);
+        $this->transport->respond(400, $refused);
+        $this->save($this->submitted([$p . 'enabled' => 1]));
+        $this->assertDebuggingCalledCount(2);
+        $this->assertSame([3], $this->slept);
+        $this->assertCount(4, $this->transport->calls);
+        $this->assertSame(0, $this->transport->remaining());
+        $this->assertStringStartsWith(
+            get_string('form_refused', 'local_vektradiscuss'),
+            \core\notification::fetch()[0]->get_message()
+        );
+    }
+
+    /**
+     * Rendering the section asks Vektra to refresh the activity's gate first; a resubmission, which reuses the
+     * rendered view, does not.
+     */
+    public function test_render_refreshes_the_gate(): void {
+        $this->transport->respond(200, self::view());
+        $this->extend();
+        $this->assertSame([(int) $this->quiz->cmid], $this->refreshes);
+        $this->assertCount(1, $this->transport->calls);
+
+        $_POST[settings_section::PREFIX . 'view'] = json_encode(self::view());
+        try {
+            $this->extend();
+        } finally {
+            unset($_POST[settings_section::PREFIX . 'view']);
+        }
+        $this->assertSame([(int) $this->quiz->cmid], $this->refreshes);
     }
 
     /**

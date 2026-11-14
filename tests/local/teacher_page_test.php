@@ -45,6 +45,9 @@ final class teacher_page_test extends \advanced_testcase {
     /** @var scripted_transport Transport. */
     private scripted_transport $transport;
 
+    /** @var int[] Waits before a retry, in seconds. */
+    private array $slept = [];
+
     /** @var \stdClass Course. */
     private \stdClass $course;
 
@@ -84,7 +87,19 @@ final class teacher_page_test extends \advanced_testcase {
      * @return teacher_page
      */
     private function page(): teacher_page {
-        return new teacher_page($this->cm, $this->course, new teacher_api(new assess_client(null, $this->transport)));
+        $api = new teacher_api(new assess_client(null, $this->transport), $this->sleep());
+        return new teacher_page($this->cm, $this->course, $api);
+    }
+
+    /**
+     * A wait that only records its length.
+     *
+     * @return callable
+     */
+    private function sleep(): callable {
+        return function (int $seconds): void {
+            $this->slept[] = $seconds;
+        };
     }
 
     /**
@@ -197,11 +212,34 @@ final class teacher_page_test extends \advanced_testcase {
             'details' => ['reason' => 'not_a_grader']]]);
         [, $message] = $this->page()->act('terminate', ['reason' => 'x', 'expected' => 1]);
         $this->assertSame(get_string('teacher_not_a_grader', 'local_vektradiscuss'), $message);
-        $this->transport->respond(403, ['error' => ['code' => 'ERR-ASSESS-021', 'message' => 'stale',
-            'details' => ['reason' => 'grader_check_stale']]]);
+        $this->assertSame([], $this->slept);
+        // Stale twice: retried once after the hinted wait, then reported.
+        $stale = ['error' => ['code' => 'ERR-ASSESS-021', 'message' => 'stale',
+            'details' => ['reason' => 'grader_check_stale', 'retry_after_s' => 3]]];
+        $this->transport->respond(403, $stale)->respond(403, $stale);
         [, $message] = $this->page()->act('terminate', ['reason' => 'x', 'expected' => 1]);
         $this->assertSame(get_string('teacher_check_stale', 'local_vektradiscuss'), $message);
-        $this->assertDebuggingCalledCount(2);
+        $this->assertSame([3], $this->slept);
+        $this->assertCount(3, $this->transport->calls);
+        $this->assertDebuggingCalledCount(3);
+    }
+
+    /**
+     * An action refused on LMS facts Vektra is refreshing is sent again, the same request, after the wait; a
+     * refusal without the hint is final.
+     */
+    public function test_action_retried_once_on_refreshing_facts(): void {
+        $this->transport->respond(409, ['error' => ['code' => 'ERR-ASSESS-024', 'message' => 'no',
+            'details' => ['reason' => 'gate', 'retry_after_s' => 3]]], ['Retry-After' => '3']);
+        $this->transport->respond(200, ['reset_id' => 'r1']);
+        [$ok, $message] = $this->page()->act('reset', ['sid' => self::SID, 'reason' => 'x']);
+        $this->assertDebuggingCalled();
+        $this->assertTrue($ok);
+        $this->assertSame(get_string('teacher_reset_done', 'local_vektradiscuss'), $message);
+        $this->assertSame([3], $this->slept);
+        $this->assertCount(2, $this->transport->calls);
+        $this->assertSame($this->transport->calls[0]['url'], $this->transport->calls[1]['url']);
+        $this->assertSame($this->transport->calls[0]['body'], $this->transport->calls[1]['body']);
     }
 
     /**
@@ -365,18 +403,21 @@ final class teacher_page_test extends \advanced_testcase {
      */
     public function test_mint_grader(): void {
         $this->transport->respond(201, ['token' => 'dl.token_1', 'expires_in' => 120]);
-        $proxy = new transcript_proxy(null, new assess_client(null, $this->transport));
+        $proxy = new transcript_proxy(null, new assess_client(null, $this->transport), $this->sleep());
         $minted = $proxy->mint_grader((int) $this->teacher->id, 'aaaa-1', (int) $this->cm->id);
         $this->assertSame([transcript_proxy::OK, 'dl.token_1'], $minted);
         $this->assertSame('Bearer test-teacher-key-not-a-secret', $this->transport->header_map(0)['authorization']);
         $this->assertSame(['actor_userid' => (int) $this->teacher->id, 'cmid' => (int) $this->cm->id], $this->body());
 
-        // A stale grader check is reported as such (the page retries), not as unavailable.
-        $this->transport->respond(403, ['error' => ['code' => 'ERR-ASSESS-021', 'message' => 'stale',
-            'details' => ['reason' => 'grader_check_stale']]]);
-        $stale = $proxy->mint_grader((int) $this->teacher->id, 'aaaa-1', (int) $this->cm->id);
-        $this->assertSame([transcript_proxy::STALE, null], $stale);
-        $this->assertDebuggingCalledCount(2);
+        // A stale grader check is retried once after the wait, then reported as such, not as unavailable.
+        $stale = ['error' => ['code' => 'ERR-ASSESS-021', 'message' => 'stale',
+            'details' => ['reason' => 'grader_check_stale', 'retry_after_s' => 3]]];
+        $this->transport->respond(403, $stale)->respond(403, $stale);
+        $result = $proxy->mint_grader((int) $this->teacher->id, 'aaaa-1', (int) $this->cm->id);
+        $this->assertSame([transcript_proxy::STALE, null], $result);
+        $this->assertSame([3], $this->slept);
+        $this->assertCount(3, $this->transport->calls);
+        $this->assertDebuggingCalledCount(3);
 
         // The grader's fallback file name names the student.
         $this->assertContains(
