@@ -8,16 +8,16 @@ Materiale del corso: non usato
 Soluzione: non mostrata
 
 Elementi della prova:
-- Domanda 1: 1/1 (Correct)
-- Domanda 2: 1/1 (Correct)
-- Domanda 3: 1/1 (Correct)
-- Domanda 4: 1/1 (Correct)
+- Domanda 1: 1/1 (Corretta)
+- Domanda 2: 1/1 (Corretta)
+- Domanda 3: 1/1 (Corretta)
+- Domanda 4: 1/1 (Corretta)
 - Valutazione complessiva: 10,00/10
 
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_quiz_review_all_stu2 ===
 Quiz
 Tentativo #1 di 1 (metodo: voto più alto)
@@ -38,7 +38,7 @@ Alcuni punteggi non sono mostrati perché le opzioni di revisione del quiz li na
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_quiz_review_all_stu3 ===
 Quiz
 Tentativo #1 di 1 (metodo: voto più alto)
@@ -59,7 +59,7 @@ Alcuni punteggi non sono mostrati perché le opzioni di revisione del quiz li na
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_quiz_review_mixed_stu1 ===
 Quiz
 Tentativo #1 di 1 (metodo: voto più alto)
@@ -70,14 +70,14 @@ Materiale del corso: non usato
 Soluzione: non mostrata
 
 Elementi della prova:
-- Domanda 1: 1/1 (Correct)
-- Domanda 2: 0/1 (Incorrect)
+- Domanda 1: 1/1 (Corretta)
+- Domanda 2: 0/1 (Errata)
 - Valutazione complessiva: 5,00/10
 
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_quiz_gm_highest_stu1 ===
 Quiz
 Tentativo #2 di 4 (metodo: voto più alto)
@@ -88,14 +88,14 @@ Materiale del corso: non usato
 Soluzione: non mostrata
 
 Elementi della prova:
-- Domanda 1: 1/1 (Correct)
-- Domanda 2: 1/1 (Correct)
+- Domanda 1: 1/1 (Corretta)
+- Domanda 2: 1/1 (Corretta)
 - Valutazione complessiva: 10,00/10
 
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_quiz_gm_first_stu1 ===
 Quiz
 Tentativo #1 di 4 (metodo: primo tentativo)
@@ -106,14 +106,14 @@ Materiale del corso: non usato
 Soluzione: non mostrata
 
 Elementi della prova:
-- Domanda 1: 1/1 (Correct)
-- Domanda 2: 0/1 (Incorrect)
+- Domanda 1: 1/1 (Corretta)
+- Domanda 2: 0/1 (Errata)
 - Valutazione complessiva: 5,00/10
 
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_quiz_gm_last_stu1 ===
 Quiz
 Tentativo #4 di 4 (metodo: ultimo tentativo)
@@ -124,14 +124,14 @@ Materiale del corso: non usato
 Soluzione: non mostrata
 
 Elementi della prova:
-- Domanda 1: 0/1 (Incorrect)
-- Domanda 2: 0/1 (Incorrect)
+- Domanda 1: 0/1 (Errata)
+- Domanda 2: 0/1 (Errata)
 - Valutazione complessiva: 0,00/10
 
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_quiz_gm_average_stu1 ===
 Quiz
 Tentativo #4 di 4 (metodo: media dei tentativi)
@@ -142,14 +142,14 @@ Materiale del corso: non usato
 Soluzione: non mostrata
 
 Elementi della prova:
-- Domanda 1: 0/1 (Incorrect)
-- Domanda 2: 0/1 (Incorrect)
+- Domanda 1: 0/1 (Errata)
+- Domanda 2: 0/1 (Errata)
 - Valutazione complessiva: 6,25/10
 
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_quiz_essay_stu1 ===
 Quiz
 Tentativo #1 di 1 (metodo: voto più alto)
@@ -160,14 +160,14 @@ Materiale del corso: non usato
 Soluzione: non mostrata
 
 Elementi della prova:
-- Domanda 1: 1/1 (Correct)
-- Domanda 2: 4/5 (Partially correct)
+- Domanda 1: 1/1 (Corretta)
+- Domanda 2: 4/5 (Parzialmente corretta)
 - Valutazione complessiva: 8,33/10
 
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_quiz_types_stu1 ===
 Quiz
 Tentativo #1 di 1 (metodo: voto più alto)
@@ -178,15 +178,15 @@ Materiale del corso: non usato
 Soluzione: non mostrata
 
 Elementi della prova:
-- Domanda 1: 1/1 (Correct)
-- Domanda 2: 1/1 (Correct)
-- Domanda 3: 0/1 (Incorrect)
-- Domanda 4: 1/1 (Correct)
-- Domanda 5: nessun punteggio su 5 (Not answered)
-- Domanda 6: 1/1 (Correct) [contenuto non disponibile all'assistente: si discute solo esito e punteggio]
-- Domanda 7: 1/1 (Correct) [contenuto non disponibile all'assistente: si discute solo esito e punteggio]
-- Domanda 8: 1/1 (Correct) [contenuto non disponibile all'assistente: si discute solo esito e punteggio]
-- Domanda 9: 1/1 (Correct) [contenuto non disponibile all'assistente: si discute solo esito e punteggio]
+- Domanda 1: 1/1 (Corretta)
+- Domanda 2: 1/1 (Corretta)
+- Domanda 3: 0/1 (Errata)
+- Domanda 4: 1/1 (Corretta)
+- Domanda 5: nessun punteggio su 5 (Non risposta)
+- Domanda 6: 1/1 (Corretta) [contenuto non disponibile all'assistente: si discute solo esito e punteggio]
+- Domanda 7: 1/1 (Corretta) [contenuto non disponibile all'assistente: si discute solo esito e punteggio]
+- Domanda 8: 1/1 (Corretta) [contenuto non disponibile all'assistente: si discute solo esito e punteggio]
+- Domanda 9: 1/1 (Corretta) [contenuto non disponibile all'assistente: si discute solo esito e punteggio]
 - Domanda 10: elemento senza punteggio
 - Valutazione complessiva: 5,38/10
 Per gli elementi segnalati l'assistente non vede il testo della domanda né la tua risposta.
@@ -194,7 +194,7 @@ Per gli elementi segnalati l'assistente non vede il testo della domanda né la t
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_assign_rubric_vis_stu1 ===
 Compito
 Voto registrato: 75,00/100 (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -212,7 +212,7 @@ Elementi della prova:
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Criterio 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_assign_rubric_hidden_stu1 ===
 Compito
 Voto registrato: 50,00/100 (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -230,7 +230,7 @@ Elementi della prova:
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Criterio 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_assign_scale_stu1 ===
 Compito
 Voto registrato: Good (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -246,7 +246,7 @@ Elementi della prova:
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Consegna» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_assign_simple_stu1 ===
 Compito
 Voto registrato: 85,00/100 (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -262,7 +262,7 @@ Elementi della prova:
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Consegna» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_assign_wf_stu1 ===
 Compito
 Voto registrato: 80,00/100 (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -278,7 +278,7 @@ Elementi della prova:
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Consegna» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_quiz_review_mixed_toggle_on ===
 Quiz
 Tentativo #1 di 1 (metodo: voto più alto)
@@ -289,14 +289,14 @@ Materiale del corso: non usato
 Soluzione: mostrata
 
 Elementi della prova:
-- Domanda 1: 1/1 (Correct)
-- Domanda 2: 0/1 (Incorrect)
+- Domanda 1: 1/1 (Corretta)
+- Domanda 2: 0/1 (Errata)
 - Valutazione complessiva: 5,00/10
 
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_assign_simple_toggle_on ===
 Compito
 Voto registrato: 85,00/100 (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -312,7 +312,7 @@ Elementi della prova:
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Consegna» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_assign_file_f1_read ===
 Compito
 Voto registrato: 85,00/100 (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -328,7 +328,7 @@ Elementi della prova:
 File consegnati:
 - F1 (relazione.pdf): letto
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Consegna» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_assign_file_f2_read_partial ===
 Compito
 Voto registrato: 85,00/100 (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -344,7 +344,7 @@ Elementi della prova:
 File consegnati:
 - F2 (lungo.pdf): letto parzialmente (fino a pagina 50)
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Consegna» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_assign_file_f3_unsupported_format ===
 Compito
 Voto registrato: 85,00/100 (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -360,7 +360,7 @@ Elementi della prova:
 File consegnati:
 - F3 (slide.pptx): non letto: formato non supportato
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Consegna» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_assign_file_f4_too_large ===
 Compito
 Voto registrato: 85,00/100 (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -376,7 +376,7 @@ Elementi della prova:
 File consegnati:
 - F4 (enorme.pdf): non letto: troppo grande
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Consegna» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_assign_file_f5_no_text ===
 Compito
 Voto registrato: 85,00/100 (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -392,7 +392,7 @@ Elementi della prova:
 File consegnati:
 - F5 (scansione.pdf): non letto: testo non estraibile
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Consegna» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_assign_file_f6_protected ===
 Compito
 Voto registrato: 85,00/100 (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -408,7 +408,7 @@ Elementi della prova:
 File consegnati:
 - F6 (protetto.pdf): non letto: protetto
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Consegna» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_assign_file_f7_corrupt ===
 Compito
 Voto registrato: 85,00/100 (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -424,7 +424,7 @@ Elementi della prova:
 File consegnati:
 - F7 (rotto.docx): non letto: file danneggiato o non elaborabile
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Consegna» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_assign_file_f8_read ===
 Compito
 Voto registrato: 85,00/100 (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -440,7 +440,7 @@ Elementi della prova:
 File consegnati:
 - F8 (<script>alert(1)</script>.txt): letto
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Consegna» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_assign_files_all ===
 Compito
 Voto registrato: 85,00/100 (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -463,7 +463,7 @@ File consegnati:
 - F7 (rotto.docx): non letto: file danneggiato o non elaborabile
 - F8 (<script>alert(1)</script>.txt): letto
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Consegna» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_assign_scale_with_files ===
 Compito
 Voto registrato: Good (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -481,7 +481,7 @@ File consegnati:
 - F2 (lungo.pdf): letto parzialmente (fino a pagina 50)
 - F3 (slide.pptx): non letto: formato non supportato
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Consegna» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_quiz_marks_max_only ===
 Quiz
 Tentativo #1 di 2 (metodo: voto più alto)
@@ -502,7 +502,7 @@ Alcuni punteggi non sono mostrati perché le opzioni di revisione del quiz li na
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_quiz_marks_hidden ===
 Quiz
 Tentativo #1 di 2 (metodo: voto più alto)
@@ -523,7 +523,7 @@ Alcuni punteggi non sono mostrati perché le opzioni di revisione del quiz li na
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m43_quiz_session_3_extra_time ===
 Quiz
 Tentativo #1 di 2 (metodo: voto più alto)
@@ -535,16 +535,16 @@ Materiale del corso: non usato
 Soluzione: non mostrata
 
 Elementi della prova:
-- Domanda 1: 1/1 (Correct)
-- Domanda 2: 1/1 (Correct)
-- Domanda 3: 1/1 (Correct)
-- Domanda 4: 1/1 (Correct)
+- Domanda 1: 1/1 (Corretta)
+- Domanda 2: 1/1 (Corretta)
+- Domanda 3: 1/1 (Corretta)
+- Domanda 4: 1/1 (Corretta)
 - Valutazione complessiva: 10,00/10
 
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_quiz_review_all_stu1 ===
 Quiz
 Tentativo #1 di 2 (metodo: voto più alto)
@@ -555,16 +555,16 @@ Materiale del corso: non usato
 Soluzione: non mostrata
 
 Elementi della prova:
-- Domanda 1: 1/1 (Correct)
-- Domanda 2: 1/1 (Correct)
-- Domanda 3: 1/1 (Correct)
-- Domanda 4: 1/1 (Correct)
+- Domanda 1: 1/1 (Corretta)
+- Domanda 2: 1/1 (Corretta)
+- Domanda 3: 1/1 (Corretta)
+- Domanda 4: 1/1 (Corretta)
 - Valutazione complessiva: 10,00/10
 
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_quiz_review_all_stu2 ===
 Quiz
 Tentativo #1 di 1 (metodo: voto più alto)
@@ -585,7 +585,7 @@ Alcuni punteggi non sono mostrati perché le opzioni di revisione del quiz li na
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_quiz_review_all_stu3 ===
 Quiz
 Tentativo #1 di 1 (metodo: voto più alto)
@@ -606,7 +606,7 @@ Alcuni punteggi non sono mostrati perché le opzioni di revisione del quiz li na
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_quiz_review_mixed_stu1 ===
 Quiz
 Tentativo #1 di 1 (metodo: voto più alto)
@@ -617,14 +617,14 @@ Materiale del corso: non usato
 Soluzione: non mostrata
 
 Elementi della prova:
-- Domanda 1: 1/1 (Correct)
-- Domanda 2: 0/1 (Incorrect)
+- Domanda 1: 1/1 (Corretta)
+- Domanda 2: 0/1 (Errata)
 - Valutazione complessiva: 5,00/10
 
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_quiz_gm_highest_stu1 ===
 Quiz
 Tentativo #2 di 4 (metodo: voto più alto)
@@ -635,14 +635,14 @@ Materiale del corso: non usato
 Soluzione: non mostrata
 
 Elementi della prova:
-- Domanda 1: 1/1 (Correct)
-- Domanda 2: 1/1 (Correct)
+- Domanda 1: 1/1 (Corretta)
+- Domanda 2: 1/1 (Corretta)
 - Valutazione complessiva: 10,00/10
 
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_quiz_gm_first_stu1 ===
 Quiz
 Tentativo #1 di 4 (metodo: primo tentativo)
@@ -653,14 +653,14 @@ Materiale del corso: non usato
 Soluzione: non mostrata
 
 Elementi della prova:
-- Domanda 1: 1/1 (Correct)
-- Domanda 2: 0/1 (Incorrect)
+- Domanda 1: 1/1 (Corretta)
+- Domanda 2: 0/1 (Errata)
 - Valutazione complessiva: 5,00/10
 
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_quiz_gm_last_stu1 ===
 Quiz
 Tentativo #4 di 4 (metodo: ultimo tentativo)
@@ -671,14 +671,14 @@ Materiale del corso: non usato
 Soluzione: non mostrata
 
 Elementi della prova:
-- Domanda 1: 0/1 (Incorrect)
-- Domanda 2: 0/1 (Incorrect)
+- Domanda 1: 0/1 (Errata)
+- Domanda 2: 0/1 (Errata)
 - Valutazione complessiva: 0,00/10
 
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_quiz_gm_average_stu1 ===
 Quiz
 Tentativo #4 di 4 (metodo: media dei tentativi)
@@ -689,14 +689,14 @@ Materiale del corso: non usato
 Soluzione: non mostrata
 
 Elementi della prova:
-- Domanda 1: 0/1 (Incorrect)
-- Domanda 2: 0/1 (Incorrect)
+- Domanda 1: 0/1 (Errata)
+- Domanda 2: 0/1 (Errata)
 - Valutazione complessiva: 6,25/10
 
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_quiz_essay_stu1 ===
 Quiz
 Tentativo #1 di 1 (metodo: voto più alto)
@@ -707,14 +707,14 @@ Materiale del corso: non usato
 Soluzione: non mostrata
 
 Elementi della prova:
-- Domanda 1: 1/1 (Correct)
-- Domanda 2: 4/5 (Partially correct)
+- Domanda 1: 1/1 (Corretta)
+- Domanda 2: 4/5 (Parzialmente corretta)
 - Valutazione complessiva: 8,33/10
 
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_quiz_types_stu1 ===
 Quiz
 Tentativo #1 di 1 (metodo: voto più alto)
@@ -725,15 +725,15 @@ Materiale del corso: non usato
 Soluzione: non mostrata
 
 Elementi della prova:
-- Domanda 1: 1/1 (Correct)
-- Domanda 2: 1/1 (Correct)
-- Domanda 3: 0/1 (Incorrect)
-- Domanda 4: 1/1 (Correct)
-- Domanda 5: nessun punteggio su 5 (Not answered)
-- Domanda 6: 1/1 (Correct) [contenuto non disponibile all'assistente: si discute solo esito e punteggio]
-- Domanda 7: 1/1 (Correct) [contenuto non disponibile all'assistente: si discute solo esito e punteggio]
-- Domanda 8: 1/1 (Correct) [contenuto non disponibile all'assistente: si discute solo esito e punteggio]
-- Domanda 9: 1/1 (Correct) [contenuto non disponibile all'assistente: si discute solo esito e punteggio]
+- Domanda 1: 1/1 (Corretta)
+- Domanda 2: 1/1 (Corretta)
+- Domanda 3: 0/1 (Errata)
+- Domanda 4: 1/1 (Corretta)
+- Domanda 5: nessun punteggio su 5 (Non risposta)
+- Domanda 6: 1/1 (Corretta) [contenuto non disponibile all'assistente: si discute solo esito e punteggio]
+- Domanda 7: 1/1 (Corretta) [contenuto non disponibile all'assistente: si discute solo esito e punteggio]
+- Domanda 8: 1/1 (Corretta) [contenuto non disponibile all'assistente: si discute solo esito e punteggio]
+- Domanda 9: 1/1 (Corretta) [contenuto non disponibile all'assistente: si discute solo esito e punteggio]
 - Domanda 10: elemento senza punteggio
 - Valutazione complessiva: 5,38/10
 Per gli elementi segnalati l'assistente non vede il testo della domanda né la tua risposta.
@@ -741,7 +741,7 @@ Per gli elementi segnalati l'assistente non vede il testo della domanda né la t
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_assign_rubric_vis_stu1 ===
 Compito
 Voto registrato: 75,00/100 (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -759,7 +759,7 @@ Elementi della prova:
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Criterio 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_assign_rubric_hidden_stu1 ===
 Compito
 Voto registrato: 50,00/100 (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -777,7 +777,7 @@ Elementi della prova:
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Criterio 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_assign_scale_stu1 ===
 Compito
 Voto registrato: Good (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -793,7 +793,7 @@ Elementi della prova:
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Consegna» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_assign_simple_stu1 ===
 Compito
 Voto registrato: 85,00/100 (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -809,7 +809,7 @@ Elementi della prova:
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Consegna» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_assign_wf_stu1 ===
 Compito
 Voto registrato: 80,00/100 (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -825,7 +825,7 @@ Elementi della prova:
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Consegna» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_quiz_review_mixed_toggle_on ===
 Quiz
 Tentativo #1 di 1 (metodo: voto più alto)
@@ -836,14 +836,14 @@ Materiale del corso: non usato
 Soluzione: mostrata
 
 Elementi della prova:
-- Domanda 1: 1/1 (Correct)
-- Domanda 2: 0/1 (Incorrect)
+- Domanda 1: 1/1 (Corretta)
+- Domanda 2: 0/1 (Errata)
 - Valutazione complessiva: 5,00/10
 
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_assign_simple_toggle_on ===
 Compito
 Voto registrato: 85,00/100 (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -859,7 +859,7 @@ Elementi della prova:
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Consegna» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_assign_file_f1_read ===
 Compito
 Voto registrato: 85,00/100 (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -875,7 +875,7 @@ Elementi della prova:
 File consegnati:
 - F1 (relazione.pdf): letto
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Consegna» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_assign_file_f2_read_partial ===
 Compito
 Voto registrato: 85,00/100 (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -891,7 +891,7 @@ Elementi della prova:
 File consegnati:
 - F2 (lungo.pdf): letto parzialmente (fino a pagina 50)
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Consegna» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_assign_file_f3_unsupported_format ===
 Compito
 Voto registrato: 85,00/100 (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -907,7 +907,7 @@ Elementi della prova:
 File consegnati:
 - F3 (slide.pptx): non letto: formato non supportato
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Consegna» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_assign_file_f4_too_large ===
 Compito
 Voto registrato: 85,00/100 (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -923,7 +923,7 @@ Elementi della prova:
 File consegnati:
 - F4 (enorme.pdf): non letto: troppo grande
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Consegna» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_assign_file_f5_no_text ===
 Compito
 Voto registrato: 85,00/100 (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -939,7 +939,7 @@ Elementi della prova:
 File consegnati:
 - F5 (scansione.pdf): non letto: testo non estraibile
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Consegna» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_assign_file_f6_protected ===
 Compito
 Voto registrato: 85,00/100 (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -955,7 +955,7 @@ Elementi della prova:
 File consegnati:
 - F6 (protetto.pdf): non letto: protetto
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Consegna» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_assign_file_f7_corrupt ===
 Compito
 Voto registrato: 85,00/100 (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -971,7 +971,7 @@ Elementi della prova:
 File consegnati:
 - F7 (rotto.docx): non letto: file danneggiato o non elaborabile
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Consegna» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_assign_file_f8_read ===
 Compito
 Voto registrato: 85,00/100 (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -987,7 +987,7 @@ Elementi della prova:
 File consegnati:
 - F8 (<script>alert(1)</script>.txt): letto
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Consegna» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_assign_files_all ===
 Compito
 Voto registrato: 85,00/100 (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -1010,7 +1010,7 @@ File consegnati:
 - F7 (rotto.docx): non letto: file danneggiato o non elaborabile
 - F8 (<script>alert(1)</script>.txt): letto
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Consegna» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_assign_scale_with_files ===
 Compito
 Voto registrato: Good (letto il 15/01/2027). Il voto NON è stato modificato da questa discussione; decide l'orale
@@ -1028,7 +1028,7 @@ File consegnati:
 - F2 (lungo.pdf): letto parzialmente (fino a pagina 50)
 - F3 (slide.pptx): non letto: formato non supportato
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Consegna» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_quiz_marks_max_only ===
 Quiz
 Tentativo #1 di 2 (metodo: voto più alto)
@@ -1049,7 +1049,7 @@ Alcuni punteggi non sono mostrati perché le opzioni di revisione del quiz li na
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_quiz_marks_hidden ===
 Quiz
 Tentativo #1 di 2 (metodo: voto più alto)
@@ -1070,7 +1070,7 @@ Alcuni punteggi non sono mostrati perché le opzioni di revisione del quiz li na
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
 === m52_quiz_session_3_extra_time ===
 Quiz
 Tentativo #1 di 2 (metodo: voto più alto)
@@ -1082,13 +1082,13 @@ Materiale del corso: non usato
 Soluzione: non mostrata
 
 Elementi della prova:
-- Domanda 1: 1/1 (Correct)
-- Domanda 2: 1/1 (Correct)
-- Domanda 3: 1/1 (Correct)
-- Domanda 4: 1/1 (Correct)
+- Domanda 1: 1/1 (Corretta)
+- Domanda 2: 1/1 (Corretta)
+- Domanda 3: 1/1 (Corretta)
+- Domanda 4: 1/1 (Corretta)
 - Valutazione complessiva: 10,00/10
 
 File consegnati:
 Nessun file consegnato.
 
-Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 2» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
+Come procedere: chiedi di un elemento usando la sua etichetta (per esempio «Domanda 1» o «Valutazione complessiva»). L'assistente spiega e discute, ma non cambia il voto.
