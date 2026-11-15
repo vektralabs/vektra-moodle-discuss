@@ -42,6 +42,11 @@ final class state_view {
         'unavailable' => ['checking'],
     ];
 
+    /** @var string[] Reasons after which the page asks for the state again shortly, per state. */
+    private const RETRY_REASONS = [
+        'unavailable' => ['checking'],
+    ];
+
     /** @var string[] Reasons whose sentence also depends on the activity type (quiz or assign). */
     private const TYPED_REASON_TEXTS = [
         'not_graded' => ['no_submitted_attempt'],
@@ -71,7 +76,7 @@ final class state_view {
             'canresume' => $state === 'active',
             'message' => self::message($dto, $type),
             // Vektra is still checking the activity (it finishes within a second): the page asks again shortly.
-            'checking' => $state === state_dto::UNAVAILABLE && ($dto['reason'] ?? null) === 'checking',
+            'checking' => in_array($dto['reason'] ?? null, self::RETRY_REASONS[$state] ?? [], true),
             'presession' => null,
             'hastranscripts' => !empty($dto['transcripts']),
             'transcriptsheading' => get_string('transcripts_heading', self::C),

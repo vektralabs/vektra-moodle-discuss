@@ -62,11 +62,16 @@ const announce = (region, text) => {
         live.setAttribute('aria-live', 'polite');
         live.setAttribute('data-region', 'local_vektradiscuss-live');
         region.append(live);
+        // A live region announces changes, not its first content: fill it once it is in the page.
+        setTimeout(() => {
+            live.textContent = text;
+        }, 100);
+        return;
     }
     live.textContent = text;
 };
 
-/** @var {Number[]} Waits, in seconds, before asking for the state again while Vektra is checking (about 10 s). */
+/** @var {Number[]} Waits, in seconds, before asking for the state again while Vektra is checking (7 s in all). */
 const CHECKING_DELAYS = [1, 2, 4];
 
 /**
@@ -91,8 +96,9 @@ const refresh = async(region, config, keepFrame = false, tries = 0) => {
         context = await unavailableContext(config.cmid);
     }
     if (context.checking && tries >= CHECKING_DELAYS.length) {
-        // Still checking after the last try: the usual "temporarily unavailable".
-        context = await unavailableContext(config.cmid);
+        // Still checking after the last try: the usual "temporarily unavailable", keeping the rest of the context
+        // (the transcripts of earlier sessions).
+        context = {...context, checking: false, message: await getString('state_unavailable', 'local_vektradiscuss')};
     }
     const {html, js} = await Templates.renderForPromise('local_vektradiscuss/button', context);
     const status = region.querySelector('[data-region="local_vektradiscuss-status"]');
@@ -108,6 +114,10 @@ const refresh = async(region, config, keepFrame = false, tries = 0) => {
         await Templates.replaceNodeContents(region, html, js);
     }
     region.dataset.state = context.state;
+    if (tries > 0) {
+        // The sentence changed without any action of the student: say it.
+        announce(region, context.message);
+    }
 
     // Vektra is still checking the activity (it usually takes under a second): ask again shortly, a few times.
     if (context.checking && tries < CHECKING_DELAYS.length) {

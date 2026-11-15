@@ -49,9 +49,10 @@ $PAGE->set_url('/local/vektradiscuss/ajax.php');
 
 $result = (new student_endpoint())->handle($action, $cmid, $attemptid, $tid, $noticeversion);
 if ($action === 'state') {
-    // The endpoint has checked the login and the access to the activity: its type only picks a sentence.
-    $cm = get_coursemodule_from_id('', $cmid, 0, false, IGNORE_MISSING);
-    $result = state_view::context($result, $cmid, $cm ? (string) $cm->modname : '');
+    // The endpoint has checked the login and the access to the activity (the course's modinfo is cached by
+    // then): its type only picks a sentence.
+    [, $cm] = get_course_and_cm_from_cmid($cmid);
+    $result = state_view::context($result, $cmid, (string) $cm->modname);
 }
 
 echo $OUTPUT->header();
