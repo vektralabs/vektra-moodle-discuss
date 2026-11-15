@@ -127,9 +127,9 @@ $string['form_secret_replace'] = 'Sostituiscila';
 $string['form_secret_set'] = 'Impostata (non mostrata)';
 $string['form_secret_unset'] = 'Non impostata';
 $string['form_showsolution'] = 'Permetti all\'assistente di mostrare la soluzione';
-$string['form_showsolution_help'] = 'Disattivato per impostazione predefinita: l\'assistente usa la soluzione per guidare la discussione ma non la rivela. Attivato: può mostrarla allo studente.
+$string['form_showsolution_help'] = 'Disattivato per impostazione predefinita: l\'assistente non riceve la soluzione e non deve fornirla, ma per domande risolvibili autonomamente non è possibile garantirlo al 100%: evita di abilitare la discussione su domande che riutilizzerai.
 
-Con questa opzione disattivata l\'assistente non riceve la soluzione e non deve fornirla, ma per domande risolvibili autonomamente non è possibile garantirlo al 100%: evita di abilitare la discussione su domande che riutilizzerai. Ricorda inoltre che lo studente riceve una copia della trascrizione.';
+Attivato: l\'assistente riceve la soluzione e può mostrarla allo studente. Ricorda inoltre che lo studente riceve una copia della trascrizione.';
 $string['form_showsolution_warning'] = 'L\'assistente può mostrare la soluzione allo studente, che riceve anche una copia della trascrizione: evita di attivarla su domande che riutilizzerai.';
 $string['form_solution'] = 'Soluzione';
 $string['form_solution_text'] = 'Testo della soluzione';

@@ -231,7 +231,8 @@ final class settings_section_test extends \advanced_testcase {
     public function test_review_warning_and_feedback_note(): void {
         global $DB;
         $p = settings_section::PREFIX;
-        // The generator's quiz shows the attempt after the close: no review warning, and no note without the flag.
+        // The generator's quiz has no close date and shows the attempt later while open: no review warning, and no
+        // note without the flag.
         $this->transport->respond(200, self::view());
         $mform = $this->extend();
         $this->assertFalse($mform->elementExists($p . 'reviewwarning'));
@@ -254,6 +255,25 @@ final class settings_section_test extends \advanced_testcase {
             $mform->getElement($p . 'reviewwarning')->toHtml()
         );
         $this->assertFalse($mform->elementExists($p . 'quizfeedback'));
+    }
+
+    /**
+     * Assignments never get the quiz-feedback note, whatever Vektra's flag says.
+     */
+    public function test_no_quiz_note_on_assignments(): void {
+        $assign = $this->getDataGenerator()->create_module('assign', ['course' => $this->course->id]);
+        $cm = get_coursemodule_from_id('assign', $assign->cmid, 0, false, MUST_EXIST);
+        $wrapper = $this->createMock(\moodleform_mod::class);
+        $wrapper->method('get_current')->willReturn((object) ['modulename' => 'assign']);
+        $wrapper->method('get_coursemodule')->willReturn($cm);
+        $wrapper->method('get_course')->willReturn($this->course);
+        $this->transport->respond(200, self::view(['activity_type' => 'assign', 'rubric_source' => 'none',
+            'warnings' => ['available_until_not_after_opening' => false, 'review_options_hide_content' => true]]));
+        $mform = new \MoodleQuickForm('modform', 'post', '#');
+        settings_section::extend($wrapper, $mform, $this->api());
+        $this->assertTrue($mform->elementExists(settings_section::PREFIX . 'cap'));
+        $this->assertFalse($mform->elementExists(settings_section::PREFIX . 'quizfeedback'));
+        $this->assertFalse($mform->elementExists(settings_section::PREFIX . 'reviewwarning'));
     }
 
     /**
@@ -292,10 +312,14 @@ final class settings_section_test extends \advanced_testcase {
         $this->assertSame([get_string('form_saved', 'local_vektradiscuss'),
             get_string('form_showsolution_warning', 'local_vektradiscuss')], $messages);
 
-        // Turning it off, or a save that leaves it as it was, says nothing more.
-        $view = self::view(['show_solution' => true]);
-        $this->transport->respond(200, self::view(['version' => 5]));
-        $this->save($this->submitted([$p . 'view' => json_encode($view), $p . 'showsolution' => 0]));
+        // A save that leaves it on, or turns it off, says nothing more.
+        $on = self::view(['show_solution' => true]);
+        $this->transport->respond(200, self::view(['version' => 5, 'show_solution' => true]));
+        $this->save($this->submitted([$p . 'view' => json_encode($on), $p . 'showsolution' => 1, $p . 'cap' => '45']));
+        $messages = array_map(fn($m) => $m->get_message(), \core\notification::fetch());
+        $this->assertSame([get_string('form_saved', 'local_vektradiscuss')], $messages);
+        $this->transport->respond(200, self::view(['version' => 6]));
+        $this->save($this->submitted([$p . 'view' => json_encode($on), $p . 'showsolution' => 0]));
         $messages = array_map(fn($m) => $m->get_message(), \core\notification::fetch());
         $this->assertSame([get_string('form_saved', 'local_vektradiscuss')], $messages);
     }

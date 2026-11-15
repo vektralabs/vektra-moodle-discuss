@@ -127,9 +127,9 @@ $string['form_secret_replace'] = 'Replace it';
 $string['form_secret_set'] = 'Set (not shown)';
 $string['form_secret_unset'] = 'Not set';
 $string['form_showsolution'] = 'Let the assistant show the solution';
-$string['form_showsolution_help'] = 'Off by default: the assistant uses the solution to guide the discussion but does not reveal it. On: it may show it to the student.
+$string['form_showsolution_help'] = 'Off by default: the assistant does not receive the solution and must not give it, but for questions the student can work out alone this cannot be guaranteed 100%: avoid enabling the discussion on questions you will reuse.
 
-With this option off the assistant does not receive the solution and must not give it, but for questions the student can work out alone this cannot be guaranteed 100%: avoid enabling the discussion on questions you will reuse. Remember that the student receives a copy of the transcript.';
+On: the assistant receives the solution and may show it to the student. Remember that the student receives a copy of the transcript.';
 $string['form_showsolution_warning'] = 'The assistant may show the solution to the student, who also receives a copy of the transcript: avoid this on questions you will reuse.';
 $string['form_solution'] = 'Solution';
 $string['form_solution_text'] = 'Solution text';

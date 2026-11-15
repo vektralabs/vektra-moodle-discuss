@@ -273,21 +273,22 @@ class settings_section {
 
     /**
      * Whether the quiz's saved review options hide the student's answers when the discussion can happen: after
-     * the close, or later while the quiz is open when it has no close date.
+     * the close, or later while the quiz is open when it has no close date. Saved values: a change made in the
+     * same form shows on the next load, and user or group overrides are left to Vektra's opening check.
      *
      * @param int $quizid
      * @return bool
      */
     public static function review_hides_answers(int $quizid): bool {
         global $DB;
-        $quiz = $DB->get_record('quiz', ['id' => $quizid], 'id, timeclose, reviewattempt');
+        $quiz = $DB->get_record('quiz', ['id' => $quizid]);
         if (!$quiz) {
             return false;
         }
-        $phase = (int) $quiz->timeclose > 0
+        $when = (int) $quiz->timeclose > 0
             ? \mod_quiz\question\display_options::AFTER_CLOSE
             : \mod_quiz\question\display_options::LATER_WHILE_OPEN;
-        return ((int) $quiz->reviewattempt & $phase) === 0;
+        return !\mod_quiz\question\display_options::make_from_quiz($quiz, $when)->attempt;
     }
 
     /**
@@ -430,7 +431,7 @@ class settings_section {
         }
         // Vektra's flag means the quiz detail is reduced (ARCH-070): Moodle's per-question feedback does not
         // reach the assistant, whatever the review options say.
-        if (($view['warnings']['review_options_hide_content'] ?? false) === true) {
+        if ($type === 'quiz' && ($view['warnings']['review_options_hide_content'] ?? false) === true) {
             $mform->addElement('static', $p . 'quizfeedback', '', $s('form_note_quiz_feedback'));
         }
 
