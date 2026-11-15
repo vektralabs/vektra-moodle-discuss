@@ -84,8 +84,9 @@ const CHECKING_DELAYS = [1, 2, 4];
  * @param {Object} config {cmid, attemptid, uiorigin, siteid}
  * @param {Boolean} keepFrame Keep the open iframe and replace only the status part.
  * @param {Number} tries How many times the state was asked again while Vektra was checking.
+ * @param {Object|null} previous The context shown before this retry, if any.
  */
-const refresh = async(region, config, keepFrame = false, tries = 0) => {
+const refresh = async(region, config, keepFrame = false, tries = 0, previous = null) => {
     let context;
     try {
         context = await post('state', {cmid: config.cmid, attemptid: config.attemptid});
@@ -94,6 +95,11 @@ const refresh = async(region, config, keepFrame = false, tries = 0) => {
         }
     } catch (e) {
         context = await unavailableContext(config.cmid);
+        if (previous && previous.hastranscripts) {
+            // A failed retry keeps the transcript links the page already showed.
+            context = {...context, hastranscripts: true, transcriptsheading: previous.transcriptsheading,
+                transcripts: previous.transcripts};
+        }
     }
     if (context.checking && tries >= CHECKING_DELAYS.length) {
         // Still checking after the last try: the usual "temporarily unavailable", keeping the rest of the context
@@ -121,7 +127,7 @@ const refresh = async(region, config, keepFrame = false, tries = 0) => {
 
     // Vektra is still checking the activity (it usually takes under a second): ask again shortly, a few times.
     if (context.checking && tries < CHECKING_DELAYS.length) {
-        setTimeout(() => refresh(region, config, keepFrame, tries + 1), CHECKING_DELAYS[tries] * 1000);
+        setTimeout(() => refresh(region, config, keepFrame, tries + 1, context), CHECKING_DELAYS[tries] * 1000);
         return;
     }
 
