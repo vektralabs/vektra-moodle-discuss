@@ -117,7 +117,7 @@ class settings_section {
             }
         }
 
-        self::add_fields($mform, $type, $view);
+        self::add_fields($mform, $type, $view, $type === 'quiz' && self::review_hides_answers((int) $cm->instance));
         $PAGE->requires->js_call_amd('local_vektradiscuss/charcounter', 'init', [
             [self::PREFIX . 'solution', self::PREFIX . 'rubric'],
             self::MAX_TEXT,
@@ -250,6 +250,9 @@ class settings_section {
                     return $data;
                 }
                 \core\notification::success(get_string('form_saved', 'local_vektradiscuss'));
+                if (($fields['show_solution'] ?? false) === true) {
+                    \core\notification::warning(get_string('form_showsolution_warning', 'local_vektradiscuss'));
+                }
             }
             if (!empty($values[$p . 'attest']) && (int) ($values[$p . 'openingat'] ?? 0) > 0) {
                 $openingat = (int) $values[$p . 'openingat'];
@@ -266,6 +269,26 @@ class settings_section {
                 unset($data->{self::PREFIX . $name});
             }
         }
+    }
+
+    /**
+     * Whether the quiz's saved review options hide the student's answers when the discussion can happen: after
+     * the close, or later while the quiz is open when it has no close date. Saved values: a change made in the
+     * same form shows on the next load, and user or group overrides are left to Vektra's opening check.
+     *
+     * @param int $quizid
+     * @return bool
+     */
+    public static function review_hides_answers(int $quizid): bool {
+        global $DB;
+        $quiz = $DB->get_record('quiz', ['id' => $quizid]);
+        if (!$quiz) {
+            return false;
+        }
+        $when = (int) $quiz->timeclose > 0
+            ? \mod_quiz\question\display_options::AFTER_CLOSE
+            : \mod_quiz\question\display_options::LATER_WHILE_OPEN;
+        return !\mod_quiz\question\display_options::make_from_quiz($quiz, $when)->attempt;
     }
 
     /**
@@ -382,8 +405,9 @@ class settings_section {
      * @param \MoodleQuickForm $mform
      * @param string $type
      * @param array $view
+     * @param bool $reviewhidden The quiz's saved review options hide the student's answers after the attempt.
      */
-    private static function add_fields(\MoodleQuickForm $mform, string $type, array $view): void {
+    private static function add_fields(\MoodleQuickForm $mform, string $type, array $view, bool $reviewhidden): void {
         global $USER;
         $p = self::PREFIX;
         $s = fn(string $id, $a = null): string => get_string($id, 'local_vektradiscuss', $a);
@@ -402,8 +426,13 @@ class settings_section {
         if ($active > 0) {
             $mform->addElement('static', $p . 'active', '', $s('form_active_sessions', $active));
         }
-        if (($view['warnings']['review_options_hide_content'] ?? false) === true) {
+        if ($reviewhidden) {
             $mform->addElement('static', $p . 'reviewwarning', '', $s('form_warning_review_options'));
+        }
+        // Vektra's flag means the quiz detail is reduced (ARCH-070): Moodle's per-question feedback does not
+        // reach the assistant, whatever the review options say.
+        if ($type === 'quiz' && ($view['warnings']['review_options_hide_content'] ?? false) === true) {
+            $mform->addElement('static', $p . 'quizfeedback', '', $s('form_note_quiz_feedback'));
         }
 
         $mform->addElement('advcheckbox', $p . 'enabled', $s('form_enabled'));
@@ -438,6 +467,9 @@ class settings_section {
         $mform->addElement('advcheckbox', $p . 'showsolution', $s('form_showsolution'));
         $mform->setDefault($p . 'showsolution', $orig['show_solution'] ? 1 : 0);
         $mform->addHelpButton($p . 'showsolution', 'form_showsolution', 'local_vektradiscuss');
+        // REQ-077: a warning while the option is on.
+        $mform->addElement('static', $p . 'showsolutionwarning', '', $s('form_showsolution_warning'));
+        $mform->hideIf($p . 'showsolutionwarning', $p . 'showsolution', 'notchecked');
 
         $mform->addElement('static', $p . 'rag', $s('form_rag'), $s('form_rag_locked'));
 

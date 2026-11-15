@@ -225,6 +225,106 @@ final class settings_section_test extends \advanced_testcase {
     }
 
     /**
+     * The review warning follows the quiz's own review options; Vektra's flag (reduced quiz detail) gives the
+     * note on Moodle's feedback instead.
+     */
+    public function test_review_warning_and_feedback_note(): void {
+        global $DB;
+        $p = settings_section::PREFIX;
+        // The generator's quiz has no close date and shows the attempt later while open: no review warning, and no
+        // note without the flag.
+        $this->transport->respond(200, self::view());
+        $mform = $this->extend();
+        $this->assertFalse($mform->elementExists($p . 'reviewwarning'));
+        $this->assertFalse($mform->elementExists($p . 'quizfeedback'));
+
+        $this->transport->respond(200, self::view(['warnings' => ['available_until_not_after_opening' => false,
+            'review_options_hide_content' => true]]));
+        $mform = $this->extend();
+        $this->assertFalse($mform->elementExists($p . 'reviewwarning'));
+        $this->assertStringContainsString(
+            get_string('form_note_quiz_feedback', 'local_vektradiscuss'),
+            $mform->getElement($p . 'quizfeedback')->toHtml()
+        );
+
+        $DB->set_field('quiz', 'reviewattempt', 0, ['id' => $this->quiz->id]);
+        $this->transport->respond(200, self::view());
+        $mform = $this->extend();
+        $this->assertStringContainsString(
+            get_string('form_warning_review_options', 'local_vektradiscuss'),
+            $mform->getElement($p . 'reviewwarning')->toHtml()
+        );
+        $this->assertFalse($mform->elementExists($p . 'quizfeedback'));
+    }
+
+    /**
+     * Assignments never get the quiz-feedback note, whatever Vektra's flag says.
+     */
+    public function test_no_quiz_note_on_assignments(): void {
+        $assign = $this->getDataGenerator()->create_module('assign', ['course' => $this->course->id]);
+        $cm = get_coursemodule_from_id('assign', $assign->cmid, 0, false, MUST_EXIST);
+        $wrapper = $this->createMock(\moodleform_mod::class);
+        $wrapper->method('get_current')->willReturn((object) ['modulename' => 'assign']);
+        $wrapper->method('get_coursemodule')->willReturn($cm);
+        $wrapper->method('get_course')->willReturn($this->course);
+        $this->transport->respond(200, self::view(['activity_type' => 'assign', 'rubric_source' => 'none',
+            'warnings' => ['available_until_not_after_opening' => false, 'review_options_hide_content' => true]]));
+        $mform = new \MoodleQuickForm('modform', 'post', '#');
+        settings_section::extend($wrapper, $mform, $this->api());
+        $this->assertTrue($mform->elementExists(settings_section::PREFIX . 'cap'));
+        $this->assertFalse($mform->elementExists(settings_section::PREFIX . 'quizfeedback'));
+        $this->assertFalse($mform->elementExists(settings_section::PREFIX . 'reviewwarning'));
+    }
+
+    /**
+     * The phase that counts: after the close when the quiz has one, later while open when it has none.
+     */
+    public function test_review_hides_answers_by_phase(): void {
+        global $DB;
+        $later = \mod_quiz\question\display_options::LATER_WHILE_OPEN;
+        $closed = \mod_quiz\question\display_options::AFTER_CLOSE;
+        $DB->update_record('quiz', (object) ['id' => $this->quiz->id, 'timeclose' => 0, 'reviewattempt' => $later]);
+        $this->assertFalse(settings_section::review_hides_answers((int) $this->quiz->id));
+        $DB->set_field('quiz', 'timeclose', time() - 60, ['id' => $this->quiz->id]);
+        $this->assertTrue(settings_section::review_hides_answers((int) $this->quiz->id));
+        $DB->set_field('quiz', 'reviewattempt', $closed, ['id' => $this->quiz->id]);
+        $this->assertFalse(settings_section::review_hides_answers((int) $this->quiz->id));
+        $this->assertFalse(settings_section::review_hides_answers(-1));
+    }
+
+    /**
+     * REQ-077: a warning under "show the solution" while it is on, and after a save that turns it on.
+     */
+    public function test_show_solution_warning(): void {
+        $p = settings_section::PREFIX;
+        $this->transport->respond(200, self::view());
+        $mform = $this->extend();
+        $this->assertStringContainsString(
+            get_string('form_showsolution_warning', 'local_vektradiscuss'),
+            $mform->getElement($p . 'showsolutionwarning')->toHtml()
+        );
+        $hideifs = (fn() => $this->_hideifs)->call($mform);
+        $this->assertContains($p . 'showsolutionwarning', $hideifs[$p . 'showsolution']['notchecked']['1']);
+
+        $this->transport->respond(200, self::view(['version' => 4, 'show_solution' => true]));
+        $this->save($this->submitted([$p . 'showsolution' => 1]));
+        $messages = array_map(fn($m) => $m->get_message(), \core\notification::fetch());
+        $this->assertSame([get_string('form_saved', 'local_vektradiscuss'),
+            get_string('form_showsolution_warning', 'local_vektradiscuss')], $messages);
+
+        // A save that leaves it on, or turns it off, says nothing more.
+        $on = self::view(['show_solution' => true]);
+        $this->transport->respond(200, self::view(['version' => 5, 'show_solution' => true]));
+        $this->save($this->submitted([$p . 'view' => json_encode($on), $p . 'showsolution' => 1, $p . 'cap' => '45']));
+        $messages = array_map(fn($m) => $m->get_message(), \core\notification::fetch());
+        $this->assertSame([get_string('form_saved', 'local_vektradiscuss')], $messages);
+        $this->transport->respond(200, self::view(['version' => 6]));
+        $this->save($this->submitted([$p . 'view' => json_encode($on), $p . 'showsolution' => 0]));
+        $messages = array_map(fn($m) => $m->get_message(), \core\notification::fetch());
+        $this->assertSame([get_string('form_saved', 'local_vektradiscuss')], $messages);
+    }
+
+    /**
      * Outage on render: a notice, no version field, so the save sends nothing (dormant-capability guard).
      */
     public function test_unreachable_on_render_freezes_and_save_sends_nothing(): void {

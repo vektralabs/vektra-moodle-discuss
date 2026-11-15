@@ -233,4 +233,41 @@ final class state_dto_test extends \advanced_testcase {
             state_view::context(['state' => 'reset_granted', 'reason' => null, 'session_no_next' => 3], 7)['buttonlabel']
         );
     }
+
+    /**
+     * Not graded: one sentence per reason; "no submitted attempt" depends on the activity type, and without a
+     * known type, or with an unknown reason, the state's own sentence is used.
+     */
+    public function test_not_graded_reasons(): void {
+        $c = 'local_vektradiscuss';
+        $msg = fn(?string $reason, string $type = 'quiz') => state_view::context(
+            state_dto::from_vektra(['state' => 'not_graded', 'reason' => $reason]),
+            7,
+            $type
+        )['message'];
+        $this->assertSame(get_string('state_not_graded_no_submitted_attempt_assign', $c), $msg('no_submitted_attempt', 'assign'));
+        $this->assertSame(get_string('state_not_graded_no_submitted_attempt_quiz', $c), $msg('no_submitted_attempt'));
+        $this->assertSame(get_string('state_not_graded', $c), $msg('no_submitted_attempt', ''));
+        $this->assertSame(get_string('state_not_graded_not_fully_graded', $c), $msg('not_fully_graded'));
+        $this->assertSame(get_string('state_not_graded_regrade_in_progress', $c), $msg('regrade_in_progress', 'assign'));
+        $this->assertSame(get_string('state_not_graded_not_released', $c), $msg('not_released'));
+        $this->assertSame(get_string('state_not_graded', $c), $msg('something_new'));
+        $this->assertSame(get_string('state_not_graded', $c), $msg(null));
+    }
+
+    /**
+     * Unavailable while Vektra is checking: "Checking…" and the flag the page uses to ask again; any other
+     * unavailable state keeps the usual sentence and no flag.
+     */
+    public function test_unavailable_checking(): void {
+        $c = 'local_vektradiscuss';
+        $checking = state_view::context(state_dto::from_vektra(['state' => 'unavailable', 'reason' => 'checking']), 7, 'quiz');
+        $this->assertSame(get_string('state_unavailable_checking', $c), $checking['message']);
+        $this->assertTrue($checking['checking']);
+        $other = state_view::context(state_dto::from_vektra(['state' => 'unavailable', 'reason' => 'outage']), 7, 'quiz');
+        $this->assertSame(get_string('state_unavailable', $c), $other['message']);
+        $this->assertFalse($other['checking']);
+        $notgraded = state_dto::from_vektra(['state' => 'not_graded', 'reason' => 'checking']);
+        $this->assertFalse(state_view::context($notgraded, 7)['checking']);
+    }
 }

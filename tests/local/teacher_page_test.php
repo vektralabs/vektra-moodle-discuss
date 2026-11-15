@@ -308,6 +308,7 @@ final class teacher_page_test extends \advanced_testcase {
             'sessions' => [
                 ['session_id' => self::SID, 'session_no' => 1, 'state' => 'CLOSED', 'close_reason' => 'service_failure',
                     'committed_at' => null, 'closed_at' => '2026-11-07T09:00:00+00:00', 'transcript_id' => 't1',
+                    teacher_page::FLAGGED_FIELD => 2,
                     'deliveries' => [['round' => 1, 'recipient_kind' => 'recipient', 'status' => 'SENT', 'attempts' => 1,
                         'smtp_code' => 250, 'error_class' => null, 'sent_at' => '2026-11-07T09:01:00+00:00']]],
             ],
@@ -335,6 +336,9 @@ final class teacher_page_test extends \advanced_testcase {
         $this->assertSame('Tina Teacher', $student['resets'][0]['by']);
         $this->assertSame(get_string('teacher_state_closed', 'local_vektradiscuss'), $student['sessions'][0]['state']);
         $this->assertTrue($ctx['gate']['fallbackmissing']);
+        // Vektra's fixed reason is in its own language: the page shows its own string instead.
+        $this->assertSame(get_string('teacher_fallback_reason', 'local_vektradiscuss'), $ctx['gate']['fallbackreason']);
+        $this->assertSame(get_string('teacher_flagged', 'local_vektradiscuss', 2), $student['sessions'][0]['flagged']);
         $this->assertSame(get_string('form_opening_none', 'local_vektradiscuss'), $ctx['gate']['opening']);
         $this->assertFalse($ctx['canterminate']);
         // Vektra's cursor is the last user id of the page, a JSON number.
@@ -352,6 +356,9 @@ final class teacher_page_test extends \advanced_testcase {
         $html = $GLOBALS['OUTPUT']->render_from_template('local_vektradiscuss/teacher_sessions', $ctx);
         $this->assertStringContainsString('Sam Student', $html);
         $this->assertStringContainsString('name="sid" value="' . self::SID . '"', $html);
+        $this->assertStringContainsString(get_string('teacher_flagged', 'local_vektradiscuss', 2), $html);
+        $this->assertStringContainsString(get_string('teacher_fallback_reason', 'local_vektradiscuss'), $html);
+        $this->assertStringNotContainsString('proroghe/override', $html);
 
         // A non-editing teacher: no actions, no override holder.
         $nonediting = $this->getDataGenerator()->create_and_enrol($this->course, 'teacher');
@@ -362,6 +369,35 @@ final class teacher_page_test extends \advanced_testcase {
         $this->assertFalse($ctx['canmanage']);
         $this->assertFalse($ctx['students'][0]['canreset']);
         $this->assertNull($ctx['gate']['overrideholder']);
+    }
+
+    /**
+     * The flagged replies of a session: one, several, none; an absent or malformed field counts as none.
+     */
+    public function test_flagged_replies(): void {
+        $api = new teacher_api(new assess_client(null, $this->transport));
+        $cases = [[1, get_string('teacher_flagged_one', 'local_vektradiscuss')],
+            [3, get_string('teacher_flagged', 'local_vektradiscuss', 3)], [0, null], ['2', null], [-1, null], [null, null]];
+        foreach ($cases as [$value, $expected]) {
+            $list = $this->list_with('t1');
+            $list['students'][0]['sessions'][0][teacher_page::FLAGGED_FIELD] = $value;
+            $this->transport->respond(200, $list);
+            $ctx = $this->page()->context($api->list_sessions(
+                (int) $this->cm->id,
+                (int) $this->course->id,
+                'quiz',
+                (int) $this->teacher->id
+            ));
+            $this->assertSame($expected, $ctx['students'][0]['sessions'][0]['flagged'], var_export($value, true));
+        }
+        $this->transport->respond(200, $this->list_with('t1'));
+        $ctx = $this->page()->context($api->list_sessions(
+            (int) $this->cm->id,
+            (int) $this->course->id,
+            'quiz',
+            (int) $this->teacher->id
+        ));
+        $this->assertNull($ctx['students'][0]['sessions'][0]['flagged']);
     }
 
     /**

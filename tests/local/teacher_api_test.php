@@ -187,4 +187,21 @@ final class teacher_api_test extends \advanced_testcase {
         $this->assertSame($this->transport->header_map(0), $this->transport->header_map(1));
         $this->assertSame(teacher_api::FORM_TIMEOUT, $this->transport->calls[1]['timeout']);
     }
+
+    /**
+     * The session list (Discussions page) is retried too when the teacher check was stale: the 403 with
+     * Vektra's hint, then the same GET with the same cursor and headers.
+     */
+    public function test_list_sessions_retried_on_stale_grader_check(): void {
+        $this->transport->respond(403, ['error' => ['code' => 'ERR-ASSESS-021', 'message' => 'stale',
+            'details' => ['reason' => 'grader_check_stale', 'retry_after_s' => 3]]]);
+        $this->transport->respond(200, ['students' => [], 'next_cursor' => null, 'terminations' => [], 'gate' => []]);
+        $response = $this->api()->list_sessions(42, 7, 'quiz', 5, 'c1');
+        $this->assertDebuggingCalled();
+        $this->assertTrue($response->ok());
+        $this->assertSame([3], $this->slept);
+        $this->assertCount(2, $this->transport->calls);
+        $this->assertSame($this->transport->header_map(0), $this->transport->header_map(1));
+        $this->assertSame('c1', $this->transport->header_map(1)['x-assess-cursor']);
+    }
 }
