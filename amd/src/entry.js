@@ -66,6 +66,9 @@ const announce = (region, text) => {
     live.textContent = text;
 };
 
+/** @var {Number[]} Waits, in seconds, before asking for the state again while Vektra is checking (about 10 s). */
+const CHECKING_DELAYS = [1, 2, 4];
+
 /**
  * Fetch the state and render the panel.
  *
@@ -75,8 +78,9 @@ const announce = (region, text) => {
  * @param {HTMLElement} region
  * @param {Object} config {cmid, attemptid, uiorigin, siteid}
  * @param {Boolean} keepFrame Keep the open iframe and replace only the status part.
+ * @param {Number} tries How many times the state was asked again while Vektra was checking.
  */
-const refresh = async(region, config, keepFrame = false) => {
+const refresh = async(region, config, keepFrame = false, tries = 0) => {
     let context;
     try {
         context = await post('state', {cmid: config.cmid, attemptid: config.attemptid});
@@ -84,6 +88,10 @@ const refresh = async(region, config, keepFrame = false) => {
             throw new Error('malformed');
         }
     } catch (e) {
+        context = await unavailableContext(config.cmid);
+    }
+    if (context.checking && tries >= CHECKING_DELAYS.length) {
+        // Still checking after the last try: the usual "temporarily unavailable".
         context = await unavailableContext(config.cmid);
     }
     const {html, js} = await Templates.renderForPromise('local_vektradiscuss/button', context);
@@ -100,6 +108,12 @@ const refresh = async(region, config, keepFrame = false) => {
         await Templates.replaceNodeContents(region, html, js);
     }
     region.dataset.state = context.state;
+
+    // Vektra is still checking the activity (it usually takes under a second): ask again shortly, a few times.
+    if (context.checking && tries < CHECKING_DELAYS.length) {
+        setTimeout(() => refresh(region, config, keepFrame, tries + 1), CHECKING_DELAYS[tries] * 1000);
+        return;
+    }
 
     const frameRegion = () => region.querySelector('[data-region="local_vektradiscuss-frame"]');
     const open = async(mode, noticeversion = null) => {

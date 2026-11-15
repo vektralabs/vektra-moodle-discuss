@@ -63,6 +63,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   waits. A Vektra without the hint keeps the previous one retry of a stale role check.
 - The Discussions page shows, next to each session, how many replies the student flagged as wrong
   ("N flagged replies", REQ-103); a Vektra that does not send the count shows nothing.
+- The student panel says why the discussion is not available yet after grading: no submitted work (assignment)
+  or no finished attempt (quiz), grading not complete, regrading in progress, grade not published. While
+  Vektra is still checking the activity it says "Checking…" and asks again after 1, 2 and 4 seconds, then
+  falls back to "temporarily unavailable".
 - The activity settings warn when "Let the assistant show the solution" is on, both under the option and
   after a save that turns it on (REQ-077); its help text carries the full warning on the solution.
 

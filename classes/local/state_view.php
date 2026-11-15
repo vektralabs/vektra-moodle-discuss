@@ -38,6 +38,13 @@ final class state_view {
     /** @var string[] Reasons with their own sentence, per state. Other reasons use the state's sentence. */
     private const REASON_TEXTS = [
         'not_open' => ['attempt_in_progress', 'no_close_date', 'close_unreadable'],
+        'not_graded' => ['not_fully_graded', 'regrade_in_progress', 'not_released'],
+        'unavailable' => ['checking'],
+    ];
+
+    /** @var string[] Reasons whose sentence also depends on the activity type (quiz or assign). */
+    private const TYPED_REASON_TEXTS = [
+        'not_graded' => ['no_submitted_attempt'],
     ];
 
     /**
@@ -45,9 +52,10 @@ final class state_view {
      *
      * @param array $dto Normalised state.
      * @param int $cmid Course module id (for unique element ids).
+     * @param string $type Activity type (quiz or assign), for the sentences that depend on it.
      * @return array
      */
-    public static function context(array $dto, int $cmid): array {
+    public static function context(array $dto, int $cmid, string $type = ''): array {
         $state = $dto['state'];
         $number = state_dto::STATES[$state] ?? state_dto::STATES[state_dto::UNAVAILABLE];
         $ctx = [
@@ -61,7 +69,9 @@ final class state_view {
             'heading' => get_string('student_heading', self::C),
             'canstart' => in_array($state, ['eligible', 'reset_granted'], true),
             'canresume' => $state === 'active',
-            'message' => self::message($dto),
+            'message' => self::message($dto, $type),
+            // Vektra is still checking the activity (it finishes within a second): the page asks again shortly.
+            'checking' => $state === state_dto::UNAVAILABLE && ($dto['reason'] ?? null) === 'checking',
             'presession' => null,
             'hastranscripts' => !empty($dto['transcripts']),
             'transcriptsheading' => get_string('transcripts_heading', self::C),
@@ -80,11 +90,18 @@ final class state_view {
      * The status sentence of a state.
      *
      * @param array $dto
+     * @param string $type Activity type (quiz or assign).
      * @return string
      */
-    private static function message(array $dto): string {
+    private static function message(array $dto, string $type = ''): string {
         $state = $dto['state'];
         $reason = $dto['reason'] ?? null;
+        if (
+            $reason !== null && in_array($reason, self::TYPED_REASON_TEXTS[$state] ?? [], true)
+                && in_array($type, ['quiz', 'assign'], true)
+        ) {
+            return get_string('state_' . $state . '_' . $reason . '_' . $type, self::C);
+        }
         if ($reason !== null && in_array($reason, self::REASON_TEXTS[$state] ?? [], true)) {
             return get_string('state_' . $state . '_' . $reason, self::C);
         }
