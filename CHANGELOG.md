@@ -61,9 +61,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   refusal carries `error.details.retry_after_s` (at most 5 seconds), the plugin waits that long and repeats
   the same request, and shows the second refusal as final. The forms say "Checking…" while the server
   waits. A Vektra without the hint keeps the previous one retry of a stale role check.
+- The Discussions page shows, next to each session, how many replies the student flagged as wrong
+  ("N flagged replies", REQ-103); a Vektra that does not send the count shows nothing.
+- The activity settings warn when "Let the assistant show the solution" is on, both under the option and
+  after a save that turns it on (REQ-077); its help text carries the full warning on the solution.
 
 ### Fixed
 
+- On quizzes the activity settings no longer say that the review options hide the attempt when they do not:
+  that warning now follows the quiz's own review options, and Vektra's reduced quiz detail gets its own note
+  (Moodle's per-question feedback does not reach the assistant; use the Solution field to let it explain
+  mistakes).
+- The Discussions page showed Vektra's opening-fallback reason in Vektra's language; it now uses the
+  plugin's own string.
 - The Vektra client loads Moodle's `filelib.php` itself: outside a web page (a CLI script, a task) the `curl`
   class was not loaded and every call to Vektra failed.
 

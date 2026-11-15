@@ -96,6 +96,12 @@ the activity's settings from Vektra when the form opens, and saves only what you
   off.
 - The solution, the pasted rubric and the recipients are write-only: once saved, the form only says
   whether they are set. Replace them to change them. They are stored in Vektra and never in Moodle.
+- Turning on "Let the assistant show the solution" shows a warning: the student may see the solution and
+  receives a copy of the transcript, so avoid it on questions you will reuse.
+- On quizzes, Moodle's per-question feedback, right answers and grading comments do not reach the
+  assistant: it sees the student's answers and marks. To let it explain mistakes, fill in the Solution
+  field and turn on "Let the assistant show the solution". A separate warning appears when the quiz's
+  review options hide the student's answers after the attempt.
 - Course material search is off in this version.
 - If Vektra cannot read every closing date of the activity (overrides, grace period), the form asks
   for the date from which discussions can start, with a confirmation that no student has time
@@ -107,7 +113,8 @@ the activity's settings from Vektra when the form opens, and saves only what you
 
 **Discussions page.** The activity's *Discussions* entry (teachers who can see transcripts) lists
 each student's sessions, how their transcripts were delivered, the new sessions granted and the extra
-time. Teachers who can manage discussions can:
+time. A session whose replies the student flagged as wrong shows how many. Teachers who can manage
+discussions can:
 
 - grant a new session after a student's latest closed one, with a reason that only this page shows
   (the student is not notified by email);

@@ -50,6 +50,9 @@ class teacher_page {
     /** @var string Shape of a list cursor. */
     private const CURSOR = '/^[A-Za-z0-9._~+\/=:-]{1,256}\z/';
 
+    /** @var string Field of a listed session: replies the student flagged as wrong (REQ-103); absent = none. */
+    public const FLAGGED_FIELD = 'flagged_count';
+
     /** @var string[] Session states with their own label. */
     private const STATES = ['STARTING', 'ACTIVE', 'OUTAGE', 'CLOSED'];
 
@@ -225,7 +228,9 @@ class teacher_page {
             'canmanage' => $canmanage,
             'gate' => [
                 'opening' => self::opening_text($gate['opening'] ?? null),
-                'fallbackreason' => is_string($gate['fallback_reason'] ?? null) ? $gate['fallback_reason'] : null,
+                // Vektra's reason is a fixed text in its own language: the page says it in the teacher's.
+                'fallbackreason' => is_string($gate['fallback_reason'] ?? null) && trim($gate['fallback_reason']) !== ''
+                    ? get_string('teacher_fallback_reason', self::C) : null,
                 'fallbackmissing' => ($gate['fallback_date_missing'] ?? false) === true,
                 'settingsurl' => (new \moodle_url('/course/modedit.php', ['update' => $this->cm->id]))->out(false),
                 'activesessions' => $active,
@@ -280,6 +285,7 @@ class teacher_page {
                 'closereason' => ($session['close_reason'] ?? null) !== null
                     ? self::label('teacher_close_', $session['close_reason'], self::CLOSE_REASONS) : null,
                 'closedat' => self::date($session['closed_at'] ?? null),
+                'flagged' => self::flagged($session),
                 'deliveries' => self::deliveries($session['deliveries'] ?? []),
                 'hasdeliveries' => !empty($session['deliveries']),
                 'tid' => $tid = $this->transcript_id($session),
@@ -499,6 +505,20 @@ class teacher_page {
             return get_string('form_opening_none', self::C);
         }
         return get_string('form_opening_' . $source, self::C, userdate($at));
+    }
+
+    /**
+     * "N flagged replies" for a session, or null when there are none (or the field is absent or malformed).
+     *
+     * @param array $session
+     * @return string|null
+     */
+    private static function flagged(array $session): ?string {
+        $n = $session[self::FLAGGED_FIELD] ?? 0;
+        if (!is_int($n) || $n <= 0) {
+            return null;
+        }
+        return get_string($n === 1 ? 'teacher_flagged_one' : 'teacher_flagged', self::C, $n);
     }
 
     /**

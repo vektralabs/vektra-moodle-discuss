@@ -225,6 +225,82 @@ final class settings_section_test extends \advanced_testcase {
     }
 
     /**
+     * The review warning follows the quiz's own review options; Vektra's flag (reduced quiz detail) gives the
+     * note on Moodle's feedback instead.
+     */
+    public function test_review_warning_and_feedback_note(): void {
+        global $DB;
+        $p = settings_section::PREFIX;
+        // The generator's quiz shows the attempt after the close: no review warning, and no note without the flag.
+        $this->transport->respond(200, self::view());
+        $mform = $this->extend();
+        $this->assertFalse($mform->elementExists($p . 'reviewwarning'));
+        $this->assertFalse($mform->elementExists($p . 'quizfeedback'));
+
+        $this->transport->respond(200, self::view(['warnings' => ['available_until_not_after_opening' => false,
+            'review_options_hide_content' => true]]));
+        $mform = $this->extend();
+        $this->assertFalse($mform->elementExists($p . 'reviewwarning'));
+        $this->assertStringContainsString(
+            get_string('form_note_quiz_feedback', 'local_vektradiscuss'),
+            $mform->getElement($p . 'quizfeedback')->toHtml()
+        );
+
+        $DB->set_field('quiz', 'reviewattempt', 0, ['id' => $this->quiz->id]);
+        $this->transport->respond(200, self::view());
+        $mform = $this->extend();
+        $this->assertStringContainsString(
+            get_string('form_warning_review_options', 'local_vektradiscuss'),
+            $mform->getElement($p . 'reviewwarning')->toHtml()
+        );
+        $this->assertFalse($mform->elementExists($p . 'quizfeedback'));
+    }
+
+    /**
+     * The phase that counts: after the close when the quiz has one, later while open when it has none.
+     */
+    public function test_review_hides_answers_by_phase(): void {
+        global $DB;
+        $later = \mod_quiz\question\display_options::LATER_WHILE_OPEN;
+        $closed = \mod_quiz\question\display_options::AFTER_CLOSE;
+        $DB->update_record('quiz', (object) ['id' => $this->quiz->id, 'timeclose' => 0, 'reviewattempt' => $later]);
+        $this->assertFalse(settings_section::review_hides_answers((int) $this->quiz->id));
+        $DB->set_field('quiz', 'timeclose', time() - 60, ['id' => $this->quiz->id]);
+        $this->assertTrue(settings_section::review_hides_answers((int) $this->quiz->id));
+        $DB->set_field('quiz', 'reviewattempt', $closed, ['id' => $this->quiz->id]);
+        $this->assertFalse(settings_section::review_hides_answers((int) $this->quiz->id));
+        $this->assertFalse(settings_section::review_hides_answers(-1));
+    }
+
+    /**
+     * REQ-077: a warning under "show the solution" while it is on, and after a save that turns it on.
+     */
+    public function test_show_solution_warning(): void {
+        $p = settings_section::PREFIX;
+        $this->transport->respond(200, self::view());
+        $mform = $this->extend();
+        $this->assertStringContainsString(
+            get_string('form_showsolution_warning', 'local_vektradiscuss'),
+            $mform->getElement($p . 'showsolutionwarning')->toHtml()
+        );
+        $hideifs = (fn() => $this->_hideifs)->call($mform);
+        $this->assertContains($p . 'showsolutionwarning', $hideifs[$p . 'showsolution']['notchecked']['1']);
+
+        $this->transport->respond(200, self::view(['version' => 4, 'show_solution' => true]));
+        $this->save($this->submitted([$p . 'showsolution' => 1]));
+        $messages = array_map(fn($m) => $m->get_message(), \core\notification::fetch());
+        $this->assertSame([get_string('form_saved', 'local_vektradiscuss'),
+            get_string('form_showsolution_warning', 'local_vektradiscuss')], $messages);
+
+        // Turning it off, or a save that leaves it as it was, says nothing more.
+        $view = self::view(['show_solution' => true]);
+        $this->transport->respond(200, self::view(['version' => 5]));
+        $this->save($this->submitted([$p . 'view' => json_encode($view), $p . 'showsolution' => 0]));
+        $messages = array_map(fn($m) => $m->get_message(), \core\notification::fetch());
+        $this->assertSame([get_string('form_saved', 'local_vektradiscuss')], $messages);
+    }
+
+    /**
      * Outage on render: a notice, no version field, so the save sends nothing (dormant-capability guard).
      */
     public function test_unreachable_on_render_freezes_and_save_sends_nothing(): void {
