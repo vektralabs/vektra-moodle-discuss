@@ -248,11 +248,26 @@ def _delegate(parent: dict[str, Any], **parent_changes: Any) -> Any:
     """Make section 2 of the materials a 5.x subsection delegated by a new module of section 1."""
 
     def mutate(body: Any) -> Any:
-        sub = dict(body[0]["modules"][1], id=9100, modname="subsection", name="A subsection")
+        sub = dict(
+            body[0]["modules"][1],
+            id=9100,
+            instance=77,
+            modname="subsection",
+            name="A subsection",
+        )
         sub.update(parent_changes)
-        body[0]["modules"].append(sub)
+        # a decoy whose cmid equals the subsection's instance id: never the parent
+        decoy = dict(
+            body[0]["modules"][1],
+            id=77,
+            instance=5,
+            modname="page",
+            name="Decoy",
+            availability='{"op":"&","c":[{"type":"group","id":3}],"showc":[true]}',
+        )
+        body[0]["modules"].extend([sub, decoy])
         body[1]["component"] = "mod_subsection"
-        body[1]["itemid"] = parent.get("itemid", 9100)
+        body[1]["itemid"] = parent.get("itemid", 77)
         body[1]["availabilityinfo"] = None
         return body
 
@@ -300,7 +315,7 @@ async def test_a_subsection_in_an_unavailable_section_is_unavailable(branch: str
 def test_a_delegation_loop_is_unavailable() -> None:
     from vektra_lms_moodle.models.course_facts import SectionFacts
 
-    def section(sid: int, cmid: int, delegated_by: int) -> SectionFacts:
+    def section(sid: int, instance: int, delegated_by: int) -> SectionFacts:
         return SectionFacts.model_validate(
             {
                 "id": sid,
@@ -311,8 +326,9 @@ def test_a_delegation_loop_is_unavailable() -> None:
                 "itemid": delegated_by,
                 "modules": [
                     {
-                        "id": cmid,
-                        "name": f"m{cmid}",
+                        "id": 1000 + instance,
+                        "instance": instance,
+                        "name": f"m{instance}",
                         "modname": "subsection",
                         "visible": 1,
                         "visibleoncoursepage": 1,

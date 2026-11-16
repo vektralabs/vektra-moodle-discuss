@@ -22,6 +22,8 @@ class _Facts(BaseModel):
 
 class ModuleFacts(_Facts):
     id: int
+    #: the module's instance id: what a delegated section's ``itemid`` points to
+    instance: int
     name: str
     modname: str
     visible: int
@@ -39,7 +41,8 @@ class SectionFacts(_Facts):
     modules: list[ModuleFacts]
     #: present only when the section is not available to the caller
     availabilityinfo: str | None = None
-    #: 5.x delegated sections (``mod_subsection``): the component and the delegating cmid
+    #: 5.x delegated sections (``mod_subsection``): the delegating module's component and INSTANCE
+    #: id (Moodle resolves it with ``get_coursemodule_from_instance``, not by cmid)
     component: str | None = None
     itemid: int | None = None
 

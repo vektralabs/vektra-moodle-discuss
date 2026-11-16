@@ -13,8 +13,8 @@ for retrieval. The read is relative to the CALLER (the service account):
   reason, so it is never eligible.
 
 On 5.x a delegated section (``mod_subsection``) inherits the visibility and the restrictions of
-the module that delegates it and of that module's own section: an unknown delegating module makes
-it unavailable.
+the module that delegates it (found by component and instance id, as Moodle does) and of that
+module's own section: an unknown delegating module makes it unavailable.
 """
 
 from __future__ import annotations
@@ -58,8 +58,11 @@ def course_module_facts(
 ) -> tuple[CourseModuleFacts, ...]:
     """The facts of every module, with delegated sections resolved through their module."""
     by_id = {s.id: s for s in sections}
-    home: dict[int, tuple[SectionFacts, ModuleFacts]] = {
-        mod.id: (sec, mod) for sec in sections for mod in sec.modules
+    # a delegated section names its module by component and instance (``mod_subsection`` + id)
+    home: dict[tuple[str, int], tuple[SectionFacts, ModuleFacts]] = {
+        ("mod_" + mod.modname, mod.instance): (sec, mod)
+        for sec in sections
+        for mod in sec.modules
     }
     memo: dict[int, tuple[bool, bool]] = {}
 
@@ -70,7 +73,11 @@ def course_module_facts(
         visible = sec.visible == 1 and sec.hiddenbynumsections == 0
         available = sec.uservisible and not sec.availabilityinfo
         if sec.component is not None:
-            parent = home.get(sec.itemid) if sec.itemid is not None else None
+            parent = (
+                home.get((sec.component, sec.itemid))
+                if sec.itemid is not None
+                else None
+            )
             if parent is None or sec.id in seen:
                 visible = available = False
             else:

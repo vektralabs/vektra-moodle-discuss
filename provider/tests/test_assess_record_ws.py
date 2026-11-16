@@ -330,3 +330,33 @@ def test_the_materials_recording_refuses_a_course_without_test_sections(
 ) -> None:
     with pytest.raises(rec.RecorderRefused):
         rec.trim_materials(response)
+
+
+def test_the_materials_course_cannot_be_the_seeded_course(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Same function and parameters twice: the trimmed answer would replace the full one."""
+    monkeypatch.setattr(rec, "check_identity", lambda *a, **k: None)
+    monkeypatch.setattr(rec, "materials_course_id", lambda *a, **k: 2)
+    monkeypatch.setattr(
+        rec,
+        "ws_call",
+        lambda *a, **k: {"release": "5.2.4 (Build: 20261005)", "userid": 3},
+    )
+    manifest = {
+        "courseid": 2,
+        "release": "5.2.4 (Build: 20261005)",
+        "users": {},
+        "quizzes": {},
+        "assigns": {"files": {}},
+    }
+    with pytest.raises(rec.RecorderRefused, match="seeded course"):
+        rec.record(
+            "http://localhost:8082",
+            TOKEN,
+            manifest,
+            tmp_path,
+            only="core_course_get_contents",
+            materials_course="X",
+        )
+    assert not any(tmp_path.iterdir())

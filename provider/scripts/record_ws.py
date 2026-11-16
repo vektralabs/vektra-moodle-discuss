@@ -573,14 +573,18 @@ def record(
     )
     calls: list[Call] = [*plan(manifest, branch), own]
     if materials_course and only in (None, "core_course_get_contents"):
+        materials_id = materials_course_id(base, token, materials_course)
+        # the replay keys responses by function and parameters: the same course twice would make
+        # the trimmed materials answer replace the seeded course's full one
+        if materials_id == int(manifest["courseid"]):
+            raise RecorderRefused(
+                "refused: the materials course is the seeded course of the manifest"
+            )
         calls.append(
             (
                 "core_course_get_contents",
                 "materials",
-                {
-                    "courseid": materials_course_id(base, token, materials_course),
-                    "options": COURSE_CONTENTS_OPTIONS,
-                },
+                {"courseid": materials_id, "options": COURSE_CONTENTS_OPTIONS},
             )
         )
     if only:
