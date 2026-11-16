@@ -9,6 +9,7 @@ from vektra_lms_moodle.readers.assign import (
     read_submission_status,
     read_user_flags,
 )
+from vektra_lms_moodle.readers.course import read_course_modules
 from vektra_lms_moodle.readers.enrol import (
     read_course_participants,
     read_editors,
@@ -49,6 +50,7 @@ __all__ = [
     "read_assign_release",
     "read_assign_settings",
     "read_attempt_review",
+    "read_course_modules",
     "read_course_participants",
     "read_editors",
     "read_enrolment",

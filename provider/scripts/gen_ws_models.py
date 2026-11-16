@@ -42,6 +42,7 @@ ROOTS = {
     "core_enrol_get_enrolled_users": "EnrolledUsers",
     "core_enrol_get_enrolled_users_with_capability": "UsersWithCapability",
     "core_user_get_users_by_field": "UsersByField",
+    "core_course_get_contents": "CourseContents",
 }
 FILES = {
     "core_webservice_get_site_info": "site",
@@ -61,6 +62,7 @@ FILES = {
     "core_enrol_get_enrolled_users": "enrol",
     "core_enrol_get_enrolled_users_with_capability": "enrol",
     "core_user_get_users_by_field": "enrol",
+    "core_course_get_contents": "course",
 }
 WARNING = "Warning"
 #: Moodle numbers that are float on some rows and int on others (the recordings show one).

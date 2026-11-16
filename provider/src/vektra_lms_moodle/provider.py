@@ -51,6 +51,7 @@ from vektra_shared.lms import (
     AttemptState,
     AttemptSummary,
     CapabilityResult,
+    CourseModuleVisibility,
     Enrolment,
     Feedback,
     GracePolicy,
@@ -465,6 +466,24 @@ def _fillings(fs: tuple[m.RubricFilling, ...]) -> tuple[RubricFilling, ...]:
     )
 
 
+def _course_modules(
+    rows: tuple[m.CourseModuleFacts, ...],
+) -> tuple[CourseModuleVisibility, ...]:
+    return tuple(
+        CourseModuleVisibility(
+            cmid=f.cmid,
+            title=f.name,
+            section_id=f.sectionid,
+            visible=f.visible,
+            on_course_page=f.visibleoncoursepage,
+            has_conditions=f.has_availability,
+            section_visible=f.section_visible,
+            section_available=f.section_available,
+        )
+        for f in rows
+    )
+
+
 def _staff(g: m.GraderList) -> tuple[StaffMember, ...]:
     return tuple(StaffMember(u.userid, u.fullname, u.email, u.roles) for u in g.graders)
 
@@ -761,6 +780,16 @@ class MoodleLmsProvider:
     ) -> Reading[tuple[RubricFilling, ...]]:
         res = await r.read_rubric_fillings(self._client, _ref(site), definition_id)
         return _convert(res, _fillings)
+
+    # --- course material (FEAT-028) ---------------------------------------------------------
+
+    async def course_modules(
+        self, site: LmsSite, course_id: int
+    ) -> Reading[tuple[CourseModuleVisibility, ...]]:
+        """Every module of the course with its course-wide visibility facts, as the service
+        account reads them: Unreadable as a whole when any fact cannot be told."""
+        res = await r.read_course_modules(self._client, _ref(site), course_id)
+        return _convert(res, _course_modules)
 
 
 #: the secrets this provider reads, declared on its entry point so the platform knows them

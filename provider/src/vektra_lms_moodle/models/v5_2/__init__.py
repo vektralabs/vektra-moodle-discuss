@@ -6,10 +6,11 @@ from typing import Any
 
 from pydantic import TypeAdapter
 
-from vektra_lms_moodle.models.v5_2 import assign, enrol, grading, quiz, site
+from vektra_lms_moodle.models.v5_2 import assign, course, enrol, grading, quiz, site
 
 ADAPTERS: dict[str, TypeAdapter[Any]] = {
     **assign.ADAPTERS,
+    **course.ADAPTERS,
     **enrol.ADAPTERS,
     **grading.ADAPTERS,
     **quiz.ADAPTERS,

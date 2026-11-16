@@ -290,3 +290,43 @@ def test_main_exit_codes(tmp_path: Path) -> None:
         )
         == 2
     )
+
+
+# --- FEAT-028: the course contents recordings --------------------------------------------
+
+
+def test_the_plan_records_the_course_contents_without_file_contents() -> None:
+    mf = {"courseid": 2, "users": {}, "quizzes": {}, "assigns": {}}
+    calls = [c for c in rec.plan(mf, "5.2") if c[0] == "core_course_get_contents"]
+    assert calls == [
+        (
+            "core_course_get_contents",
+            "course",
+            {"courseid": 2, "options": [{"name": "excludecontents", "value": 1}]},
+        )
+    ]
+
+
+def test_the_materials_recording_keeps_only_the_test_sections() -> None:
+    sections = [
+        {"id": 1, "name": "General", "modules": [{"id": 9, "name": "Course notes"}]},
+        {"id": 25, "name": "Prova materiali", "modules": []},
+        {"id": 26, "name": "Prova materiali riservata", "modules": []},
+        {"id": 30, "name": "Another module", "modules": []},
+    ]
+    assert [s["id"] for s in rec.trim_materials(sections)] == [25, 26]
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        {"exception": "x"},
+        [],
+        [{"id": 1, "name": "General", "modules": []}],
+    ],
+)
+def test_the_materials_recording_refuses_a_course_without_test_sections(
+    response: Any,
+) -> None:
+    with pytest.raises(rec.RecorderRefused):
+        rec.trim_materials(response)
