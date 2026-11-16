@@ -45,7 +45,8 @@ Feature: The discussion settings in the quiz form
     And the Vektra assess stub received 0 PUT requests to "config" of "quiz1"
     When I set the field "vektradiscuss_ragattest" to "1"
     And I press "Save and return to course"
-    Then I should see "The discussion settings were saved."
+    Then I should see "Course material search is on."
+    And the Vektra assess stub received 1 PUT request to "config" of "quiz1"
     And the last Vektra assess stub PUT to "config" of "quiz1" should have the field "rag_enabled"
     And the last Vektra assess stub PUT to "config" of "quiz1" should have the field "rag_attested"
 
