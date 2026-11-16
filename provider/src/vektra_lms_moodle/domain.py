@@ -375,3 +375,22 @@ class GraderView:
 class GraderList:
     courseid: int
     graders: tuple[GraderView, ...]
+
+
+@dataclass(frozen=True)
+class CourseModuleFacts:
+    """One module of ``core_course_get_contents`` as the service account reads it (FEAT-028):
+    the course-wide visibility facts only, never its contents or URLs."""
+
+    cmid: int
+    name: str
+    sectionid: int
+    visible: bool
+    visibleoncoursepage: bool
+    #: the module carries an availability tree with at least one condition, or the service account
+    #: cannot use it (``uservisible`` false) for any other reason
+    has_availability: bool
+    section_visible: bool
+    #: the section is available to the service account and carries no availability notice; for a
+    #: delegated section, its delegating module is unrestricted and its section available too
+    section_available: bool

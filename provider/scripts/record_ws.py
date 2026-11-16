@@ -55,6 +55,9 @@ DEFAULT_OUT = (
     Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "moodle_ws"
 )
 SECRET_KEYS = {"userprivateaccesskey", "privatetoken", "token", "wstoken"}
+#: the sections a ``--materials-course`` recording keeps (FEAT-028 test material on a dev course):
+#: the rest of that course is not test material and stays out of the repository
+MATERIALS_SECTION_PREFIX = "Prova materiali"
 
 
 class RecorderRefused(Exception):
@@ -351,6 +354,12 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 
 from vektra_lms_moodle.client import flatten_params  # noqa: E402
 
+#: ``core_course_get_contents`` options, exactly as the provider's ``read_course_modules`` sends
+#: them: the module list without file contents (no file names, no file URLs)
+from vektra_lms_moodle.readers.course import (  # noqa: E402
+    CONTENTS_OPTIONS as COURSE_CONTENTS_OPTIONS,
+)
+
 _OPENER = urllib.request.build_opener(_NoRedirect)
 
 
@@ -407,6 +416,11 @@ def plan(manifest: dict[str, Any], branch: str) -> list[Call]:
         ),
         # trap 1: without the flag Moodle answers HTTP 200, courses=[] and a warning
         ("mod_assign_get_assignments", "noflag", {"courseids": [cid]}),
+        (
+            "core_course_get_contents",
+            "course",
+            {"courseid": cid, "options": COURSE_CONTENTS_OPTIONS},
+        ),
     ]
     for name, uid in users.items():
         calls.append(("core_enrol_get_users_courses", name, {"userid": uid}))
@@ -488,13 +502,56 @@ def plan(manifest: dict[str, Any], branch: str) -> list[Call]:
     return calls
 
 
+def materials_course_id(base: str, token: str, shortname: str) -> int:
+    """The id of the dev course holding the FEAT-028 test material, by its shortname."""
+    found = ws_call(
+        base,
+        token,
+        "core_course_get_courses_by_field",
+        {"field": "shortname", "value": shortname},
+    )
+    if not isinstance(found, dict) or "courses" not in found:
+        code = found.get("errorcode", "unknown") if isinstance(found, dict) else "unknown"
+        raise RecorderRefused(
+            f"refused: core_course_get_courses_by_field failed ({code})"
+        )
+    courses = found["courses"]
+    if len(courses) != 1:
+        raise RecorderRefused("refused: the materials course is not on this site")
+    return int(courses[0]["id"])
+
+
+def trim_materials(response: Any) -> Any:
+    """Keep only the FEAT-028 test sections of a ``core_course_get_contents`` answer."""
+    if not isinstance(response, list):
+        raise RecorderRefused("refused: unexpected core_course_get_contents answer")
+    kept = [
+        s
+        for s in response
+        if isinstance(s, dict)
+        and str(s.get("name", "")).startswith(MATERIALS_SECTION_PREFIX)
+    ]
+    if not kept:
+        raise RecorderRefused("refused: the materials course has no test sections")
+    return kept
+
+
 def fixture_name(fn: str, fixture: str) -> str:
     return f"{fn}__{fixture}.json"
 
 
 def record(
-    base_url: str, token: str, manifest: dict[str, Any], out_dir: Path
+    base_url: str,
+    token: str,
+    manifest: dict[str, Any],
+    out_dir: Path,
+    *,
+    only: str | None = None,
+    materials_course: str | None = None,
 ) -> dict[str, int]:
+    """Record the plan. ``only``: just that wsfunction, and neither the manifest nor the
+    submission files are rewritten. ``materials_course``: also record that course's
+    ``core_course_get_contents`` as the ``materials`` fixture, trimmed to the test sections."""
     base = check_base_url(base_url)
     info = ws_call(base, token, "core_webservice_get_site_info", {})
     if not isinstance(info, dict) or "release" not in info:
@@ -514,12 +571,34 @@ def record(
         "self",
         {"field": "id", "values": [info["userid"]]},
     )
-    for fn, fixture, params in [*plan(manifest, branch), own]:
+    calls: list[Call] = [*plan(manifest, branch), own]
+    if materials_course and only in (None, "core_course_get_contents"):
+        materials_id = materials_course_id(base, token, materials_course)
+        # the replay keys responses by function and parameters: the same course twice would make
+        # the trimmed materials answer replace the seeded course's full one
+        if materials_id == int(manifest["courseid"]):
+            raise RecorderRefused(
+                "refused: the materials course is the seeded course of the manifest"
+            )
+        calls.append(
+            (
+                "core_course_get_contents",
+                "materials",
+                {"courseid": materials_id, "options": COURSE_CONTENTS_OPTIONS},
+            )
+        )
+    if only:
+        calls = [c for c in calls if c[0] == only]
+        if not calls:
+            raise RecorderRefused("refused: --only names no wsfunction of the plan")
+    for fn, fixture, params in calls:
         response = (
             info
             if fn == "core_webservice_get_site_info"
             else ws_call(base, token, fn, params)
         )
+        if fixture == "materials":
+            response = trim_materials(response)
         doc = {
             "wsfunction": fn,
             "fixture": fixture,
@@ -531,7 +610,7 @@ def record(
         ).encode()
 
     files: dict[str, bytes] = {}
-    for u in manifest["assigns"]["files"].get("submissions", {}):
+    for u in [] if only else manifest["assigns"]["files"].get("submissions", {}):
         uid = manifest["users"][u]["id"]
         status = ws_call(
             base,
@@ -546,13 +625,16 @@ def record(
                     if len(data) <= 256 * 1024:
                         files[f"{u}__{f['filename']}"] = data
 
-    manifest_doc = {k: v for k, v in manifest.items() if k != "checks"}
-    staged["manifest.json"] = (
-        json.dumps(
-            scrub(manifest_doc, base_url=base, token=token), indent=1, sort_keys=True
-        )
-        + "\n"
-    ).encode()
+    if not only:
+        manifest_doc = {k: v for k, v in manifest.items() if k != "checks"}
+        staged["manifest.json"] = (
+            json.dumps(
+                scrub(manifest_doc, base_url=base, token=token),
+                indent=1,
+                sort_keys=True,
+            )
+            + "\n"
+        ).encode()
 
     for blob in staged.values():
         assert_clean(blob.decode(), base_url=base, token=token)
@@ -573,7 +655,10 @@ def record(
         (target / name).write_bytes(blob)
     for name, data in files.items():
         (target / "files" / name).write_bytes(data)
-    return {"responses": len(staged) - 1, "files": len(files)}
+    return {
+        "responses": len(staged) - (0 if only else 1),
+        "files": len(files),
+    }
 
 
 def _token_from(path: Path, key: str) -> str:
@@ -592,6 +677,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--token-key", default="service_account.token")
     ap.add_argument("--manifest", type=Path, required=True)
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
+    ap.add_argument(
+        "--only", help="record just this wsfunction (no manifest, no submission files)"
+    )
+    ap.add_argument(
+        "--materials-course",
+        help="shortname of the dev course with the FEAT-028 test sections",
+    )
     args = ap.parse_args(argv)
     try:
         counts = record(
@@ -599,6 +691,8 @@ def main(argv: list[str] | None = None) -> int:
             _token_from(args.token_file, args.token_key),
             json.loads(args.manifest.read_text()),
             args.out,
+            only=args.only,
+            materials_course=args.materials_course,
         )
     except RecorderRefused as exc:
         print(str(exc), file=sys.stderr)

@@ -290,3 +290,73 @@ def test_main_exit_codes(tmp_path: Path) -> None:
         )
         == 2
     )
+
+
+# --- FEAT-028: the course contents recordings --------------------------------------------
+
+
+def test_the_plan_records_the_course_contents_without_file_contents() -> None:
+    mf = {"courseid": 2, "users": {}, "quizzes": {}, "assigns": {}}
+    calls = [c for c in rec.plan(mf, "5.2") if c[0] == "core_course_get_contents"]
+    assert calls == [
+        (
+            "core_course_get_contents",
+            "course",
+            {"courseid": 2, "options": [{"name": "excludecontents", "value": 1}]},
+        )
+    ]
+
+
+def test_the_materials_recording_keeps_only_the_test_sections() -> None:
+    sections = [
+        {"id": 1, "name": "General", "modules": [{"id": 9, "name": "Course notes"}]},
+        {"id": 25, "name": "Prova materiali", "modules": []},
+        {"id": 26, "name": "Prova materiali riservata", "modules": []},
+        {"id": 30, "name": "Another module", "modules": []},
+    ]
+    assert [s["id"] for s in rec.trim_materials(sections)] == [25, 26]
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        {"exception": "x"},
+        [],
+        [{"id": 1, "name": "General", "modules": []}],
+    ],
+)
+def test_the_materials_recording_refuses_a_course_without_test_sections(
+    response: Any,
+) -> None:
+    with pytest.raises(rec.RecorderRefused):
+        rec.trim_materials(response)
+
+
+def test_the_materials_course_cannot_be_the_seeded_course(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Same function and parameters twice: the trimmed answer would replace the full one."""
+    monkeypatch.setattr(rec, "check_identity", lambda *a, **k: None)
+    monkeypatch.setattr(rec, "materials_course_id", lambda *a, **k: 2)
+    monkeypatch.setattr(
+        rec,
+        "ws_call",
+        lambda *a, **k: {"release": "5.2.4 (Build: 20261005)", "userid": 3},
+    )
+    manifest = {
+        "courseid": 2,
+        "release": "5.2.4 (Build: 20261005)",
+        "users": {},
+        "quizzes": {},
+        "assigns": {"files": {}},
+    }
+    with pytest.raises(rec.RecorderRefused, match="seeded course"):
+        rec.record(
+            "http://localhost:8082",
+            TOKEN,
+            manifest,
+            tmp_path,
+            only="core_course_get_contents",
+            materials_course="X",
+        )
+    assert not any(tmp_path.iterdir())

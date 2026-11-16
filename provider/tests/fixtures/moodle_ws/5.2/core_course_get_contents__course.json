@@ -1,0 +1,1056 @@
+{
+ "fixture": "course",
+ "params": {
+  "courseid": 2,
+  "options": [
+   {
+    "name": "excludecontents",
+    "value": 1
+   }
+  ]
+ },
+ "response": [
+  {
+   "component": null,
+   "hiddenbynumsections": 0,
+   "id": 1,
+   "itemid": null,
+   "modules": [
+    {
+     "afterlink": null,
+     "availability": null,
+     "branded": false,
+     "candisplay": true,
+     "completion": 0,
+     "contextid": 26,
+     "customdata": "{\"timeopen\":\"1793403170\",\"timeclose\":\"1794004370\"}",
+     "dates": [
+      {
+       "dataid": "timeopen",
+       "label": "Opened:",
+       "timestamp": 1793403170
+      },
+      {
+       "dataid": "timeclose",
+       "label": "Closed:",
+       "timestamp": 1794004370
+      }
+     ],
+     "downloadcontent": 1,
+     "groupmode": 0,
+     "id": 2,
+     "indent": 0,
+     "instance": 1,
+     "modicon": "https://moodle.example.org/theme/image.php/boost/quiz/1794815468/monologo?filtericon=1",
+     "modname": "quiz",
+     "modplural": "Quizzes",
+     "name": "QZ types catalogue",
+     "noviewlink": false,
+     "onclick": "",
+     "purpose": "assessment",
+     "url": "https://moodle.example.org/mod/quiz/view.php?id=2",
+     "uservisible": true,
+     "visible": 1,
+     "visibleoncoursepage": 1
+    },
+    {
+     "afterlink": null,
+     "availability": null,
+     "branded": false,
+     "candisplay": true,
+     "completion": 0,
+     "contextid": 27,
+     "customdata": "{\"timeopen\":\"1793403170\",\"timeclose\":\"1794004370\"}",
+     "dates": [
+      {
+       "dataid": "timeopen",
+       "label": "Opened:",
+       "timestamp": 1793403170
+      },
+      {
+       "dataid": "timeclose",
+       "label": "Closed:",
+       "timestamp": 1794004370
+      }
+     ],
+     "downloadcontent": 1,
+     "groupmode": 0,
+     "id": 3,
+     "indent": 0,
+     "instance": 2,
+     "modicon": "https://moodle.example.org/theme/image.php/boost/quiz/1794815468/monologo?filtericon=1",
+     "modname": "quiz",
+     "modplural": "Quizzes",
+     "name": "QZ review all visible",
+     "noviewlink": false,
+     "onclick": "",
+     "purpose": "assessment",
+     "url": "https://moodle.example.org/mod/quiz/view.php?id=3",
+     "uservisible": true,
+     "visible": 1,
+     "visibleoncoursepage": 1
+    },
+    {
+     "afterlink": null,
+     "availability": null,
+     "branded": false,
+     "candisplay": true,
+     "completion": 0,
+     "contextid": 28,
+     "customdata": "{\"timeopen\":\"1793403170\",\"timeclose\":\"1794004370\"}",
+     "dates": [
+      {
+       "dataid": "timeopen",
+       "label": "Opened:",
+       "timestamp": 1793403170
+      },
+      {
+       "dataid": "timeclose",
+       "label": "Closed:",
+       "timestamp": 1794004370
+      }
+     ],
+     "downloadcontent": 1,
+     "groupmode": 0,
+     "id": 4,
+     "indent": 0,
+     "instance": 3,
+     "modicon": "https://moodle.example.org/theme/image.php/boost/quiz/1794815468/monologo?filtericon=1",
+     "modname": "quiz",
+     "modplural": "Quizzes",
+     "name": "QZ review hidden",
+     "noviewlink": false,
+     "onclick": "",
+     "purpose": "assessment",
+     "url": "https://moodle.example.org/mod/quiz/view.php?id=4",
+     "uservisible": true,
+     "visible": 1,
+     "visibleoncoursepage": 1
+    },
+    {
+     "afterlink": null,
+     "availability": null,
+     "branded": false,
+     "candisplay": true,
+     "completion": 0,
+     "contextid": 29,
+     "customdata": "{\"timeopen\":\"1793403170\",\"timeclose\":\"1794004370\"}",
+     "dates": [
+      {
+       "dataid": "timeopen",
+       "label": "Opened:",
+       "timestamp": 1793403170
+      },
+      {
+       "dataid": "timeclose",
+       "label": "Closed:",
+       "timestamp": 1794004370
+      }
+     ],
+     "downloadcontent": 1,
+     "groupmode": 0,
+     "id": 5,
+     "indent": 0,
+     "instance": 4,
+     "modicon": "https://moodle.example.org/theme/image.php/boost/quiz/1794815468/monologo?filtericon=1",
+     "modname": "quiz",
+     "modplural": "Quizzes",
+     "name": "QZ review mixed",
+     "noviewlink": false,
+     "onclick": "",
+     "purpose": "assessment",
+     "url": "https://moodle.example.org/mod/quiz/view.php?id=5",
+     "uservisible": true,
+     "visible": 1,
+     "visibleoncoursepage": 1
+    },
+    {
+     "afterlink": null,
+     "availability": null,
+     "branded": false,
+     "candisplay": true,
+     "completion": 0,
+     "contextid": 30,
+     "customdata": "{\"timeopen\":\"1793403170\",\"timeclose\":\"1794004370\"}",
+     "dates": [
+      {
+       "dataid": "timeopen",
+       "label": "Opened:",
+       "timestamp": 1793403170
+      },
+      {
+       "dataid": "timeclose",
+       "label": "Closed:",
+       "timestamp": 1794004370
+      }
+     ],
+     "downloadcontent": 1,
+     "groupmode": 0,
+     "id": 6,
+     "indent": 0,
+     "instance": 5,
+     "modicon": "https://moodle.example.org/theme/image.php/boost/quiz/1794815468/monologo?filtericon=1",
+     "modname": "quiz",
+     "modplural": "Quizzes",
+     "name": "QZ grademethod highest tie",
+     "noviewlink": false,
+     "onclick": "",
+     "purpose": "assessment",
+     "url": "https://moodle.example.org/mod/quiz/view.php?id=6",
+     "uservisible": true,
+     "visible": 1,
+     "visibleoncoursepage": 1
+    },
+    {
+     "afterlink": null,
+     "availability": null,
+     "branded": false,
+     "candisplay": true,
+     "completion": 0,
+     "contextid": 31,
+     "customdata": "{\"timeopen\":\"1793403170\",\"timeclose\":\"1794004370\"}",
+     "dates": [
+      {
+       "dataid": "timeopen",
+       "label": "Opened:",
+       "timestamp": 1793403170
+      },
+      {
+       "dataid": "timeclose",
+       "label": "Closed:",
+       "timestamp": 1794004370
+      }
+     ],
+     "downloadcontent": 1,
+     "groupmode": 0,
+     "id": 7,
+     "indent": 0,
+     "instance": 6,
+     "modicon": "https://moodle.example.org/theme/image.php/boost/quiz/1794815468/monologo?filtericon=1",
+     "modname": "quiz",
+     "modplural": "Quizzes",
+     "name": "QZ grademethod first",
+     "noviewlink": false,
+     "onclick": "",
+     "purpose": "assessment",
+     "url": "https://moodle.example.org/mod/quiz/view.php?id=7",
+     "uservisible": true,
+     "visible": 1,
+     "visibleoncoursepage": 1
+    },
+    {
+     "afterlink": null,
+     "availability": null,
+     "branded": false,
+     "candisplay": true,
+     "completion": 0,
+     "contextid": 32,
+     "customdata": "{\"timeopen\":\"1793403170\",\"timeclose\":\"1794004370\"}",
+     "dates": [
+      {
+       "dataid": "timeopen",
+       "label": "Opened:",
+       "timestamp": 1793403170
+      },
+      {
+       "dataid": "timeclose",
+       "label": "Closed:",
+       "timestamp": 1794004370
+      }
+     ],
+     "downloadcontent": 1,
+     "groupmode": 0,
+     "id": 8,
+     "indent": 0,
+     "instance": 7,
+     "modicon": "https://moodle.example.org/theme/image.php/boost/quiz/1794815468/monologo?filtericon=1",
+     "modname": "quiz",
+     "modplural": "Quizzes",
+     "name": "QZ grademethod last",
+     "noviewlink": false,
+     "onclick": "",
+     "purpose": "assessment",
+     "url": "https://moodle.example.org/mod/quiz/view.php?id=8",
+     "uservisible": true,
+     "visible": 1,
+     "visibleoncoursepage": 1
+    },
+    {
+     "afterlink": null,
+     "availability": null,
+     "branded": false,
+     "candisplay": true,
+     "completion": 0,
+     "contextid": 33,
+     "customdata": "{\"timeopen\":\"1793403170\",\"timeclose\":\"1794004370\"}",
+     "dates": [
+      {
+       "dataid": "timeopen",
+       "label": "Opened:",
+       "timestamp": 1793403170
+      },
+      {
+       "dataid": "timeclose",
+       "label": "Closed:",
+       "timestamp": 1794004370
+      }
+     ],
+     "downloadcontent": 1,
+     "groupmode": 0,
+     "id": 9,
+     "indent": 0,
+     "instance": 8,
+     "modicon": "https://moodle.example.org/theme/image.php/boost/quiz/1794815468/monologo?filtericon=1",
+     "modname": "quiz",
+     "modplural": "Quizzes",
+     "name": "QZ grademethod average",
+     "noviewlink": false,
+     "onclick": "",
+     "purpose": "assessment",
+     "url": "https://moodle.example.org/mod/quiz/view.php?id=9",
+     "uservisible": true,
+     "visible": 1,
+     "visibleoncoursepage": 1
+    },
+    {
+     "afterlink": null,
+     "availability": null,
+     "branded": false,
+     "candisplay": true,
+     "completion": 0,
+     "contextid": 34,
+     "customdata": "{\"timeopen\":\"1793921570\",\"timeclose\":\"1794612770\"}",
+     "dates": [
+      {
+       "dataid": "timeopen",
+       "label": "Opened:",
+       "timestamp": 1793921570
+      },
+      {
+       "dataid": "timeclose",
+       "label": "Closed:",
+       "timestamp": 1794612770
+      }
+     ],
+     "downloadcontent": 1,
+     "groupmode": 0,
+     "id": 10,
+     "indent": 0,
+     "instance": 9,
+     "modicon": "https://moodle.example.org/theme/image.php/boost/quiz/1794815468/monologo?filtericon=1",
+     "modname": "quiz",
+     "modplural": "Quizzes",
+     "name": "QZ attempt in progress",
+     "noviewlink": false,
+     "onclick": "",
+     "purpose": "assessment",
+     "url": "https://moodle.example.org/mod/quiz/view.php?id=10",
+     "uservisible": true,
+     "visible": 1,
+     "visibleoncoursepage": 1
+    },
+    {
+     "afterlink": null,
+     "availability": null,
+     "branded": false,
+     "candisplay": true,
+     "completion": 0,
+     "contextid": 35,
+     "customdata": "{\"timeopen\":\"1793403170\",\"timeclose\":\"1794004370\"}",
+     "dates": [
+      {
+       "dataid": "timeopen",
+       "label": "Opened:",
+       "timestamp": 1793403170
+      },
+      {
+       "dataid": "timeclose",
+       "label": "Closed:",
+       "timestamp": 1794004370
+      }
+     ],
+     "downloadcontent": 1,
+     "groupmode": 0,
+     "id": 11,
+     "indent": 0,
+     "instance": 10,
+     "modicon": "https://moodle.example.org/theme/image.php/boost/quiz/1794815468/monologo?filtericon=1",
+     "modname": "quiz",
+     "modplural": "Quizzes",
+     "name": "QZ attempt overdue with grace",
+     "noviewlink": false,
+     "onclick": "",
+     "purpose": "assessment",
+     "url": "https://moodle.example.org/mod/quiz/view.php?id=11",
+     "uservisible": true,
+     "visible": 1,
+     "visibleoncoursepage": 1
+    },
+    {
+     "afterlink": null,
+     "availability": null,
+     "branded": false,
+     "candisplay": true,
+     "completion": 0,
+     "contextid": 36,
+     "customdata": "{\"timeopen\":\"1793403170\",\"timeclose\":\"1794004370\"}",
+     "dates": [
+      {
+       "dataid": "timeopen",
+       "label": "Opened:",
+       "timestamp": 1793403170
+      },
+      {
+       "dataid": "timeclose",
+       "label": "Closed:",
+       "timestamp": 1794004370
+      }
+     ],
+     "downloadcontent": 1,
+     "groupmode": 0,
+     "id": 12,
+     "indent": 0,
+     "instance": 11,
+     "modicon": "https://moodle.example.org/theme/image.php/boost/quiz/1794815468/monologo?filtericon=1",
+     "modname": "quiz",
+     "modplural": "Quizzes",
+     "name": "QZ attempt abandoned",
+     "noviewlink": false,
+     "onclick": "",
+     "purpose": "assessment",
+     "url": "https://moodle.example.org/mod/quiz/view.php?id=12",
+     "uservisible": true,
+     "visible": 1,
+     "visibleoncoursepage": 1
+    },
+    {
+     "afterlink": null,
+     "availability": null,
+     "branded": false,
+     "candisplay": true,
+     "completion": 0,
+     "contextid": 37,
+     "customdata": "{\"timeopen\":\"1793403170\",\"timeclose\":\"1794004370\"}",
+     "dates": [
+      {
+       "dataid": "timeopen",
+       "label": "Opened:",
+       "timestamp": 1793403170
+      },
+      {
+       "dataid": "timeclose",
+       "label": "Closed:",
+       "timestamp": 1794004370
+      }
+     ],
+     "downloadcontent": 1,
+     "groupmode": 0,
+     "id": 13,
+     "indent": 0,
+     "instance": 12,
+     "modicon": "https://moodle.example.org/theme/image.php/boost/quiz/1794815468/monologo?filtericon=1",
+     "modname": "quiz",
+     "modplural": "Quizzes",
+     "name": "QZ essay needs grading",
+     "noviewlink": false,
+     "onclick": "",
+     "purpose": "assessment",
+     "url": "https://moodle.example.org/mod/quiz/view.php?id=13",
+     "uservisible": true,
+     "visible": 1,
+     "visibleoncoursepage": 1
+    },
+    {
+     "afterlink": null,
+     "availability": null,
+     "branded": false,
+     "candisplay": true,
+     "completion": 0,
+     "contextid": 38,
+     "customdata": "{\"duedate\":1793835170,\"cutoffdate\":\"1793921570\",\"allowsubmissionsfromdate\":\"1793143970\"}",
+     "dates": [
+      {
+       "dataid": "allowsubmissionsfromdate",
+       "label": "Opened:",
+       "timestamp": 1793143970
+      },
+      {
+       "dataid": "duedate",
+       "label": "Due:",
+       "timestamp": 1793835170
+      }
+     ],
+     "downloadcontent": 1,
+     "groupmode": 0,
+     "id": 14,
+     "indent": 0,
+     "instance": 1,
+     "modicon": "https://moodle.example.org/theme/image.php/boost/assign/1794815468/monologo?filtericon=1",
+     "modname": "assign",
+     "modplural": "Assignments",
+     "name": "AS with cut-off",
+     "noviewlink": false,
+     "onclick": "",
+     "purpose": "assessment",
+     "url": "https://moodle.example.org/mod/assign/view.php?id=14",
+     "uservisible": true,
+     "visible": 1,
+     "visibleoncoursepage": 1
+    },
+    {
+     "afterlink": null,
+     "availability": null,
+     "branded": false,
+     "candisplay": true,
+     "completion": 0,
+     "contextid": 39,
+     "customdata": "{\"duedate\":1793835170,\"allowsubmissionsfromdate\":\"1793143970\"}",
+     "dates": [
+      {
+       "dataid": "allowsubmissionsfromdate",
+       "label": "Opened:",
+       "timestamp": 1793143970
+      },
+      {
+       "dataid": "duedate",
+       "label": "Due:",
+       "timestamp": 1793835170
+      }
+     ],
+     "downloadcontent": 1,
+     "groupmode": 0,
+     "id": 15,
+     "indent": 0,
+     "instance": 2,
+     "modicon": "https://moodle.example.org/theme/image.php/boost/assign/1794815468/monologo?filtericon=1",
+     "modname": "assign",
+     "modplural": "Assignments",
+     "name": "AS without cut-off",
+     "noviewlink": false,
+     "onclick": "",
+     "purpose": "assessment",
+     "url": "https://moodle.example.org/mod/assign/view.php?id=15",
+     "uservisible": true,
+     "visible": 1,
+     "visibleoncoursepage": 1
+    },
+    {
+     "afterlink": null,
+     "availability": null,
+     "branded": false,
+     "candisplay": true,
+     "completion": 0,
+     "contextid": 40,
+     "customdata": "{\"duedate\":1793835170,\"cutoffdate\":\"1793921570\",\"allowsubmissionsfromdate\":\"1793143970\"}",
+     "dates": [
+      {
+       "dataid": "allowsubmissionsfromdate",
+       "label": "Opened:",
+       "timestamp": 1793143970
+      },
+      {
+       "dataid": "duedate",
+       "label": "Due:",
+       "timestamp": 1793835170
+      }
+     ],
+     "downloadcontent": 1,
+     "groupmode": 0,
+     "id": 16,
+     "indent": 0,
+     "instance": 3,
+     "modicon": "https://moodle.example.org/theme/image.php/boost/assign/1794815468/monologo?filtericon=1",
+     "modname": "assign",
+     "modplural": "Assignments",
+     "name": "AS team submission",
+     "noviewlink": false,
+     "onclick": "",
+     "purpose": "assessment",
+     "url": "https://moodle.example.org/mod/assign/view.php?id=16",
+     "uservisible": true,
+     "visible": 1,
+     "visibleoncoursepage": 1
+    },
+    {
+     "afterlink": null,
+     "availability": null,
+     "branded": false,
+     "candisplay": true,
+     "completion": 0,
+     "contextid": 41,
+     "customdata": "{\"duedate\":1793835170,\"cutoffdate\":\"1793921570\",\"allowsubmissionsfromdate\":\"1793143970\"}",
+     "dates": [
+      {
+       "dataid": "allowsubmissionsfromdate",
+       "label": "Opened:",
+       "timestamp": 1793143970
+      },
+      {
+       "dataid": "duedate",
+       "label": "Due:",
+       "timestamp": 1793835170
+      }
+     ],
+     "downloadcontent": 1,
+     "groupmode": 0,
+     "id": 17,
+     "indent": 0,
+     "instance": 4,
+     "modicon": "https://moodle.example.org/theme/image.php/boost/assign/1794815468/monologo?filtericon=1",
+     "modname": "assign",
+     "modplural": "Assignments",
+     "name": "AS marking guide",
+     "noviewlink": false,
+     "onclick": "",
+     "purpose": "assessment",
+     "url": "https://moodle.example.org/mod/assign/view.php?id=17",
+     "uservisible": true,
+     "visible": 1,
+     "visibleoncoursepage": 1
+    },
+    {
+     "afterlink": null,
+     "availability": null,
+     "branded": false,
+     "candisplay": true,
+     "completion": 0,
+     "contextid": 42,
+     "customdata": "{\"duedate\":1793835170,\"cutoffdate\":\"1793921570\",\"allowsubmissionsfromdate\":\"1793143970\"}",
+     "dates": [
+      {
+       "dataid": "allowsubmissionsfromdate",
+       "label": "Opened:",
+       "timestamp": 1793143970
+      },
+      {
+       "dataid": "duedate",
+       "label": "Due:",
+       "timestamp": 1793835170
+      }
+     ],
+     "downloadcontent": 1,
+     "groupmode": 0,
+     "id": 18,
+     "indent": 0,
+     "instance": 5,
+     "modicon": "https://moodle.example.org/theme/image.php/boost/assign/1794815468/monologo?filtericon=1",
+     "modname": "assign",
+     "modplural": "Assignments",
+     "name": "AS rubric descriptors visible",
+     "noviewlink": false,
+     "onclick": "",
+     "purpose": "assessment",
+     "url": "https://moodle.example.org/mod/assign/view.php?id=18",
+     "uservisible": true,
+     "visible": 1,
+     "visibleoncoursepage": 1
+    },
+    {
+     "afterlink": null,
+     "availability": null,
+     "branded": false,
+     "candisplay": true,
+     "completion": 0,
+     "contextid": 43,
+     "customdata": "{\"duedate\":1793835170,\"cutoffdate\":\"1793921570\",\"allowsubmissionsfromdate\":\"1793143970\"}",
+     "dates": [
+      {
+       "dataid": "allowsubmissionsfromdate",
+       "label": "Opened:",
+       "timestamp": 1793143970
+      },
+      {
+       "dataid": "duedate",
+       "label": "Due:",
+       "timestamp": 1793835170
+      }
+     ],
+     "downloadcontent": 1,
+     "groupmode": 0,
+     "id": 19,
+     "indent": 0,
+     "instance": 6,
+     "modicon": "https://moodle.example.org/theme/image.php/boost/assign/1794815468/monologo?filtericon=1",
+     "modname": "assign",
+     "modplural": "Assignments",
+     "name": "AS rubric descriptors hidden",
+     "noviewlink": false,
+     "onclick": "",
+     "purpose": "assessment",
+     "url": "https://moodle.example.org/mod/assign/view.php?id=19",
+     "uservisible": true,
+     "visible": 1,
+     "visibleoncoursepage": 1
+    },
+    {
+     "afterlink": null,
+     "availability": null,
+     "branded": false,
+     "candisplay": true,
+     "completion": 0,
+     "contextid": 44,
+     "customdata": "{\"duedate\":1793835170,\"cutoffdate\":\"1793921570\",\"allowsubmissionsfromdate\":\"1793143970\"}",
+     "dates": [
+      {
+       "dataid": "allowsubmissionsfromdate",
+       "label": "Opened:",
+       "timestamp": 1793143970
+      },
+      {
+       "dataid": "duedate",
+       "label": "Due:",
+       "timestamp": 1793835170
+      }
+     ],
+     "downloadcontent": 1,
+     "groupmode": 0,
+     "id": 20,
+     "indent": 0,
+     "instance": 7,
+     "modicon": "https://moodle.example.org/theme/image.php/boost/assign/1794815468/monologo?filtericon=1",
+     "modname": "assign",
+     "modplural": "Assignments",
+     "name": "AS simple direct grade",
+     "noviewlink": false,
+     "onclick": "",
+     "purpose": "assessment",
+     "url": "https://moodle.example.org/mod/assign/view.php?id=20",
+     "uservisible": true,
+     "visible": 1,
+     "visibleoncoursepage": 1
+    },
+    {
+     "afterlink": null,
+     "availability": null,
+     "branded": false,
+     "candisplay": true,
+     "completion": 0,
+     "contextid": 45,
+     "customdata": "{\"duedate\":1793835170,\"cutoffdate\":\"1793921570\",\"allowsubmissionsfromdate\":\"1793143970\"}",
+     "dates": [
+      {
+       "dataid": "allowsubmissionsfromdate",
+       "label": "Opened:",
+       "timestamp": 1793143970
+      },
+      {
+       "dataid": "duedate",
+       "label": "Due:",
+       "timestamp": 1793835170
+      }
+     ],
+     "downloadcontent": 1,
+     "groupmode": 0,
+     "id": 21,
+     "indent": 0,
+     "instance": 8,
+     "modicon": "https://moodle.example.org/theme/image.php/boost/assign/1794815468/monologo?filtericon=1",
+     "modname": "assign",
+     "modplural": "Assignments",
+     "name": "AS scale grade",
+     "noviewlink": false,
+     "onclick": "",
+     "purpose": "assessment",
+     "url": "https://moodle.example.org/mod/assign/view.php?id=21",
+     "uservisible": true,
+     "visible": 1,
+     "visibleoncoursepage": 1
+    },
+    {
+     "afterlink": null,
+     "availability": null,
+     "branded": false,
+     "candisplay": true,
+     "completion": 0,
+     "contextid": 46,
+     "customdata": "{\"duedate\":1793835170,\"cutoffdate\":\"1793921570\",\"allowsubmissionsfromdate\":\"1793143970\"}",
+     "dates": [
+      {
+       "dataid": "allowsubmissionsfromdate",
+       "label": "Opened:",
+       "timestamp": 1793143970
+      },
+      {
+       "dataid": "duedate",
+       "label": "Due:",
+       "timestamp": 1793835170
+      }
+     ],
+     "downloadcontent": 1,
+     "groupmode": 0,
+     "id": 22,
+     "indent": 0,
+     "instance": 9,
+     "modicon": "https://moodle.example.org/theme/image.php/boost/assign/1794815468/monologo?filtericon=1",
+     "modname": "assign",
+     "modplural": "Assignments",
+     "name": "AS marking workflow",
+     "noviewlink": false,
+     "onclick": "",
+     "purpose": "assessment",
+     "url": "https://moodle.example.org/mod/assign/view.php?id=22",
+     "uservisible": true,
+     "visible": 1,
+     "visibleoncoursepage": 1
+    },
+    {
+     "afterlink": null,
+     "availability": null,
+     "branded": false,
+     "candisplay": true,
+     "completion": 0,
+     "contextid": 47,
+     "customdata": "{\"duedate\":1793835170,\"cutoffdate\":\"1793921570\",\"allowsubmissionsfromdate\":\"1793143970\"}",
+     "dates": [
+      {
+       "dataid": "allowsubmissionsfromdate",
+       "label": "Opened:",
+       "timestamp": 1793143970
+      },
+      {
+       "dataid": "duedate",
+       "label": "Due:",
+       "timestamp": 1793835170
+      }
+     ],
+     "downloadcontent": 1,
+     "groupmode": 0,
+     "id": 23,
+     "indent": 0,
+     "instance": 10,
+     "modicon": "https://moodle.example.org/theme/image.php/boost/assign/1794815468/monologo?filtericon=1",
+     "modname": "assign",
+     "modplural": "Assignments",
+     "name": "AS hidden grade item",
+     "noviewlink": false,
+     "onclick": "",
+     "purpose": "assessment",
+     "url": "https://moodle.example.org/mod/assign/view.php?id=23",
+     "uservisible": true,
+     "visible": 1,
+     "visibleoncoursepage": 1
+    },
+    {
+     "afterlink": null,
+     "availability": null,
+     "branded": false,
+     "candisplay": true,
+     "completion": 0,
+     "contextid": 48,
+     "customdata": "{\"duedate\":1793835170,\"cutoffdate\":\"1793921570\",\"allowsubmissionsfromdate\":\"1793143970\"}",
+     "dates": [
+      {
+       "dataid": "allowsubmissionsfromdate",
+       "label": "Opened:",
+       "timestamp": 1793143970
+      },
+      {
+       "dataid": "duedate",
+       "label": "Due:",
+       "timestamp": 1793835170
+      }
+     ],
+     "downloadcontent": 1,
+     "groupmode": 0,
+     "id": 24,
+     "indent": 0,
+     "instance": 11,
+     "modicon": "https://moodle.example.org/theme/image.php/boost/assign/1794815468/monologo?filtericon=1",
+     "modname": "assign",
+     "modplural": "Assignments",
+     "name": "AS grade hidden until future",
+     "noviewlink": false,
+     "onclick": "",
+     "purpose": "assessment",
+     "url": "https://moodle.example.org/mod/assign/view.php?id=24",
+     "uservisible": true,
+     "visible": 1,
+     "visibleoncoursepage": 1
+    },
+    {
+     "afterlink": null,
+     "availability": null,
+     "branded": false,
+     "candisplay": true,
+     "completion": 0,
+     "contextid": 49,
+     "customdata": "{\"duedate\":1793835170,\"cutoffdate\":\"1793921570\",\"allowsubmissionsfromdate\":\"1793143970\"}",
+     "dates": [
+      {
+       "dataid": "allowsubmissionsfromdate",
+       "label": "Opened:",
+       "timestamp": 1793143970
+      },
+      {
+       "dataid": "duedate",
+       "label": "Due:",
+       "timestamp": 1793835170
+      }
+     ],
+     "downloadcontent": 1,
+     "groupmode": 0,
+     "id": 25,
+     "indent": 0,
+     "instance": 12,
+     "modicon": "https://moodle.example.org/theme/image.php/boost/assign/1794815468/monologo?filtericon=1",
+     "modname": "assign",
+     "modplural": "Assignments",
+     "name": "AS submissions with files",
+     "noviewlink": false,
+     "onclick": "",
+     "purpose": "assessment",
+     "url": "https://moodle.example.org/mod/assign/view.php?id=25",
+     "uservisible": true,
+     "visible": 1,
+     "visibleoncoursepage": 1
+    },
+    {
+     "afterlink": null,
+     "availability": "{\"op\":\"!|\",\"showc\":[false],\"c\":[{\"type\":\"profile\",\"sf\":\"email\",\"op\":\"isequalto\",\"v\":\"aas_stu3@example.invalid\"}]}",
+     "branded": false,
+     "candisplay": true,
+     "completion": 0,
+     "contextid": 50,
+     "customdata": "{\"duedate\":1794180770,\"allowsubmissionsfromdate\":\"1793143970\"}",
+     "dates": [
+      {
+       "dataid": "allowsubmissionsfromdate",
+       "label": "Opened:",
+       "timestamp": 1793143970
+      },
+      {
+       "dataid": "duedate",
+       "label": "Due:",
+       "timestamp": 1794180770
+      }
+     ],
+     "downloadcontent": 1,
+     "groupmode": 0,
+     "id": 26,
+     "indent": 0,
+     "instance": 13,
+     "modicon": "https://moodle.example.org/theme/image.php/boost/assign/1794815468/monologo?filtericon=1",
+     "modname": "assign",
+     "modplural": "Assignments",
+     "name": "AS hidden for stu3",
+     "noviewlink": false,
+     "onclick": "",
+     "purpose": "assessment",
+     "url": "https://moodle.example.org/mod/assign/view.php?id=26",
+     "uservisible": true,
+     "visible": 1,
+     "visibleoncoursepage": 1
+    },
+    {
+     "afterlink": null,
+     "availability": null,
+     "branded": false,
+     "candisplay": true,
+     "completion": 0,
+     "contextid": 105,
+     "customdata": "{\"duedate\":1794582300,\"cutoffdate\":\"1794584220\",\"allowsubmissionsfromdate\":\"1794413100\"}",
+     "dates": [
+      {
+       "dataid": "allowsubmissionsfromdate",
+       "label": "Opened:",
+       "timestamp": 1794413100
+      },
+      {
+       "dataid": "duedate",
+       "label": "Due:",
+       "timestamp": 1794582300
+      }
+     ],
+     "downloadcontent": 1,
+     "groupmode": 0,
+     "id": 28,
+     "indent": 0,
+     "instance": 15,
+     "modicon": "https://moodle.example.org/theme/image.php/boost/assign/1794815468/monologo?filtericon=1",
+     "modname": "assign",
+     "modplural": "Assignments",
+     "name": "AS relazione TCP",
+     "noviewlink": false,
+     "onclick": "",
+     "purpose": "assessment",
+     "url": "https://moodle.example.org/mod/assign/view.php?id=28",
+     "uservisible": true,
+     "visible": 1,
+     "visibleoncoursepage": 1
+    }
+   ],
+   "name": "General",
+   "section": 0,
+   "summary": "",
+   "summaryformat": 1,
+   "uservisible": true,
+   "visible": 1
+  },
+  {
+   "component": null,
+   "hiddenbynumsections": 0,
+   "id": 2,
+   "itemid": null,
+   "modules": [],
+   "name": "New section",
+   "section": 1,
+   "summary": "",
+   "summaryformat": 1,
+   "uservisible": true,
+   "visible": 1
+  },
+  {
+   "component": null,
+   "hiddenbynumsections": 0,
+   "id": 3,
+   "itemid": null,
+   "modules": [],
+   "name": "New section",
+   "section": 2,
+   "summary": "",
+   "summaryformat": 1,
+   "uservisible": true,
+   "visible": 1
+  },
+  {
+   "component": null,
+   "hiddenbynumsections": 0,
+   "id": 4,
+   "itemid": null,
+   "modules": [],
+   "name": "New section",
+   "section": 3,
+   "summary": "",
+   "summaryformat": 1,
+   "uservisible": true,
+   "visible": 1
+  },
+  {
+   "component": null,
+   "hiddenbynumsections": 0,
+   "id": 5,
+   "itemid": null,
+   "modules": [],
+   "name": "New section",
+   "section": 4,
+   "summary": "",
+   "summaryformat": 1,
+   "uservisible": true,
+   "visible": 1
+  },
+  {
+   "component": null,
+   "hiddenbynumsections": 0,
+   "id": 6,
+   "itemid": null,
+   "modules": [],
+   "name": "New section",
+   "section": 5,
+   "summary": "",
+   "summaryformat": 1,
+   "uservisible": true,
+   "visible": 1
+  }
+ ],
+ "wsfunction": "core_course_get_contents"
+}
