@@ -638,7 +638,8 @@ class settings_section {
      * Tell the teacher why the settings were not saved.
      *
      * @param assess_response $response
-     * @param bool $ragonly The refused request carried only course material search: say that only it is unchanged.
+     * @param bool $ragonly The failed request carried only course material search: name only the search (a refusal
+     *        leaves it unchanged; any other failure leaves its outcome unknown, so the teacher reopens the settings).
      */
     private static function notify_failure(assess_response $response, bool $ragonly = false): void {
         if ($response->errorcode === 'ERR-ASSESS-022' && is_array($response->details['fields'] ?? null)) {
