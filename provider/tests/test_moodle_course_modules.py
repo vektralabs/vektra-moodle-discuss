@@ -18,7 +18,11 @@ from typing import Any
 import pytest
 from assess_moodle_support import BRANCHES, FIXTURES, Replay, lms_site, make_provider
 
-from vektra_lms_moodle.readers.course import CONTENTS_OPTIONS, has_conditions
+from vektra_lms_moodle.readers.course import (
+    CONTENTS_OPTIONS,
+    course_module_facts,
+    has_conditions,
+)
 from vektra_shared.lms import (
     CourseModuleVisibility,
     Readable,
@@ -165,11 +169,6 @@ def _string_visible(body: Any) -> Any:
     return body
 
 
-def _unknown_key(body: Any) -> Any:
-    body[0]["modules"][1]["newfield"] = 1
-    return body
-
-
 def _drop_section_uservisible(body: Any) -> Any:
     del body[1]["uservisible"]
     return body
@@ -189,13 +188,11 @@ def _warnings(body: Any) -> Any:
     [
         (_drop_availability, UnreadableReason.UNKNOWN_SHAPE, "shape_mismatch"),
         (_string_visible, UnreadableReason.UNKNOWN_SHAPE, "shape_mismatch"),
-        (_unknown_key, UnreadableReason.UNKNOWN_SHAPE, "shape_mismatch"),
         (_drop_section_uservisible, UnreadableReason.UNKNOWN_SHAPE, "shape_mismatch"),
         (_exception, UnreadableReason.ACCESS_EXCEPTION, "nopermissions"),
         (_warnings, UnreadableReason.UNKNOWN_SHAPE, "shape_mismatch"),
     ],
-    ids=["drop_availability", "string_visible", "unknown_key", "drop_section_uservisible",
-         "exception", "warnings"],
+    ids=["drop_availability", "string_visible", "drop_section_uservisible", "exception", "warnings"],
 )
 async def test_an_unreadable_fact_makes_the_whole_read_unreadable(
     branch: str, mutate: Any, reason: UnreadableReason, detail: str
@@ -203,6 +200,131 @@ async def test_an_unreadable_fact_makes_the_whole_read_unreadable(
     """Never a partial list: one bad module or section makes the whole read Unreadable."""
     got, _ = await _read(branch, mutate=mutate)
     assert got == Unreadable(reason, detail)
+
+
+@pytest.mark.parametrize("branch", BRANCHES)
+async def test_other_module_types_and_new_keys_stay_readable(branch: str) -> None:
+    """A label has no ``url``, a forum may carry a badge, a future release may add a key: only the
+    facts the reader uses are required."""
+
+    def other_types(body: Any) -> Any:
+        label = dict(body[0]["modules"][1], id=9001, modname="label", name="A label")
+        del label["url"]
+        label["description"] = "<p>shown on the course page</p>"
+        body[0]["modules"].append(label)
+        body[0]["modules"][1]["activitybadge"] = {"badgecontent": "3"}
+        body[0]["newsectionkey"] = 1
+        return body
+
+    got, _ = await _read(branch, mutate=other_types)
+    assert isinstance(got, Readable)
+    assert {r.cmid for r in got.value} >= {9001}
+
+
+@pytest.mark.parametrize("branch", BRANCHES)
+async def test_a_module_the_account_cannot_use_counts_as_restricted(branch: str) -> None:
+    def unusable(body: Any) -> Any:
+        body[0]["modules"][1]["uservisible"] = False
+        body[0]["modules"][1]["availability"] = None
+        return body
+
+    got, _ = await _read(branch, mutate=unusable)
+    assert isinstance(got, Readable)
+    assert _by_prefix(got.value)["R1 "].has_conditions
+
+
+@pytest.mark.parametrize("branch", BRANCHES)
+async def test_a_section_hidden_by_numsections_is_not_visible(branch: str) -> None:
+    def orphaned(body: Any) -> Any:
+        body[0]["hiddenbynumsections"] = 1
+        return body
+
+    got, _ = await _read(branch, mutate=orphaned)
+    assert isinstance(got, Readable)
+    assert not _by_prefix(got.value)["R1 "].section_visible
+
+
+def _delegate(parent: dict[str, Any], **parent_changes: Any) -> Any:
+    """Make section 2 of the materials a 5.x subsection delegated by a new module of section 1."""
+
+    def mutate(body: Any) -> Any:
+        sub = dict(body[0]["modules"][1], id=9100, modname="subsection", name="A subsection")
+        sub.update(parent_changes)
+        body[0]["modules"].append(sub)
+        body[1]["component"] = "mod_subsection"
+        body[1]["itemid"] = parent.get("itemid", 9100)
+        body[1]["availabilityinfo"] = None
+        return body
+
+    return mutate
+
+
+@pytest.mark.parametrize("branch", BRANCHES)
+@pytest.mark.parametrize(
+    ("parent", "changes", "visible", "available"),
+    [
+        ({}, {}, True, True),
+        ({}, {"availability": '{"op":"&","c":[{"type":"group","id":3}],"showc":[true]}'}, True, False),
+        ({}, {"uservisible": False}, True, False),
+        ({}, {"visible": 0}, False, True),
+        ({}, {"visibleoncoursepage": 0}, False, True),
+        ({"itemid": 424242}, {}, False, False),
+    ],
+    ids=["plain", "group_restricted", "unusable", "hidden", "stealth", "unknown_parent"],
+)
+async def test_a_subsection_inherits_from_its_module(
+    branch: str,
+    parent: dict[str, Any],
+    changes: dict[str, Any],
+    visible: bool,
+    available: bool,
+) -> None:
+    got, _ = await _read(branch, mutate=_delegate(parent, **changes))
+    assert isinstance(got, Readable)
+    r8 = _by_prefix(got.value)["R8 "]
+    assert (r8.section_visible, r8.section_available) == (visible, available)
+
+
+@pytest.mark.parametrize("branch", BRANCHES)
+async def test_a_subsection_in_an_unavailable_section_is_unavailable(branch: str) -> None:
+    def mutate(body: Any) -> Any:
+        body = _delegate({})(body)
+        body[0]["availabilityinfo"] = "Not available unless: ..."
+        return body
+
+    got, _ = await _read(branch, mutate=mutate)
+    assert isinstance(got, Readable)
+    assert not _by_prefix(got.value)["R8 "].section_available
+
+
+def test_a_delegation_loop_is_unavailable() -> None:
+    from vektra_lms_moodle.models.course_facts import SectionFacts
+
+    def section(sid: int, cmid: int, delegated_by: int) -> SectionFacts:
+        return SectionFacts.model_validate(
+            {
+                "id": sid,
+                "visible": 1,
+                "uservisible": True,
+                "hiddenbynumsections": 0,
+                "component": "mod_subsection",
+                "itemid": delegated_by,
+                "modules": [
+                    {
+                        "id": cmid,
+                        "name": f"m{cmid}",
+                        "modname": "subsection",
+                        "visible": 1,
+                        "visibleoncoursepage": 1,
+                        "uservisible": True,
+                        "availability": None,
+                    }
+                ],
+            }
+        )
+
+    rows = course_module_facts([section(1, 10, 20), section(2, 20, 10)])
+    assert all(not r.section_available and not r.section_visible for r in rows)
 
 
 @pytest.mark.parametrize(

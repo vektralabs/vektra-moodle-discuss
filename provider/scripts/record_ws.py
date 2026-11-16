@@ -55,9 +55,6 @@ DEFAULT_OUT = (
     Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "moodle_ws"
 )
 SECRET_KEYS = {"userprivateaccesskey", "privatetoken", "token", "wstoken"}
-#: ``core_course_get_contents`` options, exactly as the provider's ``read_course_modules`` sends
-#: them: the module list without file contents (no file names, no file URLs)
-COURSE_CONTENTS_OPTIONS: list[dict[str, Any]] = [{"name": "excludecontents", "value": 1}]
 #: the sections a ``--materials-course`` recording keeps (FEAT-028 test material on a dev course):
 #: the rest of that course is not test material and stays out of the repository
 MATERIALS_SECTION_PREFIX = "Prova materiali"
@@ -357,6 +354,12 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 
 from vektra_lms_moodle.client import flatten_params  # noqa: E402
 
+#: ``core_course_get_contents`` options, exactly as the provider's ``read_course_modules`` sends
+#: them: the module list without file contents (no file names, no file URLs)
+from vektra_lms_moodle.readers.course import (  # noqa: E402
+    CONTENTS_OPTIONS as COURSE_CONTENTS_OPTIONS,
+)
+
 _OPENER = urllib.request.build_opener(_NoRedirect)
 
 
@@ -507,7 +510,12 @@ def materials_course_id(base: str, token: str, shortname: str) -> int:
         "core_course_get_courses_by_field",
         {"field": "shortname", "value": shortname},
     )
-    courses = found.get("courses", []) if isinstance(found, dict) else []
+    if not isinstance(found, dict) or "courses" not in found:
+        code = found.get("errorcode", "unknown") if isinstance(found, dict) else "unknown"
+        raise RecorderRefused(
+            f"refused: core_course_get_courses_by_field failed ({code})"
+        )
+    courses = found["courses"]
     if len(courses) != 1:
         raise RecorderRefused("refused: the materials course is not on this site")
     return int(courses[0]["id"])
@@ -564,7 +572,7 @@ def record(
         {"field": "id", "values": [info["userid"]]},
     )
     calls: list[Call] = [*plan(manifest, branch), own]
-    if materials_course:
+    if materials_course and only in (None, "core_course_get_contents"):
         calls.append(
             (
                 "core_course_get_contents",

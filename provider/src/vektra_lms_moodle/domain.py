@@ -387,8 +387,10 @@ class CourseModuleFacts:
     sectionid: int
     visible: bool
     visibleoncoursepage: bool
-    #: the module carries an availability tree with at least one condition
+    #: the module carries an availability tree with at least one condition, or the service account
+    #: cannot use it (``uservisible`` false) for any other reason
     has_availability: bool
     section_visible: bool
-    #: the section is available to the service account and carries no availability notice
+    #: the section is available to the service account and carries no availability notice; for a
+    #: delegated section, its delegating module is unrestricted and its section available too
     section_available: bool

@@ -7,11 +7,11 @@ from typing import Any
 
 from pydantic import TypeAdapter
 
-from vektra_lms_moodle.models import v4_3, v5_2
+from vektra_lms_moodle.models import course_facts, v4_3, v5_2
 
 SUPPORTED_BRANCHES: dict[str, dict[str, TypeAdapter[Any]]] = {
-    "4.3": v4_3.ADAPTERS,
-    "5.2": v5_2.ADAPTERS,
+    "4.3": {**v4_3.ADAPTERS, **course_facts.ADAPTERS},
+    "5.2": {**v5_2.ADAPTERS, **course_facts.ADAPTERS},
 }
 
 _RELEASE = re.compile(r"^(\d+)\.(\d+)(?:\.|\b)")
