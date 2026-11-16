@@ -61,6 +61,12 @@ class settings_section {
     /** @var string[] Write-only text fields: element suffix => Vektra field. */
     private const SECRETS = ['solution' => 'solution', 'rubric' => 'pasted_rubric'];
 
+    /** @var string[] The course material search fields: saved in their own request (FEAT-028). */
+    private const RAG_FIELDS = ['rag_enabled', 'rag_attested'];
+
+    /** @var string[] Field error codes that carry a closed reason with its own sentence. */
+    private const REASONED_CODES = ['rag_unavailable'];
+
     /**
      * Add the section to the form (coursemodule_standard_elements).
      *
@@ -142,6 +148,10 @@ class settings_section {
             if ($mform->elementExists(self::PREFIX . $name)) {
                 $mform->getElement(self::PREFIX . $name)->setValue('');
             }
+        }
+        // The course material confirmation is ticked again on every page, even after a validation error.
+        if ($mform->elementExists(self::PREFIX . 'ragattest')) {
+            $mform->getElement(self::PREFIX . 'ragattest')->setValue(0);
         }
     }
 
@@ -244,8 +254,12 @@ class settings_section {
             // The configuration first: the opening fallback needs a configured activity and is checked against
             // the end date saved here; it does not use the configuration's version.
             $fields = self::changes($values, $type);
+            // Course material search goes in its own request, after the rest: Vektra may refuse it (operator flag,
+            // eligibility unreadable, confirmation) and that refusal must not drop the other changes.
+            $rag = array_intersect_key($fields, array_flip(self::RAG_FIELDS));
+            $fields = array_diff_key($fields, $rag);
+            $version = (int) $values[$p . 'version'];
             if ($fields) {
-                $version = (int) $values[$p . 'version'];
                 // Retried once inside teacher_api when Vektra asks for it: otherwise the teacher's changes would be
                 // lost with the submission.
                 $response = $api->put_config($cmid, (int) $course->id, $type, (int) $USER->id, $version, $fields);
@@ -258,6 +272,20 @@ class settings_section {
                 if (($fields['show_solution'] ?? false) === true) {
                     \core\notification::warning(get_string('form_showsolution_warning', 'local_vektradiscuss'));
                 }
+                $version = is_int($response->json['version'] ?? null) ? $response->json['version'] : -1;
+            }
+            if ($rag && $version >= 0) {
+                $response = $api->put_config($cmid, (int) $course->id, $type, (int) $USER->id, $version, $rag);
+                if ($response->ok()) {
+                    \core\notification::success(get_string(
+                        $rag['rag_enabled'] ? 'form_rag_saved_on' : 'form_rag_saved_off',
+                        'local_vektradiscuss'
+                    ));
+                } else {
+                    self::notify_failure($response);
+                }
+            } else if ($rag) {
+                \core\notification::error(get_string('form_rag_not_saved', 'local_vektradiscuss'));
             }
             if (!empty($values[$p . 'attest']) && (int) ($values[$p . 'openingat'] ?? 0) > 0) {
                 $openingat = (int) $values[$p . 'openingat'];
@@ -484,7 +512,7 @@ class settings_section {
         $mform->addElement('static', $p . 'showsolutionwarning', '', $s('form_showsolution_warning'));
         $mform->hideIf($p . 'showsolutionwarning', $p . 'showsolution', 'notchecked');
 
-        self::add_rag($mform, $view, $orig['rag_enabled']);
+        self::add_rag($mform, $view);
 
         // Recipients: write-only. When none is set, the field starts with the teacher's own address.
         $count = $orig['recipients_count'];
@@ -507,18 +535,21 @@ class settings_section {
      *
      * @param \MoodleQuickForm $mform
      * @param array $view
-     * @param bool $enabled
      */
-    private static function add_rag(\MoodleQuickForm $mform, array $view, bool $enabled): void {
+    private static function add_rag(\MoodleQuickForm $mform, array $view): void {
         $p = self::PREFIX;
         $s = fn(string $id, $a = null): string => get_string($id, 'local_vektradiscuss', $a);
+        $enabled = self::orig_from_view($view)['rag_enabled'];
         $mform->addElement('advcheckbox', $p . 'rag', $s('form_rag'), $s('form_rag_label'));
         $mform->setDefault($p . 'rag', $enabled ? 1 : 0);
         $mform->addHelpButton($p . 'rag', 'form_rag', 'local_vektradiscuss');
-        $at = is_string($view['rag_attested_at'] ?? null) ? strtotime($view['rag_attested_at']) : false;
-        if ($enabled && $at !== false) {
-            $mform->addElement('static', $p . 'ragattested', '', $s('form_rag_attested', userdate($at)));
-            $mform->hideIf($p . 'ragattested', $p . 'rag', 'notchecked');
+        if ($enabled) {
+            // Already on: no new confirmation is asked; the date is shown when Vektra gives one.
+            $at = is_string($view['rag_attested_at'] ?? null) ? strtotime($view['rag_attested_at']) : false;
+            if ($at !== false) {
+                $mform->addElement('static', $p . 'ragattested', '', $s('form_rag_attested', userdate($at)));
+                $mform->hideIf($p . 'ragattested', $p . 'rag', 'notchecked');
+            }
             return;
         }
         $mform->addElement('advcheckbox', $p . 'ragattest', '', $s('form_rag_attest'));
@@ -620,7 +651,8 @@ class settings_section {
     private static function field_error(array $item): string {
         $field = is_string($item['field'] ?? null) ? $item['field'] : '';
         $code = is_string($item['code'] ?? null) && preg_match('/^[a-z_]{1,40}\z/', $item['code']) ? $item['code'] : 'invalid';
-        $label = get_string_manager()->string_exists('form_field_' . $field, 'local_vektradiscuss')
+        $sm = get_string_manager();
+        $label = $sm->string_exists('form_field_' . $field, 'local_vektradiscuss')
             ? get_string('form_field_' . $field, 'local_vektradiscuss') : s($field);
         $a = (object) [
             'field' => $label,
@@ -628,9 +660,9 @@ class settings_section {
             'domains' => is_array($item['allowed_domains'] ?? null)
                 ? s(implode(', ', array_filter($item['allowed_domains'], 'is_string'))) : '',
         ];
-        // A refusal with a closed reason has its own sentence when there is one (rag_unavailable).
-        $reason = is_string($item['reason'] ?? null) && preg_match('/^[a-z_]{1,40}\z/', $item['reason']) ? $item['reason'] : '';
-        $sm = get_string_manager();
+        // A refusal with a closed reason has its own sentence when there is one (only for the codes that carry one).
+        $reason = in_array($code, self::REASONED_CODES, true) && is_string($item['reason'] ?? null)
+            && preg_match('/^[a-z_]{1,40}\z/', $item['reason']) ? $item['reason'] : '';
         if ($reason !== '' && $sm->string_exists('form_code_' . $code . '_' . $reason, 'local_vektradiscuss')) {
             $identifier = 'form_code_' . $code . '_' . $reason;
         } else {

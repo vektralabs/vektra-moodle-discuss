@@ -776,6 +776,87 @@ final class settings_section_test extends \advanced_testcase {
     }
 
     /**
+     * The search is saved in its own request after the other changes: a refusal of the search keeps them, and the
+     * second request carries the version the first one returned.
+     */
+    public function test_rag_refusal_keeps_the_other_changes(): void {
+        $p = settings_section::PREFIX;
+        $this->transport->respond(200, self::view(['version' => 4, 'cap_minutes' => 60]));
+        $this->transport->respond(400, ['error' => ['code' => 'ERR-ASSESS-022', 'message' => 'fields',
+            'details' => ['fields' => [['field' => 'rag_enabled', 'code' => 'rag_unavailable', 'reason' => 'operator_flag_off']]]]]);
+        $this->save($this->submitted([$p . 'cap' => '60', $p . 'rag' => 1, $p . 'ragattest' => 1]));
+        $this->assertDebuggingCalled();
+
+        $this->assertCount(2, $this->transport->calls);
+        $first = json_decode($this->transport->calls[0]['body'], true);
+        $this->assertSame(60, $first['cap_minutes']);
+        $this->assertArrayNotHasKey('rag_enabled', $first);
+        $second = json_decode($this->transport->calls[1]['body'], true);
+        $this->assertSame(4, $second['expected_version']);
+        $this->assertTrue($second['rag_enabled']);
+        $this->assertTrue($second['rag_attested']);
+        $this->assertArrayNotHasKey('cap_minutes', $second);
+
+        $messages = array_map(fn($m) => $m->get_message(), \core\notification::fetch());
+        $this->assertContains(get_string('form_saved', 'local_vektradiscuss'), $messages);
+        $this->assertStringContainsString(
+            get_string('form_code_rag_unavailable_operator_flag_off', 'local_vektradiscuss',
+                (object) ['field' => get_string('form_field_rag_enabled', 'local_vektradiscuss'), 'range' => '', 'domains' => '']),
+            implode(' ', $messages)
+        );
+    }
+
+    /**
+     * Without the version of the first save, the search is not sent with a guessed one.
+     */
+    public function test_rag_not_sent_without_a_version(): void {
+        $p = settings_section::PREFIX;
+        $this->transport->respond(200, ['enabled' => true]);
+        $this->save($this->submitted([$p . 'cap' => '60', $p . 'rag' => 1, $p . 'ragattest' => 1]));
+        $this->assertCount(1, $this->transport->calls);
+        $messages = array_map(fn($m) => $m->get_message(), \core\notification::fetch());
+        $this->assertContains(get_string('form_rag_not_saved', 'local_vektradiscuss'), $messages);
+    }
+
+    /**
+     * Already on without a confirmation date: neither a confirmation nor a date is shown.
+     */
+    public function test_rag_on_without_a_date_asks_nothing(): void {
+        $p = settings_section::PREFIX;
+        $this->transport->respond(200, self::view(['rag_enabled' => true, 'rag_attested_at' => null]));
+        $mform = $this->extend();
+        $this->assertFalse($mform->elementExists($p . 'ragattest'));
+        $this->assertFalse($mform->elementExists($p . 'ragattested'));
+    }
+
+    /**
+     * After a validation error the confirmation comes back unticked.
+     */
+    public function test_rag_confirmation_is_reset_on_redisplay(): void {
+        $p = settings_section::PREFIX;
+        $this->transport->respond(200, self::view());
+        $mform = $this->extend();
+        $mform->getElement($p . 'ragattest')->setValue(1);
+        $wrapper = $this->createMock(\moodleform_mod::class);
+        settings_section::after_data($wrapper, $mform);
+        $this->assertEmpty($mform->getElement($p . 'ragattest')->getValue());
+    }
+
+    /**
+     * A reason is only looked up for the codes that carry one: other codes never borrow an unrelated sentence.
+     */
+    public function test_reason_only_for_reasoned_codes(): void {
+        $p = settings_section::PREFIX;
+        $this->transport->respond(400, ['error' => ['code' => 'ERR-ASSESS-022', 'message' => 'fields',
+            'details' => ['fields' => [['field' => 'cap_minutes', 'code' => 'out', 'reason' => 'of_range']]]]]);
+        $this->save($this->submitted([$p . 'cap' => '60']));
+        $this->assertDebuggingCalled();
+        $text = \core\notification::fetch()[0]->get_message();
+        $this->assertStringContainsString(get_string('form_code_invalid', 'local_vektradiscuss',
+            (object) ['field' => get_string('form_field_cap_minutes', 'local_vektradiscuss'), 'range' => '', 'domains' => '']), $text);
+    }
+
+    /**
      * Length as Vektra counts it: NFC code points, control characters other than newline and tab removed.
      */
     public function test_text_length(): void {
