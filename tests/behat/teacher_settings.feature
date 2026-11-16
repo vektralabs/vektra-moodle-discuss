@@ -23,7 +23,7 @@ Feature: The discussion settings in the quiz form
     When I am on the "Quiz 1" "quiz activity editing" page logged in as "teacher1"
     Then I should see "Discussion with the assistant"
     And I should see "Set (not shown)"
-    And I should see "Off. Not available in this version."
+    And I should see "Let the assistant search the course material"
     And the Vektra assess stub received 1 GET request to "config" of "quiz1"
     And the Vektra assess stub received 1 POST request to "gate-refresh" of "quiz1"
     When I set the field "vektradiscuss_cap" to "45"
@@ -36,6 +36,19 @@ Feature: The discussion settings in the quiz form
     And the last Vektra assess stub PUT to "config" of "quiz1" should have the field "expected_version"
     And the last Vektra assess stub PUT to "config" of "quiz1" should not have the field "solution"
     And the last Vektra assess stub PUT to "config" of "quiz1" should not have the field "rag_enabled"
+
+  Scenario: Turning course material search on sends the teacher's confirmation
+    When I am on the "Quiz 1" "quiz activity editing" page logged in as "teacher1"
+    And I set the field "vektradiscuss_rag" to "1"
+    And I press "Save and return to course"
+    Then I should see "Confirm the course material conditions to turn the search on."
+    And the Vektra assess stub received 0 PUT requests to "config" of "quiz1"
+    When I set the field "vektradiscuss_ragattest" to "1"
+    And I press "Save and return to course"
+    Then I should see "Course material search is on."
+    And the Vektra assess stub received 1 PUT request to "config" of "quiz1"
+    And the last Vektra assess stub PUT to "config" of "quiz1" should have the field "rag_enabled"
+    And the last Vektra assess stub PUT to "config" of "quiz1" should have the field "rag_attested"
 
   Scenario: Saving the quiz without a change to the discussion sends nothing
     When I am on the "Quiz 1" "quiz activity editing" page logged in as "teacher1"
