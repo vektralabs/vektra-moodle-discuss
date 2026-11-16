@@ -800,6 +800,9 @@ final class settings_section_test extends \advanced_testcase {
 
         $messages = array_map(fn($m) => $m->get_message(), \core\notification::fetch());
         $this->assertContains(get_string('form_saved', 'local_vektradiscuss'), $messages);
+        // The refusal says only the search is unchanged, never that nothing was saved.
+        $this->assertStringContainsString(get_string('form_rag_refused', 'local_vektradiscuss'), implode(' ', $messages));
+        $this->assertStringNotContainsString(get_string('form_refused', 'local_vektradiscuss'), implode(' ', $messages));
         $this->assertStringContainsString(
             get_string(
                 'form_code_rag_unavailable_operator_flag_off',
@@ -889,6 +892,28 @@ final class settings_section_test extends \advanced_testcase {
             'rag_unavailable_reason' => 'operator_flag_off']));
         $mform = $this->extend();
         $this->assertSame('advcheckbox', $mform->getElement($p . 'rag')->getType());
+    }
+
+    /**
+     * A conflict or an outage on the search request names the search only: the other changes were saved.
+     */
+    public function test_rag_conflict_and_outage_name_the_search_only(): void {
+        $p = settings_section::PREFIX;
+        $cases = [
+            [409, ['error' => ['code' => 'ERR-ASSESS-023', 'message' => 'conflict']], 'form_rag_conflict'],
+            [0, '', 'form_rag_unreachable'],
+        ];
+        foreach ($cases as [$status, $body, $identifier]) {
+            $this->transport->respond(200, self::view(['version' => 4, 'cap_minutes' => 60]));
+            $this->transport->respond($status, $body);
+            $this->save($this->submitted([$p . 'cap' => '60', $p . 'rag' => 1, $p . 'ragattest' => 1]));
+            $messages = array_map(fn($m) => $m->get_message(), \core\notification::fetch());
+            $this->assertContains(get_string('form_saved', 'local_vektradiscuss'), $messages);
+            $this->assertContains(get_string($identifier, 'local_vektradiscuss'), $messages);
+            $this->assertNotContains(get_string('form_err_conflict', 'local_vektradiscuss'), $messages);
+            $this->assertNotContains(get_string('form_unreachable_save', 'local_vektradiscuss'), $messages);
+        }
+        $this->resetDebugging();
     }
 
     /**

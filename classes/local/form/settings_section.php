@@ -282,7 +282,8 @@ class settings_section {
                         'local_vektradiscuss'
                     ));
                 } else {
-                    self::notify_failure($response);
+                    // Only the search failed: the other changes, if any, were saved in the first request.
+                    self::notify_failure($response, true);
                 }
             } else if ($rag) {
                 \core\notification::error(get_string('form_rag_not_saved', 'local_vektradiscuss'));
@@ -637,18 +638,23 @@ class settings_section {
      * Tell the teacher why the settings were not saved.
      *
      * @param assess_response $response
+     * @param bool $ragonly The refused request carried only course material search: say that only it is unchanged.
      */
-    private static function notify_failure(assess_response $response): void {
+    private static function notify_failure(assess_response $response, bool $ragonly = false): void {
         if ($response->errorcode === 'ERR-ASSESS-022' && is_array($response->details['fields'] ?? null)) {
             $lines = [];
             foreach (array_slice($response->details['fields'], 0, 20) as $item) {
                 $lines[] = self::field_error(is_array($item) ? $item : []);
             }
-            \core\notification::error(get_string('form_refused', 'local_vektradiscuss') . ' ' . implode(' ', $lines));
+            $intro = get_string($ragonly ? 'form_rag_refused' : 'form_refused', 'local_vektradiscuss');
+            \core\notification::error($intro . ' ' . implode(' ', $lines));
             return;
         }
-        $identifier = $response->errorcode === 'ERR-ASSESS-023'
-            ? 'form_err_conflict' : self::refusal($response, 'form_unreachable_save');
+        if ($response->errorcode === 'ERR-ASSESS-023') {
+            $identifier = $ragonly ? 'form_rag_conflict' : 'form_err_conflict';
+        } else {
+            $identifier = self::refusal($response, $ragonly ? 'form_rag_unreachable' : 'form_unreachable_save');
+        }
         \core\notification::error(get_string($identifier, 'local_vektradiscuss'));
     }
 
