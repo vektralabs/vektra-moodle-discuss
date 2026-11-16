@@ -782,8 +782,9 @@ final class settings_section_test extends \advanced_testcase {
     public function test_rag_refusal_keeps_the_other_changes(): void {
         $p = settings_section::PREFIX;
         $this->transport->respond(200, self::view(['version' => 4, 'cap_minutes' => 60]));
+        $refusal = ['field' => 'rag_enabled', 'code' => 'rag_unavailable', 'reason' => 'operator_flag_off'];
         $this->transport->respond(400, ['error' => ['code' => 'ERR-ASSESS-022', 'message' => 'fields',
-            'details' => ['fields' => [['field' => 'rag_enabled', 'code' => 'rag_unavailable', 'reason' => 'operator_flag_off']]]]]);
+            'details' => ['fields' => [$refusal]]]]);
         $this->save($this->submitted([$p . 'cap' => '60', $p . 'rag' => 1, $p . 'ragattest' => 1]));
         $this->assertDebuggingCalled();
 
@@ -800,8 +801,11 @@ final class settings_section_test extends \advanced_testcase {
         $messages = array_map(fn($m) => $m->get_message(), \core\notification::fetch());
         $this->assertContains(get_string('form_saved', 'local_vektradiscuss'), $messages);
         $this->assertStringContainsString(
-            get_string('form_code_rag_unavailable_operator_flag_off', 'local_vektradiscuss',
-                (object) ['field' => get_string('form_field_rag_enabled', 'local_vektradiscuss'), 'range' => '', 'domains' => '']),
+            get_string(
+                'form_code_rag_unavailable_operator_flag_off',
+                'local_vektradiscuss',
+                (object) ['field' => get_string('form_field_rag_enabled', 'local_vektradiscuss'), 'range' => '', 'domains' => '']
+            ),
             implode(' ', $messages)
         );
     }
@@ -852,8 +856,11 @@ final class settings_section_test extends \advanced_testcase {
         $this->save($this->submitted([$p . 'cap' => '60']));
         $this->assertDebuggingCalled();
         $text = \core\notification::fetch()[0]->get_message();
-        $this->assertStringContainsString(get_string('form_code_invalid', 'local_vektradiscuss',
-            (object) ['field' => get_string('form_field_cap_minutes', 'local_vektradiscuss'), 'range' => '', 'domains' => '']), $text);
+        $this->assertStringContainsString(get_string(
+            'form_code_invalid',
+            'local_vektradiscuss',
+            (object) ['field' => get_string('form_field_cap_minutes', 'local_vektradiscuss'), 'range' => '', 'domains' => '']
+        ), $text);
     }
 
     /**
