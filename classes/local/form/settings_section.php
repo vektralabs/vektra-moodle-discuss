@@ -540,6 +540,16 @@ class settings_section {
         $p = self::PREFIX;
         $s = fn(string $id, $a = null): string => get_string($id, 'local_vektradiscuss', $a);
         $enabled = self::orig_from_view($view)['rag_enabled'];
+        // Vektra says when the installation cannot offer the search (operator flag): no switch to turn it on,
+        // but a search already on can still be turned off. An absent field means available.
+        if (($view['rag_available'] ?? true) === false && !$enabled) {
+            $reason = $view['rag_unavailable_reason'] ?? null;
+            $identifier = is_string($reason) && preg_match('/^[a-z_]{1,40}\z/', $reason)
+                && get_string_manager()->string_exists('form_rag_unavailable_' . $reason, 'local_vektradiscuss')
+                ? 'form_rag_unavailable_' . $reason : 'form_rag_unavailable';
+            $mform->addElement('static', $p . 'rag', $s('form_rag'), $s($identifier));
+            return;
+        }
         $mform->addElement('advcheckbox', $p . 'rag', $s('form_rag'), $s('form_rag_label'));
         $mform->setDefault($p . 'rag', $enabled ? 1 : 0);
         $mform->addHelpButton($p . 'rag', 'form_rag', 'local_vektradiscuss');
@@ -732,7 +742,7 @@ class settings_section {
     private static function keep(array $view): array {
         return array_intersect_key($view, array_flip(['version', 'enabled', 'cap_minutes', 'rubric_source', 'show_solution',
             'available_until', 'solution_state', 'pasted_rubric_state', 'transcript_recipients_count', 'opening', 'warnings',
-            'active_sessions', 'rag_enabled', 'rag_attested_at']));
+            'active_sessions', 'rag_enabled', 'rag_attested_at', 'rag_available', 'rag_unavailable_reason']));
     }
 
     /**

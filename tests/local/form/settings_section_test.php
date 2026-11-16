@@ -864,6 +864,34 @@ final class settings_section_test extends \advanced_testcase {
     }
 
     /**
+     * Vektra says the installation cannot offer the search: the reason replaces the switch while it is off; a search
+     * already on keeps its switch so it can be turned off; an unknown reason gets the generic sentence.
+     */
+    public function test_rag_unavailable_locks_the_switch(): void {
+        $p = settings_section::PREFIX;
+        $this->transport->respond(200, self::view(['rag_available' => false, 'rag_unavailable_reason' => 'operator_flag_off']));
+        $mform = $this->extend();
+        $this->assertSame('static', $mform->getElement($p . 'rag')->getType());
+        $this->assertStringContainsString(
+            get_string('form_rag_unavailable_operator_flag_off', 'local_vektradiscuss'),
+            $mform->getElement($p . 'rag')->toHtml()
+        );
+        $this->assertFalse($mform->elementExists($p . 'ragattest'));
+
+        $this->transport->respond(200, self::view(['rag_available' => false, 'rag_unavailable_reason' => 'something_new']));
+        $mform = $this->extend();
+        $this->assertStringContainsString(
+            get_string('form_rag_unavailable', 'local_vektradiscuss'),
+            $mform->getElement($p . 'rag')->toHtml()
+        );
+
+        $this->transport->respond(200, self::view(['rag_available' => false, 'rag_enabled' => true,
+            'rag_unavailable_reason' => 'operator_flag_off']));
+        $mform = $this->extend();
+        $this->assertSame('advcheckbox', $mform->getElement($p . 'rag')->getType());
+    }
+
+    /**
      * Length as Vektra counts it: NFC code points, control characters other than newline and tab removed.
      */
     public function test_text_length(): void {

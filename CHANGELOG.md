@@ -73,7 +73,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   locked text. Turning it on requires the teacher's confirmation about `[no-ai]` titles and group-restricted
   sections, never pre-ticked (also after a validation error); the save sends `rag_enabled` with `rag_attested`
   in its own request after the other changes, so a refusal of the search never drops them, and the form shows
-  the confirmation date (`rag_attested_at`). Vektra's refusals `rag_attestation_required` and `rag_unavailable`
+  the confirmation date (`rag_attested_at`). When the view says `rag_available: false` (with
+  `rag_unavailable_reason`, e.g. `operator_flag_off`), the reason replaces the switch while the search is off. Vektra's refusals `rag_attestation_required` and `rag_unavailable`
   (with its reason: `operator_flag_off`, `eligibility_unreadable`) are shown with their own sentence.
 
 ### Fixed

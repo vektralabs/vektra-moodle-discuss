@@ -106,8 +106,10 @@ the activity's settings from Vektra when the form opens, and saves only what you
   on asks you to confirm that the course's solutions and restricted material have `[no-ai]` in their
   title and that no section of the course is restricted to a group; the form then shows when you
   confirmed. The assistant only uses material visible to every student, without restrictions and
-  without `[no-ai]`; the solution and the rubric are never searched. Vektra may refuse it (turned off
-  on the installation, or the course's visibility cannot be read): the reason appears after saving.
+  without `[no-ai]`; the solution and the rubric are never searched. When the search is turned off on
+  the Vektra installation, the form says so instead of offering the switch. Vektra may still refuse it
+  on save (for example when the course's visibility cannot be read): the reason appears after saving,
+  and the other changes are kept.
 - If Vektra cannot read every closing date of the activity (overrides, grace period), the form asks
   for the date from which discussions can start, with a confirmation that no student has time
   beyond it.
