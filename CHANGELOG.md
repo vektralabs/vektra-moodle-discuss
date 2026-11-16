@@ -69,6 +69,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   falls back to "temporarily unavailable".
 - The activity settings warn when "Let the assistant show the solution" is on, both under the option and
   after a save that turns it on (REQ-077); its help text carries the full warning on the solution.
+- Course material search in the activity settings (FEAT-028): a switch, off by default, that replaces the
+  locked text. Turning it on requires the teacher's confirmation about `[no-ai]` titles and group-restricted
+  sections, never pre-ticked; the save sends `rag_enabled` with `rag_attested`, and the form shows the
+  confirmation date (`rag_attested_at`). Vektra's refusals `rag_attestation_required` and `rag_unavailable`
+  (with its reason: `operator_flag_off`, `eligibility_unreadable`) are shown with their own sentence.
 
 ### Fixed
 

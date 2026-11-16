@@ -218,8 +218,9 @@ final class settings_section_test extends \advanced_testcase {
         $this->assertTrue($mform->elementExists($p . 'solution_remove'));
         $this->assertFalse($mform->elementExists($p . 'rubric_remove'));
         $this->assertArrayNotHasKey($p . 'solution', $mform->_defaultValues);
-        // RAG is only text: there is no element that could send it.
-        $this->assertSame('static', $mform->getElement($p . 'rag')->getType());
+        // Course material search: a switch, off unless Vektra says it is on.
+        $this->assertSame('advcheckbox', $mform->getElement($p . 'rag')->getType());
+        $this->assertSame(0, $mform->_defaultValues[$p . 'rag']);
         // No opening fallback unless Vektra asks for it.
         $this->assertFalse($mform->elementExists($p . 'openingat'));
     }
@@ -395,7 +396,7 @@ final class settings_section_test extends \advanced_testcase {
 
     /**
      * A change: PUT with the actor, course, type, expected version and only the changed fields; the solution
-     * key is absent when it is not replaced; RAG is never sent.
+     * key is absent when it is not replaced; course material search is not sent when it did not change.
      */
     public function test_put_body_has_only_the_changes(): void {
         $p = settings_section::PREFIX;
@@ -675,6 +676,103 @@ final class settings_section_test extends \advanced_testcase {
             $p . 'recipients' => "a@x.test\nb@x.test\nc@x.test\nd@x.test"]));
         $this->assertArrayHasKey($p . 'recipients', $errors);
         $this->assertArrayHasKey($p . 'attest', settings_section::validate($this->submitted([$p . 'openingat' => 1794045600])));
+    }
+
+    /**
+     * Course material search (FEAT-028): off by default, with an unticked confirmation shown when it is turned on.
+     */
+    public function test_rag_switch_renders_off_with_its_confirmation(): void {
+        $p = settings_section::PREFIX;
+        $this->transport->respond(200, self::view());
+        $mform = $this->extend();
+        $this->assertSame(0, $mform->_defaultValues[$p . 'rag']);
+        $this->assertTrue($mform->elementExists($p . 'ragattest'));
+        $this->assertSame(0, $mform->_defaultValues[$p . 'ragattest']);
+        $this->assertFalse($mform->elementExists($p . 'ragattested'));
+    }
+
+    /**
+     * Once on, the form shows when the teacher confirmed, and no new confirmation is asked.
+     */
+    public function test_rag_switch_renders_on_with_the_confirmation_date(): void {
+        $p = settings_section::PREFIX;
+        $this->transport->respond(200, self::view(['rag_enabled' => true, 'rag_attested_at' => '2026-11-16T10:00:00+00:00']));
+        $mform = $this->extend();
+        $this->assertSame(1, $mform->_defaultValues[$p . 'rag']);
+        $this->assertFalse($mform->elementExists($p . 'ragattest'));
+        $this->assertStringContainsString(
+            get_string('form_rag_attested', 'local_vektradiscuss', userdate(strtotime('2026-11-16T10:00:00+00:00'))),
+            $mform->getElement($p . 'ragattested')->toHtml()
+        );
+    }
+
+    /**
+     * Turning the search on sends the switch with the confirmation; turning it off sends the switch alone.
+     */
+    public function test_rag_switch_is_sent_with_the_confirmation(): void {
+        $p = settings_section::PREFIX;
+        $this->transport->respond(200, self::view(['version' => 4, 'rag_enabled' => true]));
+        $this->save($this->submitted([$p . 'rag' => 1, $p . 'ragattest' => 1]));
+        $body = json_decode($this->transport->calls[0]['body'], true);
+        $this->assertTrue($body['rag_enabled']);
+        $this->assertTrue($body['rag_attested']);
+
+        $on = json_encode(self::view(['rag_enabled' => true, 'rag_attested_at' => '2026-11-16T10:00:00+00:00']));
+        $this->transport->respond(200, self::view(['version' => 5]));
+        $this->save($this->submitted([$p . 'view' => $on, $p . 'rag' => 0]));
+        $body = json_decode($this->transport->calls[1]['body'], true);
+        $this->assertFalse($body['rag_enabled']);
+        $this->assertArrayNotHasKey('rag_attested', $body);
+    }
+
+    /**
+     * Unchanged while on: nothing about the search is sent, and no confirmation is needed again.
+     */
+    public function test_rag_unchanged_while_on_sends_nothing(): void {
+        $p = settings_section::PREFIX;
+        $on = json_encode(self::view(['rag_enabled' => true, 'rag_attested_at' => '2026-11-16T10:00:00+00:00']));
+        $values = $this->submitted([$p . 'view' => $on, $p . 'rag' => 1]);
+        $this->assertSame([], settings_section::validate($values));
+        $this->save($values);
+        $this->assertSame([], $this->transport->calls);
+    }
+
+    /**
+     * Turning the search on without the confirmation is refused locally, before Vektra.
+     */
+    public function test_rag_needs_the_confirmation(): void {
+        $p = settings_section::PREFIX;
+        $errors = settings_section::validate($this->submitted([$p . 'rag' => 1]));
+        $this->assertSame(get_string('form_err_rag_attest', 'local_vektradiscuss'), $errors[$p . 'ragattest']);
+        $this->assertSame([], settings_section::validate($this->submitted([$p . 'rag' => 1, $p . 'ragattest' => 1])));
+    }
+
+    /**
+     * Vektra's refusals of the search: the confirmation, and unavailability with its reason.
+     */
+    public function test_rag_refusals_are_notified_with_their_reason(): void {
+        $p = settings_section::PREFIX;
+        $cases = [
+            [['code' => 'rag_attestation_required'], 'form_code_rag_attestation_required'],
+            [['code' => 'rag_unavailable', 'reason' => 'operator_flag_off'], 'form_code_rag_unavailable_operator_flag_off'],
+            [['code' => 'rag_unavailable', 'reason' => 'eligibility_unreadable'],
+                'form_code_rag_unavailable_eligibility_unreadable'],
+            [['code' => 'rag_unavailable', 'reason' => 'something_new'], 'form_code_rag_unavailable'],
+            [['code' => 'rag_unavailable', 'reason' => '<b>x</b>'], 'form_code_rag_unavailable'],
+        ];
+        $label = get_string('form_field_rag_enabled', 'local_vektradiscuss');
+        foreach ($cases as [$item, $identifier]) {
+            $this->transport->respond(400, ['error' => ['code' => 'ERR-ASSESS-022', 'message' => 'fields',
+                'details' => ['fields' => [['field' => 'rag_enabled'] + $item]]]]);
+            $this->save($this->submitted([$p . 'rag' => 1, $p . 'ragattest' => 1]));
+            $this->assertDebuggingCalled();
+            $messages = \core\notification::fetch();
+            $this->assertCount(1, $messages);
+            $this->assertStringContainsString(
+                get_string($identifier, 'local_vektradiscuss', (object) ['field' => $label, 'range' => '', 'domains' => '']),
+                $messages[0]->get_message()
+            );
+        }
     }
 
     /**

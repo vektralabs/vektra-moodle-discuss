@@ -102,7 +102,12 @@ the activity's settings from Vektra when the form opens, and saves only what you
   assistant: it sees the student's answers and marks. To let it explain mistakes, fill in the Solution
   field and turn on "Let the assistant show the solution". A separate warning appears when the quiz's
   review options hide the student's answers after the attempt.
-- Course material search is off in this version.
+- Course material search ("Let the assistant search the course material") is off by default. Turning it
+  on asks you to confirm that the course's solutions and restricted material have `[no-ai]` in their
+  title and that no section of the course is restricted to a group; the form then shows when you
+  confirmed. The assistant only uses material visible to every student, without restrictions and
+  without `[no-ai]`; the solution and the rubric are never searched. Vektra may refuse it (turned off
+  on the installation, or the course's visibility cannot be read): the reason appears after saving.
 - If Vektra cannot read every closing date of the activity (overrides, grace period), the form asks
   for the date from which discussions can start, with a confirmation that no student has time
   beyond it.

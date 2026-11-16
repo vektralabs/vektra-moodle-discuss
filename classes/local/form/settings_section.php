@@ -39,7 +39,8 @@ use local_vektradiscuss\local\teacher_api;
  * - only the changed fields are sent, with the version read on render (`expected_version`);
  * - solution, pasted rubric and recipients are write-only: Vektra never returns them, the form never
  *   shows them back and they leave the submitted data right after the save;
- * - RAG is shown locked off and never sent as on (ARCH-072).
+ * - course material search (FEAT-028) is off by default; turning it on needs the teacher's confirmation, ticked
+ *   again on every change and never pre-ticked, and Vektra decides whether it is available.
  */
 class settings_section {
     /** @var string Prefix of every element of the section. */
@@ -197,6 +198,10 @@ class settings_section {
             $errors[$p . 'recipients'] = get_string('form_err_recipients_required', 'local_vektradiscuss');
         }
 
+        if (!empty($data[$p . 'rag']) && empty($orig['rag_enabled']) && empty($data[$p . 'ragattest'])) {
+            $errors[$p . 'ragattest'] = get_string('form_err_rag_attest', 'local_vektradiscuss');
+        }
+
         if (array_key_exists($p . 'openingat', $data) || array_key_exists($p . 'attest', $data)) {
             $date = (int) ($data[$p . 'openingat'] ?? 0);
             $attest = !empty($data[$p . 'attest']);
@@ -319,6 +324,14 @@ class settings_section {
         $show = !empty($values[$p . 'showsolution']);
         if ($show !== (bool) ($orig['show_solution'] ?? false)) {
             $fields['show_solution'] = $show;
+        }
+        // Course material search: sent only when it changes; turning it on carries the teacher's confirmation.
+        $rag = !empty($values[$p . 'rag']);
+        if ($rag !== (bool) ($orig['rag_enabled'] ?? false)) {
+            $fields['rag_enabled'] = $rag;
+            if ($rag) {
+                $fields['rag_attested'] = !empty($values[$p . 'ragattest']);
+            }
         }
         // The date selector has no seconds: compare whole minutes, or a stored value with seconds would always
         // look changed.
@@ -471,7 +484,7 @@ class settings_section {
         $mform->addElement('static', $p . 'showsolutionwarning', '', $s('form_showsolution_warning'));
         $mform->hideIf($p . 'showsolutionwarning', $p . 'showsolution', 'notchecked');
 
-        $mform->addElement('static', $p . 'rag', $s('form_rag'), $s('form_rag_locked'));
+        self::add_rag($mform, $view, $orig['rag_enabled']);
 
         // Recipients: write-only. When none is set, the field starts with the teacher's own address.
         $count = $orig['recipients_count'];
@@ -486,6 +499,31 @@ class settings_section {
         $mform->setDefault($p . 'recipients', $count > 0 ? '' : (string) $USER->email);
         $mform->addHelpButton($p . 'recipients', 'form_recipients_list', 'local_vektradiscuss');
         $mform->hideIf($p . 'recipients', $p . 'recipients_replace', 'notchecked');
+    }
+
+    /**
+     * Course material search (FEAT-028): a switch, off by default, and the teacher's confirmation that appears when
+     * it is turned on. The confirmation is never pre-ticked; once saved, the form shows when it was given.
+     *
+     * @param \MoodleQuickForm $mform
+     * @param array $view
+     * @param bool $enabled
+     */
+    private static function add_rag(\MoodleQuickForm $mform, array $view, bool $enabled): void {
+        $p = self::PREFIX;
+        $s = fn(string $id, $a = null): string => get_string($id, 'local_vektradiscuss', $a);
+        $mform->addElement('advcheckbox', $p . 'rag', $s('form_rag'), $s('form_rag_label'));
+        $mform->setDefault($p . 'rag', $enabled ? 1 : 0);
+        $mform->addHelpButton($p . 'rag', 'form_rag', 'local_vektradiscuss');
+        $at = is_string($view['rag_attested_at'] ?? null) ? strtotime($view['rag_attested_at']) : false;
+        if ($enabled && $at !== false) {
+            $mform->addElement('static', $p . 'ragattested', '', $s('form_rag_attested', userdate($at)));
+            $mform->hideIf($p . 'ragattested', $p . 'rag', 'notchecked');
+            return;
+        }
+        $mform->addElement('advcheckbox', $p . 'ragattest', '', $s('form_rag_attest'));
+        $mform->setDefault($p . 'ragattest', 0);
+        $mform->hideIf($p . 'ragattest', $p . 'rag', 'notchecked');
     }
 
     /**
@@ -576,7 +614,7 @@ class settings_section {
     /**
      * One of Vektra's field errors as a sentence naming the field and the rule.
      *
-     * @param array $item {field, code, range?, allowed_domains?, index?}
+     * @param array $item {field, code, reason?, range?, allowed_domains?, index?}
      * @return string
      */
     private static function field_error(array $item): string {
@@ -590,8 +628,15 @@ class settings_section {
             'domains' => is_array($item['allowed_domains'] ?? null)
                 ? s(implode(', ', array_filter($item['allowed_domains'], 'is_string'))) : '',
         ];
-        $identifier = get_string_manager()->string_exists('form_code_' . $code, 'local_vektradiscuss')
-            ? 'form_code_' . $code : 'form_code_invalid';
+        // A refusal with a closed reason has its own sentence when there is one (rag_unavailable).
+        $reason = is_string($item['reason'] ?? null) && preg_match('/^[a-z_]{1,40}\z/', $item['reason']) ? $item['reason'] : '';
+        $sm = get_string_manager();
+        if ($reason !== '' && $sm->string_exists('form_code_' . $code . '_' . $reason, 'local_vektradiscuss')) {
+            $identifier = 'form_code_' . $code . '_' . $reason;
+        } else {
+            $identifier = $sm->string_exists('form_code_' . $code, 'local_vektradiscuss')
+                ? 'form_code_' . $code : 'form_code_invalid';
+        }
         return get_string($identifier, 'local_vektradiscuss', $a);
     }
 
@@ -639,6 +684,7 @@ class settings_section {
             'cap_minutes' => is_int($view['cap_minutes'] ?? null) ? $view['cap_minutes'] : null,
             'rubric_source' => is_string($view['rubric_source'] ?? null) ? $view['rubric_source'] : 'none',
             'show_solution' => ($view['show_solution'] ?? false) === true,
+            'rag_enabled' => ($view['rag_enabled'] ?? false) === true,
             'available_until' => $until !== false ? $until : null,
             'rubric_set' => self::is_set($view['pasted_rubric_state'] ?? null),
             'recipients_count' => is_int($view['transcript_recipients_count'] ?? null) ? $view['transcript_recipients_count'] : 0,
@@ -654,7 +700,7 @@ class settings_section {
     private static function keep(array $view): array {
         return array_intersect_key($view, array_flip(['version', 'enabled', 'cap_minutes', 'rubric_source', 'show_solution',
             'available_until', 'solution_state', 'pasted_rubric_state', 'transcript_recipients_count', 'opening', 'warnings',
-            'active_sessions']));
+            'active_sessions', 'rag_enabled', 'rag_attested_at']));
     }
 
     /**
