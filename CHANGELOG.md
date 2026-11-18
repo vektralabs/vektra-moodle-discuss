@@ -76,6 +76,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   the confirmation date (`rag_attested_at`). When the view says `rag_available: false` (with
   `rag_unavailable_reason`, e.g. `operator_flag_off`), the reason replaces the switch while the search is off. Vektra's refusals `rag_attestation_required` and `rag_unavailable`
   (with its reason: `operator_flag_off`, `eligibility_unreadable`) are shown with their own sentence.
+- "Show" next to a saved solution, pasted rubric or recipient list in the activity settings (OQ-034), for users
+  who can edit the activity: `reveal.php` (POST, sesskey) reads it through `POST .../config/reveal` and the
+  `local_vektradiscuss/reveal` module shows it in a read-only area outside the form fields; "Hide" removes it.
+  The text is never stored, cached, logged or prefilled in the replacement field.
 
 ### Fixed
 
