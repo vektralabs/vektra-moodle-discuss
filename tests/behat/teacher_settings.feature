@@ -76,3 +76,34 @@ Feature: The discussion settings in the quiz form
     And I press "Save and return to course"
     Then I should see "The discussion settings were not saved:"
     And I should see "the quiz needs a close date before the discussion can be enabled"
+
+  @javascript
+  Scenario: Show reads a saved text on demand and Hide removes it from the page
+    Given the Vektra assess stub answers POST "config-reveal" of "quiz1" with status 200 and:
+      """
+      {"field": "solution", "value": "Expected answer: 42"}
+      """
+    When I am on the "Quiz 1" "quiz activity editing" page logged in as "teacher1"
+    And I expand all fieldsets
+    Then I should not see "Expected answer: 42"
+    And the Vektra assess stub received 0 POST requests to "config-reveal" of "quiz1"
+    When I click on "button[data-vektradiscuss-reveal='solution']" "css_element"
+    Then I should see "Expected answer: 42"
+    And I should see "Hide"
+    And the last Vektra assess stub POST to "config-reveal" of "quiz1" should have the field "field"
+    When I click on "button[data-vektradiscuss-reveal='solution']" "css_element"
+    Then I should not see "Expected answer: 42"
+    When I set the field "vektradiscuss_cap" to "45"
+    And I press "Save and return to course"
+    Then the last Vektra assess stub PUT to "config" of "quiz1" should not have the field "solution"
+
+  @javascript
+  Scenario: Show explains when Vektra cannot read the text
+    Given the Vektra assess stub answers POST "config-reveal" of "quiz1" with status 503 and:
+      """
+      {"error": {"code": "ERR-ASSESS-001", "message": "unavailable", "details": {"reason": "reveal_unavailable"}}}
+      """
+    When I am on the "Quiz 1" "quiz activity editing" page logged in as "teacher1"
+    And I expand all fieldsets
+    And I click on "button[data-vektradiscuss-reveal='recipients']" "css_element"
+    Then I should see "Vektra cannot read the text right now; try again in a few seconds."

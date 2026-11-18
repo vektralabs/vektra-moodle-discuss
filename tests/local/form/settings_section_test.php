@@ -354,6 +354,35 @@ final class settings_section_test extends \advanced_testcase {
     }
 
     /**
+     * "Show" sits next to a saved text only (OQ-034), for a user who can edit the activity; the render reads no
+     * text, and the replacement fields stay empty.
+     */
+    public function test_show_buttons_next_to_saved_texts(): void {
+        $p = settings_section::PREFIX;
+        $this->transport->respond(200, self::view(['rubric_source' => 'pasted']));
+        $mform = $this->extend();
+        $this->assertCount(1, $this->transport->calls);
+        $this->assertStringContainsString('data-vektradiscuss-reveal="solution"', $mform->getElement($p . 'solution_state')->_text);
+        $this->assertStringNotContainsString('data-vektradiscuss-reveal', $mform->getElement($p . 'rubric_state')->_text);
+        $this->assertStringContainsString(
+            'data-vektradiscuss-reveal="recipients"',
+            $mform->getElement($p . 'recipients_state')->_text
+        );
+        $this->assertArrayNotHasKey($p . 'solution', $mform->_defaultValues);
+        $this->assertSame('', $mform->_defaultValues[$p . 'recipients']);
+
+        // Without the right to edit activities: the states only.
+        $context = \context_module::instance($this->quiz->cmid);
+        $role = (int) $this->getDataGenerator()->create_role();
+        $this->getDataGenerator()->role_assign($role, $this->teacher->id, $context->id);
+        assign_capability('moodle/course:manageactivities', CAP_PROHIBIT, $role, $context);
+        $this->transport->respond(200, self::view());
+        $mform = $this->extend();
+        $this->assertStringNotContainsString('data-vektradiscuss-reveal', $mform->getElement($p . 'solution_state')->_text);
+        $this->assertStringNotContainsString('data-vektradiscuss-reveal', $mform->getElement($p . 'recipients_state')->_text);
+    }
+
+    /**
      * Without the configure capability, no section and no call.
      */
     public function test_without_capability_nothing(): void {

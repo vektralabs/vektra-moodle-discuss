@@ -42,6 +42,9 @@ class teacher_api {
     /** @var string[] The activity types of the assessment discussion. */
     public const ACTIVITY_TYPES = ['quiz', 'assign'];
 
+    /** @var string[] The saved texts the teacher can read back with "Show" (OQ-034). */
+    public const REVEAL_FIELDS = ['solution', 'pasted_rubric', 'transcript_recipients'];
+
     /** @var int Total timeout of a call made while a form renders or saves, in seconds. */
     public const FORM_TIMEOUT = 4;
 
@@ -162,6 +165,26 @@ class teacher_api {
             'timeout' => self::FORM_TIMEOUT,
             'headers' => self::actor_headers($courseid, $type, $actorid),
         ]);
+    }
+
+    /**
+     * POST to read one saved text of the configuration (the solution, the pasted rubric or the recipients), for
+     * the teacher's "Show" button. The answer is shown on the page only: never stored, cached or logged.
+     *
+     * @param int $cmid
+     * @param int $courseid
+     * @param string $type quiz or assign
+     * @param int $actorid
+     * @param string $field One of {@see self::REVEAL_FIELDS}.
+     * @return assess_response
+     */
+    public function reveal_config(int $cmid, int $courseid, string $type, int $actorid, string $field): assess_response {
+        self::assert_type($type);
+        if (!in_array($field, self::REVEAL_FIELDS, true)) {
+            throw new \coding_exception('Unsupported configuration field: ' . $field);
+        }
+        $body = self::actor_body($courseid, $type, $actorid) + ['field' => $field];
+        return $this->send('POST', self::config_path($cmid) . '/reveal', $body, ['timeout' => self::FORM_TIMEOUT]);
     }
 
     /**

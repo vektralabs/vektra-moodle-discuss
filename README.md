@@ -94,8 +94,10 @@ the activity's settings from Vektra when the form opens, and saves only what you
   time limit, at least one transcript recipient, and the site's privacy settings and setup check
   must be in order. When Vektra refuses, the reason appears after saving, and the discussion stays
   off.
-- The solution, the pasted rubric and the recipients are write-only: once saved, the form only says
-  whether they are set. Replace them to change them. They are stored in Vektra and never in Moodle.
+- The solution, the pasted rubric and the recipients are stored in Vektra and never in Moodle: once
+  saved, the form says whether they are set, and "Show" reads them back from Vektra on that page only, for
+  the people who can edit the activity. Replace them to change them; the replacement field always starts
+  empty.
 - Turning on "Let the assistant show the solution" shows a warning: the student may see the solution and
   receives a copy of the transcript, so avoid it on questions you will reuse.
 - On quizzes, Moodle's per-question feedback, right answers and grading comments do not reach the

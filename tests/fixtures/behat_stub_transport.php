@@ -156,6 +156,7 @@ class behat_stub_transport implements transport {
     public static function teacher_route(string $path): ?array {
         $routes = [
             'config' => '#^/api/v1/assess/activities/(\d+)/config$#',
+            'config-reveal' => '#^/api/v1/assess/activities/(\d+)/config/reveal$#',
             'gate-refresh' => '#^/api/v1/assess/activities/(\d+)/gate-refresh$#',
             'opening-fallback' => '#^/api/v1/assess/activities/(\d+)/opening-fallback$#',
             'sessions' => '#^/api/v1/assess/activities/(\d+)/sessions$#',
