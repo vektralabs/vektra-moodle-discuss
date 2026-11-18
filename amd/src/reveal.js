@@ -103,6 +103,10 @@ export const init = async(cmid) => {
                 data = {error: unavailable};
             }
             button.disabled = false;
+            if (area.hidden) {
+                // Concealed while the read was pending (pagehide): the text must not land on the page.
+                return;
+            }
             if (typeof data.value === 'string') {
                 const text = document.createElement('pre');
                 text.className = 'border rounded p-2 mb-0 bg-light';
