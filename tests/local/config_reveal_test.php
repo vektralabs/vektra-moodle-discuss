@@ -162,10 +162,12 @@ final class config_reveal_test extends \advanced_testcase {
     public function test_refusals(): void {
         $s = fn(string $id): array => ['error' => get_string($id, 'local_vektradiscuss')];
         $actor = (int) $this->teacher->id;
+        $notset = self::envelope('ERR-ASSESS-030', ['reason' => 'field_not_set', 'field' => 'solution']);
+        $unavailable = self::envelope('ERR-ASSESS-031', ['reason' => 'reveal_unavailable', 'retry_after_s' => 2]);
         $cases = [
-            [404, self::envelope('ERR-ASSESS-030', ['reason' => 'field_not_set', 'field' => 'solution']), 'form_reveal_notset'],
+            [404, $notset, 'form_reveal_notset'],
             [404, ['detail' => 'Not Found'], 'form_reveal_unavailable'],
-            [503, self::envelope('ERR-ASSESS-031', ['reason' => 'reveal_unavailable', 'retry_after_s' => 2]), 'form_reveal_unavailable'],
+            [503, $unavailable, 'form_reveal_unavailable'],
             [0, '', 'form_reveal_unavailable'],
             [403, self::envelope('ERR-ASSESS-021', ['reason' => 'not_an_editor']), 'form_not_an_editor'],
             [400, self::envelope('ERR-ASSESS-014', ['reason' => 'field']), 'teacher_err_generic'],
