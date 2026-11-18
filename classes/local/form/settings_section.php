@@ -25,6 +25,7 @@
 namespace local_vektradiscuss\local\form;
 
 use local_vektradiscuss\local\config;
+use local_vektradiscuss\local\config_reveal;
 use local_vektradiscuss\local\http\assess_response;
 use local_vektradiscuss\local\student_endpoint;
 use local_vektradiscuss\local\teacher_api;
@@ -124,11 +125,15 @@ class settings_section {
             }
         }
 
-        self::add_fields($mform, $type, $view, $type === 'quiz' && self::review_hides_answers((int) $cm->instance));
+        $canreveal = config_reveal::can_reveal(\context_module::instance($cm->id));
+        self::add_fields($mform, $type, $view, $type === 'quiz' && self::review_hides_answers((int) $cm->instance), $canreveal);
         $PAGE->requires->js_call_amd('local_vektradiscuss/charcounter', 'init', [
             [self::PREFIX . 'solution', self::PREFIX . 'rubric'],
             self::MAX_TEXT,
         ]);
+        if ($canreveal) {
+            $PAGE->requires->js_call_amd('local_vektradiscuss/reveal', 'init', [(int) $cm->id]);
+        }
         // A save Vektra asks to retry waits a few seconds on the server: say so under the button.
         $PAGE->requires->js_call_amd('local_vektradiscuss/pending', 'init', [
             '#id_' . self::PREFIX . 'header',
@@ -448,8 +453,15 @@ class settings_section {
      * @param string $type
      * @param array $view
      * @param bool $reviewhidden The quiz's saved review options hide the student's answers after the attempt.
+     * @param bool $canreveal The user may read the saved texts back ({@see config_reveal::can_reveal()}).
      */
-    private static function add_fields(\MoodleQuickForm $mform, string $type, array $view, bool $reviewhidden): void {
+    private static function add_fields(
+        \MoodleQuickForm $mform,
+        string $type,
+        array $view,
+        bool $reviewhidden,
+        bool $canreveal = false
+    ): void {
         global $USER;
         $p = self::PREFIX;
         $s = fn(string $id, $a = null): string => get_string($id, 'local_vektradiscuss', $a);
@@ -500,11 +512,11 @@ class settings_section {
         $mform->setDefault($p . 'rubricsource', $source);
         $mform->addHelpButton($p . 'rubricsource', 'form_rubricsource', 'local_vektradiscuss');
 
-        self::add_secret($mform, 'rubric', self::is_set($view['pasted_rubric_state'] ?? null));
+        self::add_secret($mform, 'rubric', self::is_set($view['pasted_rubric_state'] ?? null), $canreveal);
         $mform->hideIf($p . 'rubric_replace', $p . 'rubricsource', 'neq', 'pasted');
         $mform->hideIf($p . 'rubric_state', $p . 'rubricsource', 'neq', 'pasted');
 
-        self::add_secret($mform, 'solution', self::is_set($view['solution_state'] ?? null));
+        self::add_secret($mform, 'solution', self::is_set($view['solution_state'] ?? null), $canreveal);
 
         $mform->addElement('advcheckbox', $p . 'showsolution', $s('form_showsolution'));
         $mform->setDefault($p . 'showsolution', $orig['show_solution'] ? 1 : 0);
@@ -518,7 +530,7 @@ class settings_section {
         // Recipients: write-only. When none is set, the field starts with the teacher's own address.
         $count = $orig['recipients_count'];
         $mform->addElement('static', $p . 'recipients_state', $s('form_recipients'), $count > 0
-            ? $s('form_recipients_set', $count) : $s('form_recipients_unset'));
+            ? self::revealable('recipients', $s('form_recipients_set', $count), $canreveal) : s($s('form_recipients_unset')));
         $replacelabel = $s($count > 0 ? 'form_recipients_replace' : 'form_recipients_add');
         $mform->addElement('advcheckbox', $p . 'recipients_replace', '', $replacelabel);
         // Never pre-ticked: an unrelated save of the activity must not send recipients.
@@ -607,11 +619,13 @@ class settings_section {
      * @param \MoodleQuickForm $mform
      * @param string $name solution or rubric
      * @param bool $set
+     * @param bool $canreveal Add the "Show" button when set.
      */
-    private static function add_secret(\MoodleQuickForm $mform, string $name, bool $set): void {
+    private static function add_secret(\MoodleQuickForm $mform, string $name, bool $set, bool $canreveal = false): void {
         $p = self::PREFIX . $name;
         $s = fn(string $id, $a = null): string => get_string($id, 'local_vektradiscuss', $a);
-        $mform->addElement('static', $p . '_state', $s('form_' . $name), $s($set ? 'form_secret_set' : 'form_secret_unset'));
+        $state = $set ? self::revealable($name, $s('form_secret_set'), $canreveal) : s($s('form_secret_unset'));
+        $mform->addElement('static', $p . '_state', $s('form_' . $name), $state);
         $mform->addElement('advcheckbox', $p . '_replace', '', $s($set ? 'form_secret_replace' : 'form_secret_add'));
         $mform->addElement('textarea', $p, $s('form_' . $name . '_text'), ['rows' => 8, 'cols' => 60, 'autocomplete' => 'off']);
         // PARAM_RAW: the text is plain text for Vektra (PARAM_TEXT would strip "a<b" from a formula).
@@ -622,6 +636,32 @@ class settings_section {
             $mform->addElement('advcheckbox', $p . '_remove', '', $s('form_secret_remove'));
             $mform->hideIf($p . '_remove', $p . '_replace', 'checked');
         }
+    }
+
+    /**
+     * The state of a saved text with its "Show" button (OQ-034), for the people who can edit the activity. The
+     * button reads the text from Vektra on click (local_vektradiscuss/reveal): it is shown in a read-only area
+     * outside the form's fields and never put in the form, so a save never sends it back.
+     *
+     * @param string $name A key of {@see config_reveal::FIELDS}.
+     * @param string $state The state sentence.
+     * @param bool $canreveal
+     * @return string HTML
+     */
+    private static function revealable(string $name, string $state, bool $canreveal): string {
+        if (!$canreveal) {
+            return s($state);
+        }
+        $out = 'vektradiscuss-reveal-' . $name;
+        $button = \html_writer::tag('button', s(get_string('form_reveal_show', 'local_vektradiscuss')), [
+            'type' => 'button',
+            'class' => 'btn btn-link p-0 ms-2 ml-2 align-baseline',
+            'data-vektradiscuss-reveal' => $name,
+            'aria-controls' => $out,
+            'aria-expanded' => 'false',
+        ]);
+        $area = \html_writer::div('', 'mt-2', ['id' => $out, 'hidden' => 'hidden', 'aria-live' => 'polite']);
+        return \html_writer::span(s($state)) . $button . $area;
     }
 
     /**

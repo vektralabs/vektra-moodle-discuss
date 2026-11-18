@@ -44,7 +44,7 @@ class behat_local_vektradiscuss extends behat_base {
     private const STUB_ROUTE = 'behatstubroute_';
 
     /** @var string Teacher routes the steps can name. */
-    private const ROUTES = 'config|gate-refresh|opening-fallback|sessions|reset|terminate|extra-time';
+    private const ROUTES = 'config|config-reveal|gate-refresh|opening-fallback|sessions|reset|terminate|extra-time';
 
     /** @var string Config name prefix of a state fixture (same as self::STUB_STATE). */
     private const STUB_STATE = 'behatstubstate_';
