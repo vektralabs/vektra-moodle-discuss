@@ -101,7 +101,7 @@ Feature: The discussion settings in the quiz form
   Scenario: Show explains when Vektra cannot read the text
     Given the Vektra assess stub answers POST "config-reveal" of "quiz1" with status 503 and:
       """
-      {"error": {"code": "ERR-ASSESS-001", "message": "unavailable", "details": {"reason": "reveal_unavailable"}}}
+      {"error": {"code": "ERR-ASSESS-031", "message": "unavailable", "details": {"reason": "reveal_unavailable", "retry_after_s": 2}}}
       """
     When I am on the "Quiz 1" "quiz activity editing" page logged in as "teacher1"
     And I expand all fieldsets
