@@ -290,6 +290,7 @@ class teacher_page {
                 'hasdeliveries' => !empty($session['deliveries']),
                 'tid' => $tid = $this->transcript_id($session),
                 'downloadurl' => $this->download_url($tid, (int) ($session['session_no'] ?? 0), $userid),
+                'openurl' => $this->download_url($tid, (int) ($session['session_no'] ?? 0), $userid, true),
                 // Vektra resends only a transcript that was delivered at least once (a new round of its deliveries).
                 'canresend' => $canmanage && $tid !== null && !empty($session['deliveries']),
             ], $sessions),
@@ -359,13 +360,17 @@ class teacher_page {
      * @param string|null $tid
      * @param int $n
      * @param int $userid
+     * @param bool $inline The link that opens the transcript in a new browser tab.
      * @return string|null
      */
-    private function download_url(?string $tid, int $n, int $userid): ?string {
+    private function download_url(?string $tid, int $n, int $userid, bool $inline = false): ?string {
         if ($tid === null) {
             return null;
         }
         $params = ['cmid' => $this->cm->id, 'tid' => $tid, 'n' => max(1, $n), 'u' => $userid, 'sesskey' => sesskey()];
+        if ($inline) {
+            $params['inline'] = 1;
+        }
         return (new \moodle_url('/local/vektradiscuss/teacher_transcript.php', $params))->out(false);
     }
 

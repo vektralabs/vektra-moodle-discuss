@@ -107,3 +107,51 @@ Feature: The discussion settings in the quiz form
     And I expand all fieldsets
     And I click on "button[data-vektradiscuss-reveal='recipients']" "css_element"
     Then I should see "Vektra cannot read the text right now; try again in a few seconds."
+
+  Scenario: Course material search starts on for a new configuration and counts only with the discussion
+    Given the Vektra assess stub answers GET "config" of "quiz1" with status 200 and:
+      """
+      {"cmid": 1, "activity_type": "quiz", "version": 0, "configured": false, "enabled": false, "cap_minutes": null,
+        "rubric_source": "none", "show_solution": false, "rag_enabled": false, "available_until": null,
+        "solution_state": "non impostata", "pasted_rubric_state": "non impostata",
+        "transcript_recipients_state": "non impostata", "transcript_recipients_count": 0,
+        "opening": {"at": "2026-01-10T10:00:00+00:00", "source": "activity_close", "fallback_required": false},
+        "warnings": {"available_until_not_after_opening": false, "review_options_hide_content": false},
+        "active_sessions": 0, "updated_at": null}
+      """
+    When I am on the "Quiz 1" "quiz activity editing" page logged in as "teacher1"
+    Then the field "vektradiscuss_rag" matches value "1"
+    When I press "Save and return to course"
+    Then the Vektra assess stub received 0 PUT requests to "config" of "quiz1"
+
+  @javascript
+  Scenario: Edit fills the field with the saved text and the save sends the edited text
+    Given the Vektra assess stub answers POST "config-reveal" of "quiz1" with status 200 and:
+      """
+      {"field": "solution", "value": "Expected answer: 42"}
+      """
+    When I am on the "Quiz 1" "quiz activity editing" page logged in as "teacher1"
+    And I expand all fieldsets
+    Then the Vektra assess stub received 0 POST requests to "config-reveal" of "quiz1"
+    When I set the field "vektradiscuss_solution_replace" to "1"
+    Then the field "vektradiscuss_solution" matches value "Expected answer: 42"
+    And the Vektra assess stub received 1 POST request to "config-reveal" of "quiz1"
+    When I set the field "vektradiscuss_solution_replace" to "0"
+    And I set the field "vektradiscuss_solution_replace" to "1"
+    Then the field "vektradiscuss_solution" matches value "Expected answer: 42"
+    When I set the field "vektradiscuss_solution" to "Expected answer: 43"
+    And I press "Save and return to course"
+    Then I should see "The discussion settings were saved."
+    And the last Vektra assess stub PUT to "config" of "quiz1" should have the field "solution"
+
+  @javascript
+  Scenario: Edit leaves the field empty and explains when Vektra cannot read the text
+    Given the Vektra assess stub answers POST "config-reveal" of "quiz1" with status 503 and:
+      """
+      {"error": {"code": "ERR-ASSESS-031", "message": "unavailable", "details": {"reason": "reveal_unavailable", "retry_after_s": 2}}}
+      """
+    When I am on the "Quiz 1" "quiz activity editing" page logged in as "teacher1"
+    And I expand all fieldsets
+    And I set the field "vektradiscuss_solution_replace" to "1"
+    Then I should see "Vektra cannot read the text right now; try again in a few seconds."
+    And the field "vektradiscuss_solution" matches value ""

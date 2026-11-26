@@ -94,21 +94,24 @@ the activity's settings from Vektra when the form opens, and saves only what you
   time limit, at least one transcript recipient, and the site's privacy settings and setup check
   must be in order. When Vektra refuses, the reason appears after saving, and the discussion stays
   off.
-- The solution, the pasted rubric and the recipients are stored in Vektra and never in Moodle: once
-  saved, the form says whether they are set, and "Show" reads them back from Vektra on that page only, for
-  the people who can edit the activity. Replace them to change them; the replacement field always starts
-  empty.
+- The solution, the pasted grading criteria (the rubric) and the recipients are stored in Vektra and never
+  in Moodle: once saved, the form says whether they are set, and "Show" reads them back from Vektra on that
+  page only, for the people who can edit the activity. "Edit" fills the field with the saved solution or
+  criteria, read from Vektra, to change them in place; saving sends the field as the new text, and "Remove"
+  deletes them. Without the right to edit the activity the field starts empty and replaces the saved text.
+  Recipients are replaced as a whole.
 - Turning on "Let the assistant show the solution" shows a warning: the student may see the solution and
   receives a copy of the transcript, so avoid it on questions you will reuse.
 - On quizzes, Moodle's per-question feedback, right answers and grading comments do not reach the
   assistant: it sees the student's answers and marks. To let it explain mistakes, fill in the Solution
   field and turn on "Let the assistant show the solution". A separate warning appears when the quiz's
   review options hide the student's answers after the attempt.
-- Course material search ("Let the assistant search the course material") is off by default. Turning it
-  on asks you to confirm that the course's solutions and restricted material have `[no-ai]` in their
+- Course material search ("Let the assistant search the course material") starts on when you configure
+  the discussion of an activity for the first time, and counts only when you turn the discussion on in
+  the same save; afterwards it keeps the saved value. Turning it on asks you to confirm that the course's solutions and restricted material have `[no-ai]` in their
   title and that no section of the course is restricted to a group; the form then shows when you
   confirmed. The assistant only uses material visible to every student, without restrictions and
-  without `[no-ai]`; the solution and the rubric are never searched. When the search is turned off on
+  without `[no-ai]`; the solution and the grading criteria are never searched. When the search is turned off on
   the Vektra installation, the form says so instead of offering the switch. Vektra may still refuse it
   on save (for example when the course's visibility cannot be read): the reason appears after saving,
   and the other changes are kept.
@@ -131,7 +134,8 @@ discussions can:
 - give extra time in minutes or as a percentage, before a student's first discussion or after a new
   session was granted (more than +100% needs a confirmation; time limit plus extra time at most 240
   minutes);
-- download any transcript, and send a delivered transcript again to the current recipients.
+- open any transcript in a new browser tab, or download it, and send a delivered transcript again to the
+  current recipients.
 
 The page asks Vektra to refresh what it reads from Moodle as it opens. An action refused because Vektra
 is still refreshing is tried once more after a few seconds ("Checking…"); a second refusal is shown.
