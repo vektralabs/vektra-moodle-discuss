@@ -15,6 +15,7 @@
 
 /**
  * Edit a saved solution or grading criteria in place: ticking "Edit" fills the field with the text read from Vektra.
+ * Only an explicit tick reads it: a page redisplayed with "Edit" already ticked keeps the field empty.
  *
  * The text is read on demand (the same request as "Show") and lives only in the field of this page: Moodle never
  * stores it, and the save sends the field to Vektra as the new text. Unticking "Edit", or leaving the page, empties
@@ -74,9 +75,10 @@ export const init = async(cmid) => {
         message.setAttribute('role', 'alert');
         message.hidden = true;
         field.insertAdjacentElement('afterend', message);
-        wired.push([field, message]);
-        // Each read gets a number: an answer that arrives after "Edit" was unticked, or ticked again, is dropped.
+        // Each read gets a number: an answer that arrives after "Edit" was unticked, or ticked again, or after the
+        // page was hidden, is dropped.
         let request = 0;
+        wired.push([field, message, () => request++]);
 
         const fill = async() => {
             if (field.value !== '') {
@@ -119,13 +121,15 @@ export const init = async(cmid) => {
                 empty(field, message);
             }
         });
-        // Redisplayed after a validation error with "Edit" still ticked: the field was emptied by the server.
-        if (toggle.checked) {
-            fill();
-        }
+        // Redisplayed after a validation error with "Edit" still ticked, the field was emptied by the server and stays
+        // empty: reloading the saved text would silently replace the teacher's lost edit. The empty-text check then
+        // asks for the text again; unticking and ticking "Edit" reads it again.
     });
     // A text read for editing must not linger when the browser restores the page from its cache.
     window.addEventListener('pagehide', () => {
-        wired.forEach(([field, message]) => empty(field, message));
+        wired.forEach(([field, message, forget]) => {
+            forget();
+            empty(field, message);
+        });
     });
 };
