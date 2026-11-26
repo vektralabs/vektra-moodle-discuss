@@ -167,6 +167,7 @@ final class transcript_proxy {
      * @param callable $emit fn(string $chunk): sends body bytes.
      * @param int $maxbytes Body size limit (0: the client's limit); it can only lower that limit.
      * @param string $label Added to the fallback file name ('' for none).
+     * @param bool $inline Shown in the browser tab instead of saved as a file.
      * @return string OK, NOT_READY, FAILED or TRUNCATED.
      */
     public function stream(
@@ -176,7 +177,8 @@ final class transcript_proxy {
         callable $header,
         callable $emit,
         int $maxbytes = 0,
-        string $label = ''
+        string $label = '',
+        bool $inline = false
     ): string {
         if (!self::valid_tid($tid)) {
             return self::FAILED;
@@ -185,8 +187,8 @@ final class transcript_proxy {
         $response = $this->client->stream(
             '/api/v1/assess/transcripts/' . $tid,
             $token,
-            function (int $status, array $headers) use (&$started, $header, $n, $label): void {
-                foreach (self::headers($headers, $n, $label) as $line) {
+            function (int $status, array $headers) use (&$started, $header, $n, $label, $inline): void {
+                foreach (self::headers($headers, $n, $label, $inline) as $line) {
                     $header($line);
                 }
                 $started = true;
@@ -220,9 +222,10 @@ final class transcript_proxy {
      * @param string $token
      * @param int $n
      * @param string $label Added to the fallback file name (a grader download: the student's user id).
+     * @param bool $inline Shown in the browser tab instead of saved as a file.
      * @return string OK, NOT_READY, FAILED or TRUNCATED.
      */
-    public function send(string $tid, string $token, int $n, string $label = ''): string {
+    public function send(string $tid, string $token, int $n, string $label = '', bool $inline = false): string {
         $started = false;
         return $this->stream(
             $tid,
@@ -247,7 +250,8 @@ final class transcript_proxy {
                 flush();
             },
             0,
-            $label
+            $label,
+            $inline
         );
     }
 
@@ -257,9 +261,11 @@ final class transcript_proxy {
      * @param array $vektra Vektra's response headers, lower-case names.
      * @param int $n Session number, for the fallback file name.
      * @param string $label Added to the fallback file name ('' for none).
+     * @param bool $inline Shown in the browser tab: the page stays sandboxed (no script, no request), and only its
+     *     own inline stylesheet may apply, so the transcript reads as it does in the downloaded file.
      * @return string[]
      */
-    public static function headers(array $vektra, int $n, string $label = ''): array {
+    public static function headers(array $vektra, int $n, string $label = '', bool $inline = false): array {
         $name = self::filename((string) ($vektra['content-disposition'] ?? ''));
         if ($name === null) {
             // The label (a grader download: the student's user id) keeps files of different students apart.
@@ -267,9 +273,9 @@ final class transcript_proxy {
         }
         $lines = [
             'Content-Type: text/html; charset=utf-8',
-            'Content-Disposition: attachment; filename="' . $name . '"',
+            'Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . '; filename="' . $name . '"',
             'X-Content-Type-Options: nosniff',
-            "Content-Security-Policy: sandbox; default-src 'none'",
+            "Content-Security-Policy: sandbox; default-src 'none'" . ($inline ? "; style-src 'unsafe-inline'" : ''),
             'Cache-Control: no-store',
             'Referrer-Policy: no-referrer',
         ];

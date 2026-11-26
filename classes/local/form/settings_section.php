@@ -133,6 +133,7 @@ class settings_section {
         ]);
         if ($canreveal) {
             $PAGE->requires->js_call_amd('local_vektradiscuss/reveal', 'init', [(int) $cm->id]);
+            $PAGE->requires->js_call_amd('local_vektradiscuss/secretedit', 'init', [(int) $cm->id]);
         }
         // A save Vektra asks to retry waits a few seconds on the server: say so under the button.
         $PAGE->requires->js_call_amd('local_vektradiscuss/pending', 'init', [
@@ -213,7 +214,7 @@ class settings_section {
             $errors[$p . 'recipients'] = get_string('form_err_recipients_required', 'local_vektradiscuss');
         }
 
-        if (!empty($data[$p . 'rag']) && empty($orig['rag_enabled']) && empty($data[$p . 'ragattest'])) {
+        if (self::rag_requested($data, $orig) && empty($orig['rag_enabled']) && empty($data[$p . 'ragattest'])) {
             $errors[$p . 'ragattest'] = get_string('form_err_rag_attest', 'local_vektradiscuss');
         }
 
@@ -360,7 +361,7 @@ class settings_section {
             $fields['show_solution'] = $show;
         }
         // Course material search: sent only when it changes; turning it on carries the teacher's confirmation.
-        $rag = !empty($values[$p . 'rag']);
+        $rag = self::rag_requested($values, $orig);
         if ($rag !== (bool) ($orig['rag_enabled'] ?? false)) {
             $fields['rag_enabled'] = $rag;
             if ($rag) {
@@ -390,6 +391,23 @@ class settings_section {
             }
         }
         return $fields;
+    }
+
+    /**
+     * Whether the submitted form asks for course material search. For an activity Vektra has no configuration for,
+     * the switch starts on but counts only when the discussion is turned on in the same save: otherwise saving the
+     * activity for another reason would ask for the teacher's confirmation, or turn the search on unasked.
+     *
+     * @param array $values Submitted values.
+     * @param array $orig {@see self::orig()}
+     * @return bool
+     */
+    private static function rag_requested(array $values, array $orig): bool {
+        $p = self::PREFIX;
+        if (!($orig['configured'] ?? true) && empty($values[$p . 'enabled'])) {
+            return (bool) ($orig['rag_enabled'] ?? false);
+        }
+        return !empty($values[$p . 'rag']);
     }
 
     /**
@@ -543,8 +561,10 @@ class settings_section {
     }
 
     /**
-     * Course material search (FEAT-028): a switch, off by default, and the teacher's confirmation that appears when
-     * it is turned on. The confirmation is never pre-ticked; once saved, the form shows when it was given.
+     * Course material search (FEAT-028): a switch, and the teacher's confirmation that appears when it is turned on.
+     * The switch starts on for an activity Vektra has no configuration for, and is then shown only while the
+     * discussion is being turned on: an unrelated save of the activity sends nothing ({@see self::rag_requested()}).
+     * The confirmation is never pre-ticked; once saved, the form shows when it was given.
      *
      * @param \MoodleQuickForm $mform
      * @param array $view
@@ -552,7 +572,8 @@ class settings_section {
     private static function add_rag(\MoodleQuickForm $mform, array $view): void {
         $p = self::PREFIX;
         $s = fn(string $id, $a = null): string => get_string($id, 'local_vektradiscuss', $a);
-        $enabled = self::orig_from_view($view)['rag_enabled'];
+        $orig = self::orig_from_view($view);
+        $enabled = $orig['rag_enabled'];
         // Vektra says when the installation cannot offer the search (operator flag): no switch to turn it on,
         // but a search already on can still be turned off. An absent field means available.
         if (($view['rag_available'] ?? true) === false && !$enabled) {
@@ -564,8 +585,12 @@ class settings_section {
             return;
         }
         $mform->addElement('advcheckbox', $p . 'rag', $s('form_rag'), $s('form_rag_label'));
-        $mform->setDefault($p . 'rag', $enabled ? 1 : 0);
+        $mform->setDefault($p . 'rag', $enabled || !$orig['configured'] ? 1 : 0);
         $mform->addHelpButton($p . 'rag', 'form_rag', 'local_vektradiscuss');
+        if (!$orig['configured']) {
+            $mform->hideIf($p . 'rag', $p . 'enabled', 'notchecked');
+            $mform->hideIf($p . 'ragattest', $p . 'enabled', 'notchecked');
+        }
         if ($enabled) {
             // Already on: no new confirmation is asked; the date is shown when Vektra gives one.
             $at = is_string($view['rag_attested_at'] ?? null) ? strtotime($view['rag_attested_at']) : false;
@@ -614,26 +639,35 @@ class settings_section {
     }
 
     /**
-     * A write-only text: its state, a "replace" switch revealing an empty field, and "remove" when set.
+     * A write-only text: its state, an "edit" switch revealing the field, and "remove" when set.
+     *
+     * When the text is set and the user may read it back, the switch fills the field with the saved text read from
+     * Vektra (local_vektradiscuss/secretedit): the teacher edits it in place, and the save sends the field as the new
+     * text. Otherwise the field starts empty and its text replaces the saved one.
      *
      * @param \MoodleQuickForm $mform
      * @param string $name solution or rubric
      * @param bool $set
-     * @param bool $canreveal Add the "Show" button when set.
+     * @param bool $canreveal Add the "Show" button and the read-back of "edit" when set.
      */
     private static function add_secret(\MoodleQuickForm $mform, string $name, bool $set, bool $canreveal = false): void {
         $p = self::PREFIX . $name;
         $s = fn(string $id, $a = null): string => get_string($id, 'local_vektradiscuss', $a);
-        $state = $set ? self::revealable($name, $s('form_secret_set'), $canreveal) : s($s('form_secret_unset'));
+        $prefix = 'form_' . $name . '_';
+        $state = $set ? self::revealable($name, $s($prefix . 'set'), $canreveal) : s($s($prefix . 'unset'));
         $mform->addElement('static', $p . '_state', $s('form_' . $name), $state);
-        $mform->addElement('advcheckbox', $p . '_replace', '', $s($set ? 'form_secret_replace' : 'form_secret_add'));
-        $mform->addElement('textarea', $p, $s('form_' . $name . '_text'), ['rows' => 8, 'cols' => 60, 'autocomplete' => 'off']);
+        $mform->addElement('advcheckbox', $p . '_replace', '', $s($prefix . ($set ? 'edit' : 'add')));
+        $attributes = ['rows' => 8, 'cols' => 60, 'autocomplete' => 'off', 'spellcheck' => 'false'];
+        if ($set && $canreveal) {
+            $attributes['data-vektradiscuss-prefill'] = $name;
+        }
+        $mform->addElement('textarea', $p, $s('form_' . $name . '_text'), $attributes);
         // PARAM_RAW: the text is plain text for Vektra (PARAM_TEXT would strip "a<b" from a formula).
         $mform->setType($p, PARAM_RAW);
         $mform->addHelpButton($p, 'form_' . $name . '_text', 'local_vektradiscuss');
         $mform->hideIf($p, $p . '_replace', 'notchecked');
         if ($set) {
-            $mform->addElement('advcheckbox', $p . '_remove', '', $s('form_secret_remove'));
+            $mform->addElement('advcheckbox', $p . '_remove', '', $s($prefix . 'remove'));
             $mform->hideIf($p . '_remove', $p . '_replace', 'checked');
         }
     }
@@ -769,6 +803,8 @@ class settings_section {
     private static function orig_from_view(array $view): array {
         $until = is_string($view['available_until'] ?? null) ? strtotime($view['available_until']) : false;
         return [
+            // An absent flag counts as configured: the search then never starts on by itself.
+            'configured' => ($view['configured'] ?? true) !== false,
             'enabled' => ($view['enabled'] ?? false) === true,
             'cap_minutes' => is_int($view['cap_minutes'] ?? null) ? $view['cap_minutes'] : null,
             'rubric_source' => is_string($view['rubric_source'] ?? null) ? $view['rubric_source'] : 'none',
@@ -787,9 +823,10 @@ class settings_section {
      * @return array
      */
     private static function keep(array $view): array {
-        return array_intersect_key($view, array_flip(['version', 'enabled', 'cap_minutes', 'rubric_source', 'show_solution',
-            'available_until', 'solution_state', 'pasted_rubric_state', 'transcript_recipients_count', 'opening', 'warnings',
-            'active_sessions', 'rag_enabled', 'rag_attested_at', 'rag_available', 'rag_unavailable_reason']));
+        return array_intersect_key($view, array_flip(['version', 'configured', 'enabled', 'cap_minutes', 'rubric_source',
+            'show_solution', 'available_until', 'solution_state', 'pasted_rubric_state', 'transcript_recipients_count',
+            'opening', 'warnings', 'active_sessions', 'rag_enabled', 'rag_attested_at', 'rag_available',
+            'rag_unavailable_reason']));
     }
 
     /**

@@ -463,6 +463,26 @@ final class teacher_page_test extends \advanced_testcase {
     }
 
     /**
+     * "Open" shows the transcript in a browser tab: inline, still sandboxed, with only its own inline stylesheet.
+     */
+    public function test_open_link_and_inline_headers(): void {
+        $this->transport->respond(200, $this->list_with('aaaa-1'));
+        $api = new teacher_api(new assess_client(null, $this->transport));
+        $ctx = $this->page()->context($api->list_sessions((int) $this->cm->id, (int) $this->course->id, 'quiz', 1));
+        $session = $ctx['students'][0]['sessions'][0];
+        $this->assertStringContainsString('inline=1', $session['openurl']);
+        $this->assertStringNotContainsString('inline=1', $session['downloadurl']);
+        $this->assertSame(str_replace('&inline=1', '', $session['openurl']), $session['downloadurl']);
+
+        $inline = transcript_proxy::headers([], 3, '42', true);
+        $this->assertContains('Content-Disposition: inline; filename="transcript_42_s3.html"', $inline);
+        $this->assertContains("Content-Security-Policy: sandbox; default-src 'none'; style-src 'unsafe-inline'", $inline);
+        $this->assertContains('X-Content-Type-Options: nosniff', $inline);
+        $this->assertContains('Cache-Control: no-store', $inline);
+        $this->assertContains("Content-Security-Policy: sandbox; default-src 'none'", transcript_proxy::headers([], 3, '42'));
+    }
+
+    /**
      * Resend is offered only for a transcript that was delivered at least once (Vektra resends a round).
      */
     public function test_resend_offered_only_after_a_delivery(): void {

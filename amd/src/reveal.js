@@ -34,7 +34,7 @@ import {getStrings} from 'core/str';
  * @param {String} field solution, rubric or recipients
  * @returns {Promise<Object>} {value} or {error}
  */
-const read = async(cmid, field) => {
+export const read = async(cmid, field) => {
     const body = new URLSearchParams({cmid: String(cmid), field, sesskey: Config.sesskey});
     const response = await fetch(Config.wwwroot + '/local/vektradiscuss/reveal.php', {
         method: 'POST',

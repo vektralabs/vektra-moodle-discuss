@@ -39,6 +39,8 @@ $tid = required_param('tid', PARAM_ALPHANUMEXT);
 // Only for the fallback file name; Vektra checks the transcript against the activity.
 $n = max(1, optional_param('n', 1, PARAM_INT));
 $student = optional_param('u', 0, PARAM_INT);
+// Read in a new browser tab instead of saved as a file.
+$inline = optional_param('inline', 0, PARAM_BOOL);
 
 [$course, $cm] = get_course_and_cm_from_cmid($cmid);
 require_login($course, false, $cm);
@@ -88,7 +90,7 @@ $proxy = new transcript_proxy($config);
 // Retried once inside the proxy when Vektra asks for it.
 [$result, $token] = $proxy->mint_grader((int) $USER->id, $tid, (int) $cm->id);
 if ($result === transcript_proxy::OK) {
-    $result = $proxy->send($tid, $token, $n, $student > 0 ? (string) $student : '');
+    $result = $proxy->send($tid, $token, $n, $student > 0 ? (string) $student : '', (bool) $inline);
 }
 if ($result === transcript_proxy::OK || $result === transcript_proxy::TRUNCATED) {
     die();

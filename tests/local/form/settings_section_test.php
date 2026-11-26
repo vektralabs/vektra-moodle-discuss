@@ -721,6 +721,71 @@ final class settings_section_test extends \advanced_testcase {
     }
 
     /**
+     * An activity Vektra has no configuration for: the search starts on (with its unticked confirmation), and counts
+     * only when the discussion is turned on in the same save.
+     */
+    public function test_rag_starts_on_for_a_new_configuration(): void {
+        $p = settings_section::PREFIX;
+        $new = self::view(['configured' => false, 'version' => 0, 'solution_state' => 'non impostata',
+            'transcript_recipients_state' => 'non impostata', 'transcript_recipients_count' => 0]);
+        $this->transport->respond(200, $new);
+        $mform = $this->extend();
+        $this->assertSame(1, $mform->_defaultValues[$p . 'rag']);
+        $this->assertSame(0, $mform->_defaultValues[$p . 'ragattest']);
+
+        $values = fn(array $o): array => $o + $this->submitted([$p . 'version' => 0, $p . 'view' => json_encode($new),
+            $p . 'rag' => 1]);
+        // An unrelated save of the activity: no confirmation asked, nothing sent.
+        $this->assertArrayNotHasKey($p . 'ragattest', settings_section::validate($values([])));
+        $this->assertSame([], settings_section::changes($values([]), 'quiz'));
+        // Turning the discussion on: the confirmation is required, and the search is sent with it.
+        $on = [$p . 'enabled' => 1, $p . 'recipients_replace' => 1, $p . 'recipients' => 'a@example.test'];
+        $this->assertArrayHasKey($p . 'ragattest', settings_section::validate($values($on)));
+        $fields = settings_section::changes($values($on + [$p . 'ragattest' => 1]), 'quiz');
+        $this->assertTrue($fields['enabled']);
+        $this->assertTrue($fields['rag_enabled']);
+        $this->assertTrue($fields['rag_attested']);
+        // Unticked by the teacher: not sent.
+        $this->assertArrayNotHasKey('rag_enabled', settings_section::changes($values([$p . 'rag' => 0] + $on), 'quiz'));
+
+        // A configured activity keeps Vektra's value (off here), and a view without the flag counts as configured.
+        $this->transport->respond(200, array_diff_key(self::view(), ['configured' => true]));
+        $this->assertSame(0, $this->extend()->_defaultValues[$p . 'rag']);
+    }
+
+    /**
+     * Editing a saved text: the field is marked for the read-back only when the text is set and the user can read
+     * it; the labels follow each field (grading criteria are plural in Italian).
+     */
+    public function test_edit_in_place_marks_the_saved_texts(): void {
+        $p = settings_section::PREFIX;
+        $this->transport->respond(200, self::view(['pasted_rubric_state' => 'impostata', 'rubric_source' => 'pasted']));
+        $mform = $this->extend();
+        $this->assertSame('solution', $mform->getElement($p . 'solution')->getAttribute('data-vektradiscuss-prefill'));
+        $this->assertSame('rubric', $mform->getElement($p . 'rubric')->getAttribute('data-vektradiscuss-prefill'));
+        $this->assertSame('off', $mform->getElement($p . 'rubric')->getAttribute('autocomplete'));
+        $this->assertArrayNotHasKey($p . 'rubric', $mform->_defaultValues);
+        $s = fn(string $id): string => get_string($id, 'local_vektradiscuss');
+        $this->assertStringContainsString($s('form_rubric_edit'), $mform->getElement($p . 'rubric_replace')->toHtml());
+        $this->assertStringContainsString($s('form_rubric_remove'), $mform->getElement($p . 'rubric_remove')->toHtml());
+        $this->assertStringContainsString($s('form_solution_edit'), $mform->getElement($p . 'solution_replace')->toHtml());
+
+        // Not set: "add" with an empty field and nothing to read back.
+        $this->transport->respond(200, self::view(['solution_state' => 'non impostata']));
+        $mform = $this->extend();
+        $this->assertNull($mform->getElement($p . 'solution')->getAttribute('data-vektradiscuss-prefill'));
+        $this->assertStringContainsString($s('form_solution_add'), $mform->getElement($p . 'solution_replace')->toHtml());
+
+        // A non-editing teacher who may configure but not edit the activity cannot read it back.
+        $this->transport->respond(200, self::view());
+        $role = (int) $this->getDataGenerator()->create_role();
+        $context = \context_module::instance($this->quiz->cmid);
+        $this->getDataGenerator()->role_assign($role, $this->teacher->id, $context->id);
+        assign_capability('moodle/course:manageactivities', CAP_PROHIBIT, $role, $context);
+        $this->assertNull($this->extend()->getElement($p . 'solution')->getAttribute('data-vektradiscuss-prefill'));
+    }
+
+    /**
      * Once on, the form shows when the teacher confirmed, and no new confirmation is asked.
      */
     public function test_rag_switch_renders_on_with_the_confirmation_date(): void {

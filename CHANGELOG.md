@@ -79,7 +79,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - "Show" next to a saved solution, pasted rubric or recipient list in the activity settings (OQ-034), for users
   who can edit the activity: `reveal.php` (POST, sesskey) reads it through `POST .../config/reveal` and the
   `local_vektradiscuss/reveal` module shows it in a read-only area outside the form fields; "Hide" removes it.
-  The text is never stored, cached, logged or prefilled in the replacement field.
+  The text is never stored, cached or logged.
+- Edit in place (demo feedback, 2026-11-20): ticking "Edit" next to a saved solution or pasted grading criteria
+  fills the field with the text read through the same reveal request (`local_vektradiscuss/secretedit`), for
+  users who can edit the activity; the save sends the field as the new text, "Remove" deletes it. On a failed
+  read the field stays empty with a message. The text lives only in the page's field.
+- The Discussions page opens a transcript in a new browser tab ("Open transcript #n") besides the download:
+  `teacher_transcript.php?inline=1` serves it inline, still sandboxed, with only its own inline stylesheet.
+
+### Changed
+
+- Italian and English wording: "rubrica"/"rubric" becomes "criteri di valutazione"/"grading criteria" in
+  the activity settings ("Fonte dei criteri di valutazione", "Testo dei criteri"); Moodle's own rubric keeps
+  its name. Field names and the API (`pasted_rubric`) are unchanged.
+- Course material search starts on for an activity Vektra has no configuration for (`configured: false`),
+  and is sent, with the required confirmation, only when the discussion is turned on in the same save.
 
 ### Fixed
 
